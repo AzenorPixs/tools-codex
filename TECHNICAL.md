@@ -107,11 +107,33 @@ Les correspondances actuellement publiées sont :
 La commande `/cm` doit rester synchronisée avec les commandes effectivement
 présentes dans `.codex/commands/`.
 
+## Prérequis d'exécution
+
+Les prérequis suivants s'appliquent lors de l'utilisation des extensions. Ils
+décrivent des mécanismes et des accès ; aucune valeur d'identification ne doit
+être stockée dans ce dépôt.
+
+| Composant | Prérequis locaux | Services externes nécessaires |
+|---|---|---|
+| `tfl` | Python 3, accès réseau HTTPS, exécution hors sandbox, répertoire de données inscriptible et accès aux fournisseurs configuré localement hors des sources. | OpenCode Go, models.dev et OpenRouter. |
+| `pllm` | Python 3, accès réseau HTTPS, répertoire de données inscriptible et accès aux fournisseurs configuré localement hors des sources. Le catalogue TFL doit être accessible comme skill voisin sous `skills/tfl/data/tfl.json`. | OpenCode Go, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
+| `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
+| `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
+| `/cm` | Aucun. | Aucun. |
+
+Les plugins `pllm` et `tfl` écrivent leurs rapports dans leur répertoire
+`data/`. L'environnement d'installation doit donc autoriser cette écriture ou
+fournir un emplacement de sortie équivalent pris en charge par le script.
+
+Les accès aux fournisseurs sont préparés localement, hors des sources. Aucune
+information d'authentification, valeur de configuration sensible ou sortie de
+stockage sécurisé ne doit être enregistrée, affichée ou ajoutée aux sources.
+
 ## Données générées
 
 Les scripts de `cgpt`, `pllm` et `tfl` peuvent générer ou actualiser des
-rapports locaux. Les données liées à un compte, aux quotas ou à l'historique
-d'utilisation ne doivent jamais être ajoutées aux sources publiées. Les
+rapports locaux. Les données liées aux quotas ou à l'historique d'utilisation
+ne doivent jamais être ajoutées aux sources publiées. Les
 catalogues fournisseurs et les rapports inclus dans un plugin doivent être
 contrôlés avant publication : ils ne doivent contenir ni secret ni information
 personnelle.

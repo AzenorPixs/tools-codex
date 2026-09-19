@@ -46,7 +46,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 |---|---|---|
 | Plugin | `pllm` | Évalue une politique de modèles LLM et l'applique à une session OpenCode autorisée. |
 | Plugin | `tfl` | Produit le rapport comparatif des fournisseurs OpenCode Go et OpenRouter. |
-| Skill | `cgpt` | Affiche les quotas Codex du compte connecté. |
+| Skill | `cgpt` | Affiche les quotas Codex disponibles. |
 | Skill | `coding-session-statistics` | Produit un bilan auditable d'une session de codage ou de pilotage. |
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
 | Skill | `tfl` | Expose le rapport TFL également en dehors du plugin. |

@@ -47,6 +47,25 @@ sélectionnez la marketplace Tools Codex et installez le plugin souhaité.
 Démarrez une nouvelle session Codex avant d'utiliser les skills ou les outils
 fournis par le plugin.
 
+## Prérequis avant installation et test
+
+Avant d'installer et d'exécuter un plugin, assurez-vous que l'environnement
+dispose de Python 3, d'un accès HTTPS sortant et, pour `pllm` et `tfl`, de la
+configuration locale nécessaire aux accès autorisés par l'utilisateur.
+
+Installez `tfl` avec `pllm` : PLLM lit le catalogue produit par TFL. Les deux
+plugins écrivent des rapports dans leur répertoire `data/`, qui doit être
+inscriptible ou redirigé vers une sortie prise en charge.
+
+TFL doit être exécuté hors sandbox pour accéder à ses fournisseurs. Si un accès
+OpenRouter est nécessaire, préparez-le localement sans jamais ajouter
+d'information d'authentification au dépôt ou à la configuration de la
+marketplace.
+
+Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
+l'outil Codex de lecture des quotas et l'historique persistant de la session.
+Ils ne sont pas installés automatiquement avec les plugins de la marketplace.
+
 ## Mise à jour
 
 Rafraîchissez toutes les marketplaces configurées, y compris Tools Codex :
@@ -71,7 +90,8 @@ Avant de publier ou de mettre à jour la marketplace :
 
 * vérifiez la validité du catalogue et des manifestes de plugin ;
 * vérifiez les skills et les scripts inclus ;
-* contrôlez qu'aucune donnée liée aux comptes, quotas, historiques ou secrets
+* contrôlez qu'aucune donnée liée aux quotas, historiques ou informations
+  d'authentification
   n'est ajoutée à la publication ;
 * installez chaque plugin depuis la marketplace et testez-le dans une nouvelle
   session Codex.
