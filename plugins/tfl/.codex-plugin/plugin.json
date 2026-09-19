@@ -1,0 +1,20 @@
+{
+  "name": "tfl",
+  "version": "0.1.0+codex.20260919092210",
+  "description": "G\u00e9n\u00e8re un rapport comparatif des mod\u00e8les OpenCode Go et OpenRouter.",
+  "author": {
+    "name": "AzenorPixs"
+  },
+  "homepage": "https://github.com/AzenorPixs/tools-codex",
+  "repository": "https://github.com/AzenorPixs/tools-codex",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "TFL",
+    "shortDescription": "Compare les mod\u00e8les OpenCode Go et OpenRouter.",
+    "longDescription": "TFL g\u00e9n\u00e8re un rapport filtr\u00e9 des mod\u00e8les disponibles, de leur contexte et de leurs tarifs.",
+    "developerName": "AzenorPixs",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Utilise le plugin TFL pour g\u00e9n\u00e9rer le rapport OpenCode Go puis OpenRouter, toujours hors sandbox."
+  }
+}

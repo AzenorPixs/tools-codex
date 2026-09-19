@@ -1,0 +1,20 @@
+{
+  "name": "pllm",
+  "version": "0.1.0+codex.20260919092210",
+  "description": "\u00c9value la PLLM et applique de fa\u00e7on s\u00fbre sa s\u00e9lection aux sessions OpenCode.",
+  "author": {
+    "name": "AzenorPixs"
+  },
+  "homepage": "https://github.com/AzenorPixs/tools-codex",
+  "repository": "https://github.com/AzenorPixs/tools-codex",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "PLLM",
+    "shortDescription": "\u00c9valuer et appliquer la PLLM.",
+    "longDescription": "PLLM \u00e9value les fournisseurs de mod\u00e8les et applique une s\u00e9lection valid\u00e9e \u00e0 OpenCode, avec rechargement s\u00fbr des identifiants.",
+    "developerName": "AzenorPixs",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "\u00c9value la PLLM puis applique la politique s\u00e9lectionn\u00e9e \u00e0 une session OpenCode autoris\u00e9e."
+  }
+}

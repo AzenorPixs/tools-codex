@@ -1,0 +1,4 @@
+interface:
+  display_name: "TFL"
+  short_description: "Classement unifié des LLM OpenCode Go et OpenRouter"
+  default_prompt: "Utilise $tfl pour générer le rapport unifié OpenCode Go puis OpenRouter, en exécutant toujours TFL hors sandbox."
