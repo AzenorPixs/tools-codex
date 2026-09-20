@@ -1,6 +1,6 @@
 {
   "name": "pllm",
-  "version": "0.1.0+codex.20260919092210",
+  "version": "0.2.0",
   "description": "\u00c9value la PLLM et applique de fa\u00e7on s\u00fbre sa s\u00e9lection aux sessions OpenCode.",
   "author": {
     "name": "AzenorPixs"

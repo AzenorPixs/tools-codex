@@ -1,6 +1,6 @@
 {
   "name": "tfl",
-  "version": "0.1.0+codex.20260919092210",
+  "version": "0.2.0",
   "description": "G\u00e9n\u00e8re un rapport comparatif des mod\u00e8les OpenCode Go et OpenRouter.",
   "author": {
     "name": "AzenorPixs"

@@ -11,6 +11,12 @@ Tools Codex rassemble des extensions internes destinées à enrichir Codex :
 Le projet centralise ces ressources afin qu'elles puissent être versionnées,
 maintenues et distribuées de manière cohérente.
 
+## Version de release
+
+La version de release de Tools Codex est déclarée dans `VERSION`. Les plugins
+publiés par la marketplace doivent déclarer la même version de release dans
+leur manifeste.
+
 ## Périmètre
 
 Le projet contient uniquement les ressources d'extension propres à Codex et

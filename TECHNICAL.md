@@ -44,6 +44,12 @@ Le catalogue de la marketplace du dépôt est placé dans :
 Les chemins des plugins déclarés dans ce catalogue sont relatifs à la racine
 du dépôt et commencent par `./`.
 
+## Version de release
+
+`VERSION` est la source de vérité de la version de release de Tools Codex.
+Chaque manifeste `plugins/<NOM_DU_PLUGIN>/.codex-plugin/plugin.json` publié
+par la marketplace doit déclarer exactement cette version.
+
 ## Structure des plugins actuels
 
 Les plugins `pllm` et `tfl` possèdent un identifiant stable en kebab-case et
