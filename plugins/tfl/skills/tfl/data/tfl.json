@@ -1,0 +1,536 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-14T08:15:03+02:00",
+  "order": [
+    "opencode_go",
+    "openrouter"
+  ],
+  "common_columns": [
+    "rank",
+    "model_id",
+    "context",
+    "output",
+    "input_price",
+    "output_price",
+    "average_cost",
+    "cost_color"
+  ],
+  "filters": {
+    "minimum_context_tokens": 1000000,
+    "maximum_average_usd_per_million_tokens": 0.5
+  },
+  "blacklists": {
+    "opencode_go": [
+      "muse-spark-1.2-contributor"
+    ],
+    "openrouter": [
+      "meta/muse-spark-1.2-contributor"
+    ]
+  },
+  "opencode_go": {
+    "source_api": "https://opencode.ai/zen/go/v1/models",
+    "reference_source": "https://opencode.ai/docs/go/",
+    "context_metadata_source": "https://models.dev/api.json",
+    "credential_policy": "mode1",
+    "source_model_count": 37,
+    "excluded_model_count": 31,
+    "excluded_models": [
+      {
+        "id": "minimax-m3",
+        "name": "minimax-m3",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 0.75,
+        "reason": "coût moyen 0.75 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "minimax-m2.7",
+        "name": "minimax-m2.7",
+        "context_length": 204800,
+        "reason": "contexte 204800 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "minimax-m2.5",
+        "name": "minimax-m2.5",
+        "context_length": 204800,
+        "reason": "contexte 204800 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "kimi-k3",
+        "name": "kimi-k3",
+        "context_length": 1048576,
+        "reference_average_usd_per_million_tokens": 9.0,
+        "reason": "coût moyen 9 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "kimi-k2.7-code",
+        "name": "kimi-k2.7-code",
+        "context_length": 262144,
+        "reason": "contexte 262144 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "kimi-k2.6",
+        "name": "kimi-k2.6",
+        "context_length": 262144,
+        "reason": "contexte 262144 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "longcat-2.0",
+        "name": "longcat-2.0",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 0.75,
+        "reason": "coût moyen 0.75 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "kimi-k2.5",
+        "name": "kimi-k2.5",
+        "context_length": 262144,
+        "reason": "contexte 262144 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "glm-5.2",
+        "name": "glm-5.2",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 2.9000000000000004,
+        "reason": "coût moyen 2.9 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "glm-5.3",
+        "name": "glm-5.3",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 2.9000000000000004,
+        "reason": "coût moyen 2.9 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "glm-5.1",
+        "name": "glm-5.1",
+        "context_length": 202752,
+        "reason": "contexte 202752 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "glm-5",
+        "name": "glm-5",
+        "context_length": 202752,
+        "reason": "contexte 202752 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "deepseek-v4-pro",
+        "name": "deepseek-v4-pro",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 1.32,
+        "reason": "coût moyen 1.32 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "deepseek-flash",
+        "name": "deepseek-flash",
+        "context_length": null,
+        "reason": "contexte non vérifiable; seuil obligatoire de 1M"
+      },
+      {
+        "id": "deepseek-v4.1-flash",
+        "name": "deepseek-v4.1-flash",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": null,
+        "reason": "coût moyen non vérifiable; seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "qwen3.7-max",
+        "name": "qwen3.7-max",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 5.0,
+        "reason": "coût moyen 5 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "qwen3.8-max",
+        "name": "qwen3.8-max",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 4.0,
+        "reason": "coût moyen 4 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "qwen3.7-plus",
+        "name": "qwen3.7-plus",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 1.0,
+        "reason": "coût moyen 1 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "qwen3.6-plus",
+        "name": "qwen3.6-plus",
+        "context_length": 1000000,
+        "reference_average_usd_per_million_tokens": 1.75,
+        "reason": "coût moyen 1.75 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "qwen3.5-plus",
+        "name": "qwen3.5-plus",
+        "context_length": 262144,
+        "reason": "contexte 262144 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "mimo-v2-pro",
+        "name": "mimo-v2-pro",
+        "context_length": 1048576,
+        "reference_average_usd_per_million_tokens": null,
+        "reason": "coût moyen non vérifiable; seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "mimo-v2-omni",
+        "name": "mimo-v2-omni",
+        "context_length": 262144,
+        "reason": "contexte 262144 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "mimo-v2.5-pro",
+        "name": "mimo-v2.5-pro",
+        "context_length": 1048576,
+        "reference_average_usd_per_million_tokens": 0.6525,
+        "reason": "coût moyen 0.6525 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "hy4-preview",
+        "name": "hy4-preview",
+        "context_length": 1024000,
+        "reference_average_usd_per_million_tokens": 1.6675,
+        "reason": "coût moyen 1.6675 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "hy3",
+        "name": "hy3",
+        "context_length": 256000,
+        "reason": "contexte 256000 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "hy3-preview",
+        "name": "hy3-preview",
+        "context_length": null,
+        "reason": "contexte non vérifiable; seuil obligatoire de 1M"
+      },
+      {
+        "id": "gpt-5.6-luna",
+        "name": "gpt-5.6-luna",
+        "context_length": 1050000,
+        "reference_average_usd_per_million_tokens": 0.7,
+        "reason": "coût moyen 0.7 $/M supérieur au seuil maximal de 0.5 $/M"
+      },
+      {
+        "id": "grok-4.5",
+        "name": "grok-4.5",
+        "context_length": 500000,
+        "reason": "contexte 500000 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "grok-4.6",
+        "name": "grok-4.6",
+        "context_length": 500000,
+        "reason": "contexte 500000 tokens inférieur au seuil obligatoire de 1M"
+      },
+      {
+        "id": "muse-spark-1.2-contributor",
+        "name": "muse-spark-1.2-contributor",
+        "reason": "blacklist permanente"
+      },
+      {
+        "id": "omen-alpha",
+        "name": "omen-alpha",
+        "context_length": 500000,
+        "reason": "contexte 500000 tokens inférieur au seuil obligatoire de 1M"
+      }
+    ],
+    "models": [
+      {
+        "id": "muse-spark-1.3-contributor",
+        "name": "muse-spark-1.3-contributor",
+        "available": true,
+        "api_metadata": {
+          "object": "model",
+          "owned_by": "opencode",
+          "created": 1789366501
+        },
+        "api_endpoint": "https://opencode.ai/zen/go/v1/responses",
+        "api_protocol": "responses",
+        "endpoint_source": "opencode-go-docs",
+        "context_length": 1048576,
+        "context_status": "verified",
+        "context_source": "models.dev",
+        "pricing_status": "published",
+        "output_modalities": [
+          "text"
+        ],
+        "multimedia_status": "text_output",
+        "reference_pricing_usd_per_million_tokens": {
+          "input_off_peak": 0.1,
+          "output_off_peak": 0.2,
+          "average_off_peak": 0.15000000000000002
+        },
+        "quota_estimates_requests": {
+          "rolling": 45300,
+          "weekly": 113300,
+          "monthly": 226600
+        },
+        "reference_average_usd_per_million_tokens": 0.15000000000000002,
+        "rank": 1
+      },
+      {
+        "id": "mimo-v2.5",
+        "name": "mimo-v2.5",
+        "available": true,
+        "api_metadata": {
+          "object": "model",
+          "owned_by": "opencode",
+          "created": 1789366501
+        },
+        "api_endpoint": "https://opencode.ai/zen/go/v1/chat/completions",
+        "api_protocol": "chat_completions",
+        "endpoint_source": "opencode-go-docs",
+        "context_length": 1000000,
+        "context_status": "verified",
+        "context_source": "models.dev",
+        "pricing_status": "published",
+        "output_modalities": [
+          "text"
+        ],
+        "multimedia_status": "text_output",
+        "reference_pricing_usd_per_million_tokens": {
+          "input_off_peak": 0.14,
+          "output_off_peak": 0.28,
+          "average_off_peak": 0.21000000000000002
+        },
+        "quota_estimates_requests": {
+          "rolling": 30100,
+          "weekly": 75200,
+          "monthly": 150400
+        },
+        "reference_average_usd_per_million_tokens": 0.21000000000000002,
+        "rank": 2
+      },
+      {
+        "id": "qwen3.8-flash",
+        "name": "qwen3.8-flash",
+        "available": true,
+        "api_metadata": {
+          "object": "model",
+          "owned_by": "opencode",
+          "created": 1789366501
+        },
+        "api_endpoint": "https://opencode.ai/zen/go/v1/messages",
+        "api_protocol": "messages",
+        "endpoint_source": "opencode-go-docs",
+        "context_length": 1000000,
+        "context_status": "verified",
+        "context_source": "models.dev",
+        "pricing_status": "published",
+        "output_modalities": [
+          "text"
+        ],
+        "multimedia_status": "text_output",
+        "reference_pricing_usd_per_million_tokens": {
+          "input_off_peak": 0.15,
+          "output_off_peak": 0.47,
+          "average_off_peak": 0.31
+        },
+        "quota_estimates_requests": {
+          "rolling": 5400,
+          "weekly": 13500,
+          "monthly": 27000
+        },
+        "reference_average_usd_per_million_tokens": 0.31,
+        "rank": 3
+      },
+      {
+        "id": "glm-5.3-flash",
+        "name": "glm-5.3-flash",
+        "available": true,
+        "api_metadata": {
+          "object": "model",
+          "owned_by": "opencode",
+          "created": 1789366501
+        },
+        "api_endpoint": "https://opencode.ai/zen/go/v1/chat/completions",
+        "api_protocol": "chat_completions",
+        "endpoint_source": "opencode-go-docs",
+        "context_length": 1000000,
+        "context_status": "verified",
+        "context_source": "models.dev",
+        "pricing_status": "published",
+        "output_modalities": [
+          "text"
+        ],
+        "multimedia_status": "text_output",
+        "reference_pricing_usd_per_million_tokens": {
+          "input_off_peak": 0.15,
+          "output_off_peak": 0.5,
+          "average_off_peak": 0.325
+        },
+        "quota_estimates_requests": {
+          "rolling": 1580,
+          "weekly": 3950,
+          "monthly": 7900
+        },
+        "reference_average_usd_per_million_tokens": 0.325,
+        "rank": 4
+      },
+      {
+        "id": "deepseek-v4-flash",
+        "name": "deepseek-v4-flash",
+        "available": true,
+        "api_metadata": {
+          "object": "model",
+          "owned_by": "opencode",
+          "created": 1789366501
+        },
+        "api_endpoint": "https://opencode.ai/zen/go/v1/chat/completions",
+        "api_protocol": "chat_completions",
+        "endpoint_source": "opencode-go-docs",
+        "context_length": 1000000,
+        "context_status": "verified",
+        "context_source": "models.dev",
+        "pricing_status": "published",
+        "output_modalities": [
+          "text"
+        ],
+        "multimedia_status": "text_output",
+        "reference_pricing_usd_per_million_tokens": {
+          "input_off_peak": 0.22,
+          "output_off_peak": 0.66,
+          "average_off_peak": 0.44,
+          "input_peak": 0.44,
+          "output_peak": 1.32,
+          "average_peak": 0.88
+        },
+        "quota_estimates_requests": {
+          "rolling": 7600,
+          "weekly": 18900,
+          "monthly": 37800
+        },
+        "reference_average_usd_per_million_tokens": 0.44,
+        "rank": 5
+      },
+      {
+        "id": "deepseek-v4-flash-vision-exp",
+        "name": "deepseek-v4-flash-vision-exp",
+        "available": true,
+        "api_metadata": {
+          "object": "model",
+          "owned_by": "opencode",
+          "created": 1789366501
+        },
+        "api_endpoint": "https://opencode.ai/zen/go/v1/chat/completions",
+        "api_protocol": "chat_completions",
+        "endpoint_source": "opencode-go-docs",
+        "context_length": 1000000,
+        "context_status": "verified",
+        "context_source": "models.dev",
+        "pricing_status": "published",
+        "output_modalities": [
+          "text"
+        ],
+        "multimedia_status": "text_output",
+        "reference_pricing_usd_per_million_tokens": {
+          "input_off_peak": 0.22,
+          "output_off_peak": 0.66,
+          "average_off_peak": 0.44,
+          "input_peak": 0.44,
+          "output_peak": 1.32,
+          "average_peak": 0.88
+        },
+        "quota_estimates_requests": {
+          "rolling": 3800,
+          "weekly": 9450,
+          "monthly": 18900
+        },
+        "reference_average_usd_per_million_tokens": 0.44,
+        "rank": 6
+      }
+    ]
+  },
+  "openrouter": {
+    "source_api": "https://openrouter.ai/api/v1/models",
+    "source_url": "https://openrouter.ai/models?context=1000000&order=pricing-low-to-high&max_output_price=0.2&max_price=0.2&min_price=0.001&categories=programming",
+    "selection": "fixed-web-programming-low-cost",
+    "blacklist": {
+      "model_ids": [
+        "meta/muse-spark-1.2-contributor"
+      ],
+      "policy": "permanent_exclusion"
+    },
+    "source_model_count": 445,
+    "excluded_model_count": 0,
+    "excluded_models": [],
+    "models": [
+      {
+        "rank": 1,
+        "id": "qwen/qwen3.7-flash",
+        "name": "Qwen: Qwen3.7 Flash",
+        "context_length": 1000000,
+        "output_label": "Texte",
+        "input_price": 0.03,
+        "output_price": 0.13,
+        "average": 0.08,
+        "input_modalities": [
+          "image",
+          "text",
+          "video"
+        ],
+        "output_modalities": [
+          "text"
+        ],
+        "capabilities": [
+          "tools",
+          "reasoning",
+          "JSON"
+        ],
+        "api_metadata": {
+          "created": 1785190561
+        }
+      },
+      {
+        "rank": 2,
+        "id": "deepseek/deepseek-v4-flash-0731",
+        "name": "DeepSeek: DeepSeek V4 Flash 0731",
+        "context_length": 1310720,
+        "output_label": "Texte",
+        "input_price": 0.06,
+        "output_price": 0.12,
+        "average": 0.09,
+        "input_modalities": [
+          "text"
+        ],
+        "output_modalities": [
+          "text"
+        ],
+        "capabilities": [
+          "tools",
+          "reasoning",
+          "JSON"
+        ],
+        "api_metadata": {
+          "created": 1785478908
+        }
+      },
+      {
+        "rank": 3,
+        "id": "deepseek/deepseek-v4-flash",
+        "name": "DeepSeek: DeepSeek V4 Flash 0423",
+        "context_length": 1048576,
+        "output_label": "Texte",
+        "input_price": 0.088606,
+        "output_price": 0.177212,
+        "average": 0.132909,
+        "input_modalities": [
+          "text"
+        ],
+        "output_modalities": [
+          "text"
+        ],
+        "capabilities": [
+          "tools",
+          "reasoning",
+          "JSON"
+        ],
+        "api_metadata": {
+          "created": 1777000666
+        }
+      }
+    ]
+  }
+}

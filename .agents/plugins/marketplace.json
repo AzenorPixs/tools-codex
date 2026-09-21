@@ -1,0 +1,32 @@
+{
+  "name": "tools-codex",
+  "interface": {
+    "displayName": "Tools Codex"
+  },
+  "plugins": [
+    {
+      "name": "pllm",
+      "source": {
+        "source": "local",
+        "path": "./plugins/pllm"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "tfl",
+      "source": {
+        "source": "local",
+        "path": "./plugins/tfl"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
