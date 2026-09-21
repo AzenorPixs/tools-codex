@@ -77,7 +77,7 @@ This workflow revises artifacts that already exist; `/opsx-continue` is what cre
    - This step performs every artifact write in this workflow; no earlier step edits an artifact.
    - Show each proposed revision and why - including the requested edit drafted in step 4. Write only after the user confirms.
    - If the user rejects a revision, do not write it - leave that artifact unchanged.
-   - When a substantial rewrite is needed, get that artifact's rules and cab first:
+   - When a substantial rewrite is needed, get that artifact's rules and tools-codex first:
      ```bash
      openspec instructions "<artifact-id>" --change "<name>" --json
      ```

@@ -6,7 +6,7 @@ Version : 0.3
 
 * Projet : `Codex Approval Bridge` ;
 * Racine pour les agents conteneurisé : `/workspace` ;
-* Racine pour les agents non conteneurisé : `/home/devops/datas/cab` ;
+* Racine pour les agents non conteneurisé : `/home/devops/datas/tools-codex` ;
 * Règles de sécurité et de travails des LLM : `AGENTS.md` ;
 * Objectifs et architecture du projet : `PROJECT.md` ;
 * Cadrage technique : `TECHNICAL.md` ;
@@ -16,7 +16,7 @@ Version : 0.3
 Les deux racines désignent le même projet lorsqu'un montage conteneurisé est
 configuré. Toute opération DOIT utiliser la racine correspondant à son
 environnement d'exécution : `/workspace` pour un agent conteneurisé ou
-`/home/devops/datas/cab` pour un agent non conteneurisé.
+`/home/devops/datas/tools-codex` pour un agent non conteneurisé.
 
 L'agent NE DOIT PAS créer, modifier ou supprimer de fichier hors de la racine
 applicable à son environnement sans validation explicite du développeur.
