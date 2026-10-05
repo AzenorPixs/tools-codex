@@ -211,6 +211,15 @@ Cette procédure s’applique uniquement lorsqu’une session de codage OpenCode
 explicitement autorisée à adopter la PLLM publiée. Une simple invocation ou
 présentation de `/pllm` ne modifie jamais OpenCode.
 
+Une interdiction de fermer ou redémarrer OpenCode concerne son processus et
+l’interface visible du développeur. Elle n’interdit pas le chargement d’une
+clé fournisseur ni le rechargement interne du contexte. Une restriction
+distincte sur le stockage des secrets doit être respectée lorsqu’elle est
+explicitement imposée ; ne pas l’inventer à partir de la règle de cycle de vie.
+Le modèle et le raisonnement explicitement demandés par le développeur
+prévalent sur les valeurs par défaut du mode ; les contrôles réels doivent
+porter sur cette configuration exacte.
+
 Lorsqu’un changement de fournisseur est requis, ou lorsque la politique
 sélectionnée utilise une autre clé pour le fournisseur déjà sélectionné,
 l’agent doit appliquer cette séquence avant de changer les agents `plan` et
@@ -219,18 +228,24 @@ l’agent doit appliquer cette séquence avant de changer les agents `plan` et
 1. Résoudre le secret du mode sélectionné depuis le trousseau avec ses
    attributs PLLM, puis l’envoyer directement à `PUT /auth/<provider-id>` de
    l’API locale OpenCode, avec le schéma d’authentification API. La valeur ne
-   doit jamais être affichée, journalisée, écrite dans un fichier, passée dans
+   doit jamais être affichée, journalisée, passée dans
    un argument de commande ni transmise au modèle.
-2. Appeler immédiatement `POST /instance/dispose`. Cette disposition recrée
-   l’instance OpenCode et invalide l’état de fournisseur mémorisé ; elle est
-   obligatoire après la mise à jour d’authentification et ne requiert pas un
-   redémarrage du conteneur.
+   L’API standard peut la stocker dans le fichier d’authentification privé
+   d’OpenCode, hors dépôt, rapports, indexation et lecture des agents. Ce
+   stockage local est permis sauf restriction explicite du développeur ;
+   aucune copie manuelle supplémentaire n’est autorisée.
+2. À la fin du mandat courant, sans permission ni opération en attente,
+   appeler `POST /instance/dispose`. Cette opération réinitialise le contexte
+   du projet et l’état de fournisseur mémorisé sans fermer l’interface ni
+   arrêter ou redémarrer le processus OpenCode. Elle peut interrompre les
+   connexions MCP ; conserver la session et réconcilier ses échanges avant
+   toute reprise. Ne pas remplacer cette opération par un arrêt du processus.
 3. Attendre que `GET /global/health` confirme le retour de l’instance, puis
    vérifier que le fournisseur et le modèle sélectionnés sont publiés par
    `GET /provider`.
 4. Créer une session temporaire sans outils ni accès aux fichiers et exécuter
-   une requête bornée avec le fournisseur, le modèle et le raisonnement `Low`
-   sélectionnés. Supprimer cette session après le contrôle.
+   une requête bornée avec le fournisseur, le modèle et le raisonnement
+   effectivement demandés. Supprimer cette seule session après le contrôle.
 5. Seulement si une réponse du modèle est observée, mettre à jour `plan` et
    `build`, puis relire `GET /agent` afin de confirmer le fournisseur, le
    modèle et le niveau de raisonnement effectifs.
@@ -239,6 +254,8 @@ Si l’injection, la disposition, le contrôle de santé ou le test échoue,
 conserver la configuration des agents inchangée et signaler la cause. La
 disposition interrompt les échanges en cours : elle doit donc être exécutée
 uniquement dans le cadre de la bascule explicitement autorisée.
+Sous CAB, recontrôler `/mcp`, appeler réellement `broker_readiness` dans la
+session persistante, puis réussir le test CAB avant de reprendre les mandats.
 
 
 ## Protocole de performance reproductible — version 4

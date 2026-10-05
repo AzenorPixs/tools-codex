@@ -13,5 +13,13 @@ Exécute la commande depuis le répertoire du skill PLLM installé. Ne remplace 
 
 Restitue exactement la sortie produite par le script, sans ajouter de titre, commentaire, légende ou conclusion. Si l’exécution échoue, indique l’erreur réelle et ne présente pas les fichiers comme actualisés.
 
-Argument reçu : `$ARGUMENTS`
+Une bascule OpenCode explicitement demandée suit la procédure d’application
+du skill, avec le modèle et le raisonnement imposés par le développeur. Une
+interdiction de fermer ou redémarrer le processus ne prohibe ni le chargement
+d’une clé fournisseur ni son stockage privé standard par OpenCode. Respecte
+toute restriction distincte de stockage et conserve le secret hors des sorties,
+journaux, arguments de commande et contexte des modèles. Un rechargement
+interne du contexte préserve le processus et l’interface ; réconcilie MCP et
+CAB avant la reprise.
 
+Argument reçu : `$ARGUMENTS`

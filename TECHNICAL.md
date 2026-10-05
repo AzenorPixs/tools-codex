@@ -133,7 +133,13 @@ fournir un emplacement de sortie équivalent pris en charge par le script.
 
 Les accès aux fournisseurs sont préparés localement, hors des sources. Aucune
 information d'authentification, valeur de configuration sensible ou sortie de
-stockage sécurisé ne doit être enregistrée, affichée ou ajoutée aux sources.
+stockage sécurisé ne doit être enregistrée dans les rapports, affichée ou
+ajoutée aux sources. Le stockage privé standard d'une clé fournisseur par
+OpenCode est permis hors du dépôt et hors de la lecture des agents, sauf
+restriction explicite du développeur. Une interdiction de fermer ou redémarrer
+son processus n'interdit pas ce chargement ni le rechargement interne de son
+contexte, qui doit préserver l'interface et être suivi d'une réconciliation MCP
+et CAB.
 
 ## Données générées
 
