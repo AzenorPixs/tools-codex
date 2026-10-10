@@ -42,8 +42,10 @@ tableaux, date d’actualisation, chemins des fichiers et messages d’erreur
 les liens vers les fichiers. Les clés et toute autre donnée sensible restent
 exclues de la restitution.
 
-`auto` essaie la clé OpenCode Go du mode 1 puis celle du mode 2 et n’utilise
-qu’une seule clé pour la requête réussie. La clé OpenRouter est lue depuis
+`auto` recherche d’abord le secret OpenCode Go du mode 1, puis celui du mode 2
+si le premier est inaccessible. La première clé accessible est utilisée pour
+la requête API ; un refus d’authentification ou un échec de cette requête ne
+déclenche pas de repli vers l’autre clé. La clé OpenRouter est lue depuis
 `OPENROUTER_API_KEY`, puis `OPENROUTER_KEY`. Aucune clé ne doit apparaître dans
 la sortie, les fichiers ou les journaux.
 

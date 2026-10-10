@@ -52,10 +52,20 @@ fournis par le plugin.
 Avant d'installer et d'exécuter un plugin, assurez-vous que l'environnement
 dispose de Python 3, d'un accès HTTPS sortant et, pour `pllm` et `tfl`, de la
 configuration locale nécessaire aux accès autorisés par l'utilisateur.
+Ces deux composants utilisent `secret-tool` et nécessitent un accès au
+trousseau de l'hôte. Leur présence et cet accès doivent être vérifiés dans
+l'environnement réel ; aucune installation de dépendance n'est implicite.
+La plage Python supportée reste à déterminer, conformément à `TECHNICAL.md`.
 
 Installez `tfl` avec `pllm` : PLLM lit le catalogue produit par TFL. Les deux
-plugins écrivent des rapports dans leur répertoire `data/`, qui doit être
-inscriptible ou redirigé vers une sortie prise en charge.
+plugins écrivent des rapports dans leur répertoire `data/`. TFL accepte
+`--output-dir` ; PLLM exige son propre répertoire inscriptible, un fichier
+initial `data/pllm-current.json` décrivant les quatre modes et un catalogue
+TFL accessible dans le skill voisin `../tfl/data/tfl.json`.
+Les plugins étant séparés dans le dépôt, cette résolution après installation
+reste à qualifier. L'installation des deux plugins ne suffit pas à prouver
+leur fonctionnement conjoint ; les limites actuelles sont décrites dans
+`TECHNICAL.md` et nécessitent un travail fonctionnel distinct.
 
 TFL doit être exécuté hors sandbox pour accéder à ses fournisseurs. Si un accès
 OpenRouter est nécessaire, préparez-le localement sans jamais ajouter

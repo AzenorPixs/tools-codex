@@ -23,6 +23,12 @@ Le projet contient uniquement les ressources d'extension propres à Codex et
 leur documentation associée. Chaque ressource conserve un périmètre explicite
 et indépendant afin de limiter les dépendances entre extensions.
 
+Les archives OpenSpec relatives à CAB présentes dans ce dépôt constituent un
+historique distinct du catalogue actuel ci-dessous. Leur provenance n'est pas
+qualifiée par les cadrages actuels ; leur présence ne signifie pas que Tools
+Codex distribue aujourd'hui CAB. Elles sont conservées inchangées et ne
+constituent ni des changes actifs ni une liste de fonctionnalités à réimplémenter.
+
 ## Organisation
 
 Les commandes maison sont stockées dans :
