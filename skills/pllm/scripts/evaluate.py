@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PROMPT = 'Write only Python code for a stable merge_sort(values) function and three assert tests. No explanation.'
 BUDGETS = (1024, 2048, 4096, 8192)
+TTFT_LIMIT_SECONDS = 90
 MEMORY_PATH = ROOT / 'data/pllm-performance-memory.json'
 
 OPENCODE_GO_ROUTE_BY_MODEL = {
@@ -320,7 +321,7 @@ def performance_color(metric, value):
             return '🟢'
         if value < 45:
             return '🟡'
-        if value < 60:
+        if value < TTFT_LIMIT_SECONDS:
             return '🟠'
         return '🔴'
     if value > 30:
@@ -538,6 +539,7 @@ def main(active=False, forced=None):
         if forced and m['mode'] != forced['mode']:
             continue
         m['evaluated_this_run'] = True
+        m['condition'] = m['condition'].replace('TTFT < 60 s', f'TTFT < {TTFT_LIMIT_SECONDS} s')
         m.update(state='Invalide', cause='', selected=False, ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
                  performance_test={'status': 'not_run', 'reason': 'Non exécuté — contrôle des quotas Invalide'})
         m['throughput_scope'] = 'reasoning_and_response' if m['provider'] == 'opencodego' else 'response_only'
@@ -588,7 +590,7 @@ def main(active=False, forced=None):
                     complete = benchmark(m, key, budget, metadata, session_id=session_id)
                     if not complete:
                         raise RuntimeError('Budget du test épuisé : mesure inconclusive, pas une preuve de panne du modèle')
-                    if m['ttft_seconds'] >= 60 or m['tokens_per_second'] <= 15:
+                    if m['ttft_seconds'] >= TTFT_LIMIT_SECONDS or m['tokens_per_second'] <= 15:
                         raise RuntimeError('Seuil de performance non satisfait')
                 except Exception as error:
                     message = ('HTTP 429 — rate_limit_exceeded (limitation fournisseur, test non concluant)' if isinstance(error, urllib.error.HTTPError) and error.code == 429 else 'HTTP ' + str(error.code) if isinstance(error, urllib.error.HTTPError) else str(error) if isinstance(error, RuntimeError) else type(error).__name__)

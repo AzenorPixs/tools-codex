@@ -48,3 +48,14 @@ Aucun script, manifeste, dépendance, configuration locale ou archive n'est
 modifié. Aucun test fournisseur, installation, effet externe, commit ou push
 n'est inclus. La synchronisation vers `openspec/specs/` et l'archivage exigent
 des autorisations distinctes et sont exclus des lots validés.
+
+## Extension ciblée demandée le 10 octobre 2026
+
+Le développeur a ensuite demandé de porter le seuil PLLM à 90 secondes et
+d’incrémenter la version des briques de 0.0.1. Ce périmètre distinct des lots
+documentaires ci-dessus couvre les deux scripts PLLM, leurs instructions, le
+delta `pllm-evaluation`, des tests hors ligne et la release 0.2.1 dans `VERSION`,
+`README.md`, `CHANGELOG.md` et les manifestes PLLM/TFL. Le seuil reste strict ;
+les quotas, le débit minimal et la limite de requête de 120 secondes sont
+conservés. Les autres écarts CGP, la synchronisation et l’archivage restent
+hors de cette demande.

@@ -37,7 +37,7 @@ additionner des devises différentes.
 ### Requirement: Mesures concluantes du modèle sélectionné
 Une politique SHALL être déclarée valide uniquement après une réponse complète
 du modèle effectivement évalué, un comptage fiable, un TTFT strictement
-inférieur à 60 secondes et un débit strictement supérieur à 15 tokens/seconde.
+inférieur à 90 secondes et un débit strictement supérieur à 15 tokens/seconde.
 Une troncature ou une mesure absente SHALL NOT être traitée comme un succès
 ou remplacée par une ancienne mesure.
 
@@ -49,6 +49,14 @@ ou remplacée par une ancienne mesure.
 #### Scenario: Mesure non concluante
 - **WHEN** la réponse est tronquée, incomplète ou sans comptage exploitable
 - **THEN** la politique reste invalide avec une cause qui distingue l'absence de mesure d'un seuil mesuré non satisfait
+
+#### Scenario: TTFT sous la nouvelle limite
+- **WHEN** les autres critères sont satisfaits et le TTFT visible vaut 70,4 secondes
+- **THEN** le seuil de TTFT est satisfait
+
+#### Scenario: Limite stricte de TTFT atteinte
+- **WHEN** le TTFT visible atteint ou dépasse 90 secondes
+- **THEN** la politique reste invalide malgré des quotas disponibles et un débit suffisant
 
 ### Requirement: Protocole des mesures traçable
 Les mesures SHALL employer une horloge monotone et un flux réel. Le TTFT SHALL

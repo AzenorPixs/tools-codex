@@ -190,7 +190,13 @@ La lecture des sources, les contrôles documentaires et la validation OpenSpec
 ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
 Les dépendances de démarrage et de catalogue ci-dessus, ainsi que la branche
 de repli PLLM après HTTP 429 au dernier palier, restent à qualifier dans une
-session de correction fonctionnelle distincte.
+session de correction fonctionnelle distincte. La lecture de cette branche
+montre également que le remplacement du modèle ne recalcule pas la séquence
+des paliers pour sa nouvelle configuration. Côté TFL, la conversion des prix
+OpenRouter par `float()` ne rejette pas explicitement les valeurs non finies :
+une valeur `NaN` pourrait échapper au seuil maximal et compromettre le
+classement et le catalogue JSON. Ces conséquences restent à reproduire par
+des tests isolés ; aucune correction fonctionnelle n'est réalisée ici.
 
 Avant publication, chaque plugin doit être vérifié dans une nouvelle session
 Codex après son installation depuis la marketplace. La validation couvre au
