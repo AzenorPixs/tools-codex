@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -398,9 +399,10 @@ OPENROUTER_FIXED_IDS = (
 
 def openrouter_number(value: object) -> float | None:
     try:
-        return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
         return None
+    return number if math.isfinite(number) else None
 
 
 def openrouter_money(value: float | None) -> str:
@@ -468,6 +470,9 @@ def build_openrouter_rows(payload: dict) -> tuple[list[dict], list[dict]]:
         input_price *= 1_000_000
         output_price *= 1_000_000
         average = (input_price + output_price) / 2
+        if not all(math.isfinite(value) for value in (input_price, output_price, average)):
+            excluded.append({"id": model_id, "name": model.get("name") or model_id, "reason": "coût moyen non vérifiable : débordement numérique"})
+            continue
         if average > MAX_REFERENCE_AVERAGE_USD_PER_MILLION:
             excluded.append({"id": model_id, "name": model.get("name") or model_id, "context_length": context, "reference_average_usd_per_million_tokens": average, "reason": "coût moyen supérieur au seuil maximal de 0.5 $/M"})
             continue
@@ -587,7 +592,12 @@ def main() -> int:
     json_path = output_dir / "tfl.json"
     markdown_path = output_dir / "tfl.md"
     markdown = "# TFL — Test Fournisseur LLM\n\n" + format_opencode_table(opencode_rows, policy, generated_at) + "\n" + format_openrouter_table(openrouter_rows, generated_at)
-    atomic_write(json_path, json.dumps(catalog, ensure_ascii=False, indent=2) + "\n")
+    try:
+        serialized = json.dumps(catalog, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+    except ValueError:
+        print("Erreur TFL: catalogue non conforme au JSON strict", file=sys.stderr)
+        return 1
+    atomic_write(json_path, serialized)
     atomic_write(markdown_path, markdown)
     print(markdown, end="")
     print(f"Catalogue TFL JSON : {json_path}")

@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PROMPT = 'Write only Python code for a stable merge_sort(values) function and three assert tests. No explanation.'
 BUDGETS = (1024, 2048, 4096, 8192)
+TTFT_LIMIT_SECONDS = 90
 MEMORY_PATH = ROOT / 'data/pllm-performance-memory.json'
 
 OPENCODE_GO_ROUTE_BY_MODEL = {
@@ -320,7 +321,7 @@ def performance_color(metric, value):
             return '🟢'
         if value < 45:
             return '🟡'
-        if value < 60:
+        if value < TTFT_LIMIT_SECONDS:
             return '🟠'
         return '🔴'
     if value > 30:
@@ -422,6 +423,7 @@ def publish(d, active=False, forced_mode=None):
         content = policy_table(models) + '\n\n' + quota_summary(models) + '\n\n' + active_summary(d['models']) + '\n'
     else:
         content = '**Aucune politique valide**\n'
+    (ROOT / 'data').mkdir(parents=True, exist_ok=True)
     for name, output in [('pllm-current.json', json.dumps(d, ensure_ascii=False, indent=2) + '\n'), ('pllm-current.md', content)]:
         p = ROOT / 'data' / name
         temp = p.with_name(p.name + '.tmp')
@@ -431,15 +433,29 @@ def publish(d, active=False, forced_mode=None):
         print(content, flush=True)
 
 
-def tfl_opencode_model_at(rank):
-    catalog_path = ROOT.parent / 'tfl/data/tfl.json'
-    catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
+def load_tfl_catalog(catalog_path=None):
+    path = Path(catalog_path) if catalog_path is not None else ROOT.parent / 'tfl/data/tfl.json'
+    try:
+        catalog = json.loads(path.read_text(encoding='utf-8'), parse_float=finite, parse_constant=finite)
+    except (OSError, ValueError) as error:
+        raise RuntimeError('Catalogue TFL absent, illisible ou invalide') from error
+    if not isinstance(catalog, dict):
+        raise RuntimeError('Catalogue TFL invalide : objet attendu')
+    return catalog
+
+
+def tfl_opencode_model_at(rank, catalog_path=None):
+    catalog = load_tfl_catalog(catalog_path)
+    if not isinstance(catalog.get('opencode_go'), dict):
+        raise RuntimeError('Section TFL OpenCode Go absente ou invalide')
     models = catalog.get('opencode_go', {}).get('models')
     if not isinstance(models, list) or not models:
         raise RuntimeError('Catalogue TFL OpenCode Go vide ou invalide')
     if not isinstance(rank, int) or rank < 1 or rank > len(models):
         raise RuntimeError(f'Rang OpenCode Go TFL indisponible : {rank}')
     model = models[rank - 1]
+    if not isinstance(model, dict):
+        raise RuntimeError('Modèle TFL OpenCode Go invalide')
     model_id = model.get('id')
     if not isinstance(model_id, str) or not model_id:
         raise RuntimeError('Identifiant du modèle OpenCode Go TFL absent')
@@ -460,14 +476,17 @@ def cheapest_tfl_opencode_model():
     return tfl_opencode_model_at(1)
 
 
-def next_tfl_opencode_model(current_id):
-    catalog_path = ROOT.parent / 'tfl/data/tfl.json'
-    catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
+def next_tfl_opencode_model(current_id, catalog_path=None):
+    catalog = load_tfl_catalog(catalog_path)
+    if not isinstance(catalog.get('opencode_go'), dict):
+        raise RuntimeError('Section TFL OpenCode Go absente ou invalide')
     models = catalog.get('opencode_go', {}).get('models')
     if not isinstance(models, list):
         return None
     found = False
     for candidate in models:
+        if not isinstance(candidate, dict) or not isinstance(candidate.get('id'), str) or not candidate['id']:
+            raise RuntimeError('Modèle TFL OpenCode Go invalide')
         if candidate.get('id') == current_id:
             found = True
             continue
@@ -513,16 +532,52 @@ def remember_success(m, budget, memory):
         'succeeded_at': now(), 'ttft_seconds': m['ttft_seconds'],
         'tokens_per_second': m['tokens_per_second'],
     }
+    MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
     temp = MEMORY_PATH.with_name(MEMORY_PATH.name + '.tmp')
     temp.write_text(json.dumps(memory, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     temp.replace(MEMORY_PATH)
     m['last_successful_max_tokens'] = budget
 
 
-def main(active=False, forced=None):
+def load_current():
+    providers = ('opencodego', 'opencodego', 'openrouter', 'deepseek')
+    try:
+        data = json.loads((ROOT / 'data/pllm-current.json').read_text(encoding='utf-8'), parse_float=finite, parse_constant=finite)
+    except FileNotFoundError:
+        return {
+            'schema_version': 1, 'selected_mode': None, 'selection_status': 'no_valid_model',
+            'models': [
+                {'mode': f'mode{priority}', 'priority': priority, 'provider': provider,
+                 'model': 'Non évalué', 'reasoning': 'low', 'state': 'Invalide',
+                 'condition': f'TTFT < {TTFT_LIMIT_SECONDS} s ET tokens/s > 15 ET quotas valides',
+                 'selected': False, 'evaluated_this_run': False, 'evaluated_at': None,
+                 'ttft_seconds': None, 'tokens_per_second': None, 'quotas': None,
+                 'cause': 'Non évalué', 'performance_test': {'status': 'not_run'}}
+                for priority, provider in enumerate(providers, 1)
+            ],
+        }
+    except (OSError, ValueError) as error:
+        raise RuntimeError('Historique PLLM illisible ou invalide ; fichier préservé') from error
+    if not isinstance(data, dict) or not isinstance(data.get('models'), list) or len(data['models']) != 4:
+        raise RuntimeError('Historique PLLM invalide : quatre politiques attendues ; fichier préservé')
+    models = data['models']
+    for priority, provider in enumerate(providers, 1):
+        matches = [m for m in models if isinstance(m, dict) and m.get('mode') == f'mode{priority}']
+        if (len(matches) != 1 or matches[0].get('priority') != priority
+                or matches[0].get('provider') != provider
+                or not isinstance(matches[0].get('condition'), str)
+                or not isinstance(matches[0].get('reasoning'), str)
+                or matches[0].get('state') not in ('Valide', 'Invalide')
+                or ('model' in matches[0] and not isinstance(matches[0]['model'], str))):
+            raise RuntimeError('Historique PLLM invalide : politiques incohérentes ; fichier préservé')
+        matches[0].setdefault('model', matches[0].get('model_id') or 'Non évalué')
+    return data
+
+
+def main(active=False, forced=None, tfl_catalog=None):
     signal.signal(signal.SIGALRM, expire)
+    d = load_current()
     memory = load_memory()
-    d = json.loads((ROOT / 'data/pllm-current.json').read_text())
     d['models'].sort(key=lambda m: m['priority'])
     if [m['mode'] for m in d['models']] != ['mode1', 'mode2', 'mode3', 'mode4']:
         raise RuntimeError('Ce protocole attend les quatre modes définis')
@@ -538,6 +593,7 @@ def main(active=False, forced=None):
         if forced and m['mode'] != forced['mode']:
             continue
         m['evaluated_this_run'] = True
+        m['condition'] = m['condition'].replace('TTFT < 60 s', f'TTFT < {TTFT_LIMIT_SECONDS} s')
         m.update(state='Invalide', cause='', selected=False, ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
                  performance_test={'status': 'not_run', 'reason': 'Non exécuté — contrôle des quotas Invalide'})
         m['throughput_scope'] = 'reasoning_and_response' if m['provider'] == 'opencodego' else 'response_only'
@@ -553,23 +609,30 @@ def main(active=False, forced=None):
             metadata = {}
             if m['provider'] == 'opencodego':
                 rank = (forced.get('rank') or 1) if forced and forced['mode'] == m['mode'] else 1
-                tfl_model, generated_at = tfl_opencode_model_at(rank)
+                tfl_model, generated_at = tfl_opencode_model_at(rank, tfl_catalog)
                 m['model_id'] = tfl_model['id']
                 m['model'] = tfl_model.get('name') or m['model_id']
                 m['api_endpoint'] = tfl_model['api_endpoint']
                 m['api_protocol'] = tfl_model['api_protocol']
                 m['model_source'] = {'selector': 'tfl_opencode_go_rank', 'rank': rank, 'generated_at': generated_at}
             elif m['provider'] == 'openrouter':
-                catalog = json.loads((ROOT.parent / 'tfl/data/tfl.json').read_text())
+                catalog = load_tfl_catalog(tfl_catalog)
                 rank = (forced.get('rank') or 1) if forced and forced['mode'] == m['mode'] else 1
-                openrouter_models = catalog['openrouter']['models']
+                section = catalog.get('openrouter')
+                openrouter_models = section.get('models') if isinstance(section, dict) else None
+                if not isinstance(openrouter_models, list):
+                    raise RuntimeError('Catalogue TFL OpenRouter absent ou invalide')
                 if not isinstance(rank, int) or rank < 1 or rank > len(openrouter_models):
                     raise RuntimeError(f'Rang OpenRouter TFL indisponible : {rank}')
-                m['model_id'] = openrouter_models[rank - 1]['id']
+                candidate = openrouter_models[rank - 1]
+                if not isinstance(candidate, dict) or not isinstance(candidate.get('id'), str) or not candidate['id']:
+                    raise RuntimeError('Modèle TFL OpenRouter invalide')
+                m['model_id'] = candidate['id']
                 m['model'] = m['model_id']
-                m['model_source'] = {'selector': 'tfl_openrouter_rank', 'rank': rank, 'generated_at': catalog['generated_at']}
+                m['model_source'] = {'selector': 'tfl_openrouter_rank', 'rank': rank, 'generated_at': catalog.get('generated_at')}
             else:
                 m['model_id'] = 'deepseek-v4-flash'
+                m['model'] = m['model_id']
             stage = 'quotas'
             quota(m, key)
             stage = 'configuration du test'
@@ -577,46 +640,57 @@ def main(active=False, forced=None):
                 metadata = next(x for x in get('https://openrouter.ai/api/v1/models', key)['data'] if x['id'] == m['model_id'])
             attempts = []
             session_id = str(uuid.uuid4()) if m['provider'] == 'opencodego' else None
-            for budget in budgets_for(m, memory):
-                if attempts:
-                    stage = 'quotas avant nouvelle tentative'
-                    quota(m, key)
-                stage = 'performance'
-                m['ttft_seconds'] = None
-                m['tokens_per_second'] = None
-                try:
-                    complete = benchmark(m, key, budget, metadata, session_id=session_id)
-                    if not complete:
-                        raise RuntimeError('Budget du test épuisé : mesure inconclusive, pas une preuve de panne du modèle')
-                    if m['ttft_seconds'] >= 60 or m['tokens_per_second'] <= 15:
-                        raise RuntimeError('Seuil de performance non satisfait')
-                except Exception as error:
-                    message = ('HTTP 429 — rate_limit_exceeded (limitation fournisseur, test non concluant)' if isinstance(error, urllib.error.HTTPError) and error.code == 429 else 'HTTP ' + str(error.code) if isinstance(error, urllib.error.HTTPError) else str(error) if isinstance(error, RuntimeError) else type(error).__name__)
-                    m['performance_test'].update(status='failed', reason=message)
-                    attempts.append(dict(m['performance_test']))
+            visited = {m['model_id']}
+            while True:
+                replacement = None
+                for budget in budgets_for(m, memory):
+                    if attempts:
+                        stage = 'quotas avant nouvelle tentative'
+                        quota(m, key)
+                    stage = 'performance'
+                    m['ttft_seconds'] = None
+                    m['tokens_per_second'] = None
+                    try:
+                        complete = benchmark(m, key, budget, metadata, session_id=session_id)
+                        if not complete:
+                            raise RuntimeError('Budget du test épuisé : mesure inconclusive, pas une preuve de panne du modèle')
+                        if m['ttft_seconds'] >= TTFT_LIMIT_SECONDS or m['tokens_per_second'] <= 15:
+                            raise RuntimeError('Seuil de performance non satisfait')
+                    except Exception as error:
+                        message = ('HTTP 429 — rate_limit_exceeded (limitation fournisseur, test non concluant)' if isinstance(error, urllib.error.HTTPError) and error.code == 429 else 'HTTP ' + str(error.code) if isinstance(error, urllib.error.HTTPError) else str(error) if isinstance(error, RuntimeError) else type(error).__name__)
+                        m['performance_test'].update(status='failed', reason=message, model_id=m['model_id'])
+                        attempts.append({k: v for k, v in m['performance_test'].items() if k != 'attempts'})
+                        m['performance_test']['attempts'] = list(attempts)
+                        if (not forced and m['provider'] == 'opencodego' and m['mode'] in ('mode1', 'mode2')
+                                and isinstance(error, urllib.error.HTTPError) and error.code == 429):
+                            replacement = next_tfl_opencode_model(m['model_id'], tfl_catalog)
+                            if replacement:
+                                if replacement['id'] in visited:
+                                    raise RuntimeError('Catalogue TFL cyclique : candidats de repli épuisés')
+                                break
+                        if budget == BUDGETS[-1]:
+                            raise
+                        continue
+                    m['performance_test']['model_id'] = m['model_id']
+                    attempts.append({k: v for k, v in m['performance_test'].items() if k != 'attempts'})
                     m['performance_test']['attempts'] = list(attempts)
-                    if (not forced and m['provider'] == 'opencodego' and m['mode'] in ('mode1', 'mode2')
-                            and isinstance(error, urllib.error.HTTPError) and error.code == 429):
-                        replacement = next_tfl_opencode_model(m['model_id'])
-                        if replacement:
-                            previous_model = m['model_id']
-                            m['model_id'] = replacement['id']
-                            m['model'] = replacement.get('name') or replacement['id']
-                            m['api_endpoint'] = replacement['api_endpoint']
-                            m['api_protocol'] = replacement['api_protocol']
-                            m['model_source'] = {'selector': 'tfl_opencode_go_fallback_after_rate_limit',
-                                                 'from_model': previous_model,
-                                                 'generated_at': m.get('model_source', {}).get('generated_at')}
-                            metadata = {}
-                            m['performance_test']['fallback_model'] = replacement['id']
-                            continue
-                    if budget == BUDGETS[-1]:
-                        raise
-                    continue
-                attempts.append(dict(m['performance_test']))
-                m['performance_test']['attempts'] = list(attempts)
-                remember_success(m, budget, memory)
-                break
+                    remember_success(m, budget, memory)
+                    break
+                else:
+                    raise RuntimeError('Aucune mesure concluante après épuisement des paliers')
+                if replacement is None:
+                    break
+                previous_model = m['model_id']
+                visited.add(replacement['id'])
+                m['model_id'] = replacement['id']
+                m['model'] = replacement.get('name') or replacement['id']
+                m['api_endpoint'] = replacement['api_endpoint']
+                m['api_protocol'] = replacement['api_protocol']
+                m['model_source'] = {'selector': 'tfl_opencode_go_fallback_after_rate_limit',
+                                     'from_model': previous_model,
+                                     'generated_at': m.get('model_source', {}).get('generated_at')}
+                metadata = {}
+                m['performance_test']['fallback_model'] = replacement['id']
             m.update(state='Valide', cause='Tous les critères satisfaits')
         except Exception as e:
             message = ('HTTP 429 — rate_limit_exceeded (limitation fournisseur, test non concluant)' if isinstance(e, urllib.error.HTTPError) and e.code == 429 else 'HTTP ' + str(e.code) if isinstance(e, urllib.error.HTTPError) else str(e) if isinstance(e, RuntimeError) else type(e).__name__)
@@ -651,6 +725,7 @@ FORCED_COMMANDS = {
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', nargs='?', choices=['active', *FORCED_COMMANDS])
+    parser.add_argument('--tfl-catalog', type=Path, help='Chemin explicite du catalogue TFL')
     args = parser.parse_args()
     forced = FORCED_COMMANDS.get(args.mode)
-    main(active=args.mode == 'active', forced=forced)
+    main(active=args.mode == 'active', forced=forced, tfl_catalog=args.tfl_catalog)

@@ -11,7 +11,7 @@ Réponds en français. N'invente pas de commande et conserve les syntaxes indiqu
 | Commande | Utilisation | Description |
 |---|---|---|
 | `/cm` | `/cm` | Affiche le résumé de toutes les Commandes Maison disponibles. |
-| `/pllm` | `/pllm [quotas et soldes]` | Actualise les politiques LLM et sélectionne automatiquement le mode disponible de plus haute priorité. |
+| `/pllm` | `/pllm [active\|MODE] [--tfl-catalog CHEMIN]` | Évalue les politiques LLM ; accepte un mode forcé documenté et un catalogue TFL explicite. |
 | `/tfl` | `/tfl [auto\|mode1\|mode2]` | Génère le rapport unifié des LLM fournisseurs, OpenCode Go en premier puis OpenRouter. |
 
 ## Règle de maintenance

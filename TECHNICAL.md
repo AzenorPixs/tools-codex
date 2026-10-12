@@ -15,6 +15,15 @@ Les outils utilisés pour le développement et la validation sont ceux déclaré
 dans `DEVOPS.md`. Aucune dépendance supplémentaire ne doit être introduite
 sans validation explicite du développeur.
 
+La plage Python déclarée dans `pyproject.toml` est `>=3.13,<3.15` : branches
+3.13 et 3.14, qualifiées par les contrôles hors ligne décrits ci-dessous.
+Les versions antérieures à 3.13 et à partir de 3.15 sont explicitement hors
+de cette plage. La version observée dans `DEVOPS.md` reste un inventaire
+d'environnement, distinct des preuves de qualification.
+`pyproject.toml` décrit les métadonnées et prérequis Python du dépôt ; aucun
+packaging ni publication Python n'est ajouté. Sa métadonnée `project.version`
+reprend exactement la release de `VERSION`, qui reste la source de vérité.
+
 ## Arborescence
 
 Les commandes Codex sont placées dans :
@@ -48,7 +57,8 @@ du dépôt et commencent par `./`.
 
 `VERSION` est la source de vérité de la version de release de Tools Codex.
 Chaque manifeste `plugins/<NOM_DU_PLUGIN>/.codex-plugin/plugin.json` publié
-par la marketplace doit déclarer exactement cette version.
+par la marketplace et `project.version` dans `pyproject.toml` doivent déclarer
+exactement cette version.
 
 ## Structure des plugins actuels
 
@@ -121,15 +131,26 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 
 | Composant | Prérequis locaux | Services externes nécessaires |
 |---|---|---|
-| `tfl` | Python 3, accès réseau HTTPS, exécution hors sandbox, répertoire de données inscriptible et accès aux fournisseurs configuré localement hors des sources. | OpenCode Go, models.dev et OpenRouter. |
-| `pllm` | Python 3, accès réseau HTTPS, répertoire de données inscriptible et accès aux fournisseurs configuré localement hors des sources. Le catalogue TFL doit être accessible comme skill voisin sous `skills/tfl/data/tfl.json`. | OpenCode Go, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
+| `tfl` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS, exécution hors sandbox et répertoire de données inscriptible. Les accès aux fournisseurs sont configurés localement hors des sources. | OpenCode Go, models.dev et OpenRouter. |
+| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les quatre politiques sont initialisées si le fichier courant manque. | OpenCode Go, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
 | `/cm` | Aucun. | Aucun. |
 
 Les plugins `pllm` et `tfl` écrivent leurs rapports dans leur répertoire
-`data/`. L'environnement d'installation doit donc autoriser cette écriture ou
-fournir un emplacement de sortie équivalent pris en charge par le script.
+`data/`. TFL accepte une redirection par `--output-dir` ; PLLM ne propose pas
+d'option équivalente et exige que son propre répertoire `data/` soit
+inscriptible. PLLM charge `data/pllm-current.json` avant l'évaluation ; si ce
+fichier manque, les quatre politiques sont initialisées sans mesures ni
+sélection historique. Un fichier courant invalide provoque un diagnostic et
+reste préservé. Les contrôles de quotas et de performance restent obligatoires.
+
+La résolution du catalogue par PLLM accepte `--tfl-catalog CHEMIN` pour
+OpenCode Go, OpenRouter et les replis. Sans option, elle conserve
+`../tfl/data/tfl.json` relatif au skill PLLM. Pour des plugins installés
+séparément, fournir explicitement le catalogue produit par TFL. Les tests
+hors ligne qualifient des emplacements séparés ; ils ne prouvent pas une
+installation réelle dans Codex ni l'accès aux fournisseurs.
 
 Les accès aux fournisseurs sont préparés localement, hors des sources. Aucune
 information d'authentification, valeur de configuration sensible ou sortie de
@@ -165,6 +186,26 @@ Les hooks et serveurs MCP déclarés par un plugin doivent limiter leurs accès
 aux seules ressources nécessaires et gérer explicitement les erreurs.
 
 ## Validation
+
+Lors du diagnostic du 10 octobre 2026, `src/` et `tests/` étaient vides.
+Aucune suite de tests automatisés distincte des générateurs n'a été identifiée
+dans ces répertoires, dans les scripts des skills ou dans `pyproject.toml`.
+`test_fournisseur_llm.py` est le générateur TFL, pas une suite de tests.
+La lecture des sources, les contrôles documentaires et la validation OpenSpec
+ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
+La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py` et
+`tests/test_extension_qualification.py`, exécutables avec
+`python3 -B -m unittest discover -s tests -v`. Elle couvre les deux
+distributions, le catalogue explicite, l'initialisation, la préservation d'un
+historique corrompu et les replis après HTTP 429. Chaque remplaçant recalcule
+ses paliers et exige ses propres mesures avant de devenir valide.
+TFL exclut les prix OpenRouter non finis et les débordements, puis prépare
+une sérialisation JSON stricte avant publication. Ces tests isolés ne
+qualifient pas les services externes. La compatibilité Python est contrôlée
+sur les branches 3.13 et 3.14 avec ces 19 tests, la compilation de tous les
+scripts et tests, leurs imports et la résolution du fuseau Europe/Paris.
+Les résultats et versions exactes sont consignés dans le change et son
+rapport d'archive ; aucune compatibilité avec une autre branche n'est déduite.
 
 Avant publication, chaque plugin doit être vérifié dans une nouvelle session
 Codex après son installation depuis la marketplace. La validation couvre au
