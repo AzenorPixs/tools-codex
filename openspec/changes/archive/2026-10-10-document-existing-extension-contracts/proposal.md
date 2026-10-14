@@ -34,7 +34,8 @@ PLLM qui nécessitent un travail fonctionnel distinct.
 
 ### Modified Capabilities
 
-Aucune. La spécification principale `release-versioning` reste inchangée.
+- `release-versioning`: ajouter l'alignement de la métadonnée Python sur
+  `VERSION`, conformément à la décision CGP-07 validée lors de la clôture.
 
 ## Impact
 
@@ -59,3 +60,43 @@ delta `pllm-evaluation`, des tests hors ligne et la release 0.2.1 dans `VERSION`
 les quotas, le débit minimal et la limite de requête de 120 secondes sont
 conservés. Les autres écarts CGP, la synchronisation et l’archivage restent
 hors de cette demande.
+
+## Extension SCM validée — CGP-03 à CGP-05 et CGP-10
+
+Le développeur a validé la résolution de ces quatre écarts, puis le périmètre
+précis incluant `--tfl-catalog CHEMIN` et l'initialisation automatique des
+quatre politiques. Cette extension couvre les deux scripts PLLM, les deux
+générateurs TFL, les instructions PLLM, les commandes `/pllm` et `/cm`, les
+tests hors ligne et les mises à jour de `TECHNICAL.md`, `BUILD.md`, `README.md`
+et `CHANGELOG.md`. Les contrats PLLM et TFL sont complétés avant le code.
+
+Le chemin voisin reste le défaut ; le fichier courant valide est préservé et
+un fichier corrompu n'est pas remplacé. Chaque modèle de repli exige ses propres
+mesures. Les prix non finis sont exclus et le catalogue TFL reste du JSON strict.
+La release 0.2.1, TTFT < 90 secondes, le débit > 15 tokens/s, les modes forcés
+et le silence du mode `active` sont préservés. Aucun appel fournisseur, secret,
+installation réelle, opération Git ou nouvelle dépendance n'est inclus.
+L'archivage reste suspendu à la tâche 3.4 et aux décisions CGP-07/08 ; le
+développeur a validé cette limite de terminaison.
+
+## Clôture Python et cycle OpenSpec autorisés
+
+Le développeur valide ensuite les deux décisions CGP-07/08 et les trois lots
+de clôture : `project.version = "0.2.1"`,
+`requires-python = ">=3.13,<3.15"`, qualification hors ligne des deux branches,
+synchronisation des contrats, archivage de ce seul change et production de
+son `STATISTIQUES.md`. Cette décision remplace la limite d'archivage du lot
+précédent, sans autoriser publication, Git, fournisseur ou installation réelle.
+
+`VERSION` reste la source de vérité. Le rôle de `pyproject.toml` est de
+déclarer les métadonnées et prérequis Python du dépôt ; aucun packaging ni
+publication Python n'est ajouté. Les branches antérieures à 3.13 et à partir
+de 3.15 sont explicitement exclues de la plage revendiquée. Les dépendances et
+les scripts restent inchangés. La qualification couvre les 19 tests existants,
+la compilation de tous les scripts et tests, les imports et le fuseau Paris.
+
+Les documents concernés sont `pyproject.toml`, `TECHNICAL.md`, `BUILD.md`,
+`README.md`, `CHANGELOG.md` et les artefacts de ce change. La synchronisation
+crée les cinq specs préparées et complète `release-versioning`. L'archivage
+déplace ce dossier dans `openspec/changes/archive/` ; le rapport y est produit
+avec six sections, des preuves et des `N/A` motivés pour les mesures absentes.

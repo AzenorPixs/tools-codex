@@ -1,4 +1,10 @@
-## ADDED Requirements
+# tfl-catalog Specification
+
+## Purpose
+
+Définir la collecte, le filtrage, le classement et la publication vérifiable du catalogue TFL sans données sensibles.
+
+## Requirements
 
 ### Requirement: Collecte complète et ordre des fournisseurs
 TFL SHALL collecter les modèles OpenCode Go et OpenRouter, en utilisant
@@ -24,6 +30,17 @@ Les coûts inconnus et contextes inconnus ou insuffisants SHALL être exclus.
 #### Scenario: Modèle hors seuils
 - **WHEN** le contexte ou le coût d'un modèle examiné ne satisfait pas les seuils vérifiables
 - **THEN** il est exclu avec son motif dans le catalogue JSON
+
+### Requirement: Prix finis et JSON strict
+TFL SHALL exclure avec un motif les prix OpenRouter non finis ou dont la
+conversion par million ou le calcul de moyenne déborde. Le catalogue publié
+SHALL être du JSON strict, sans `NaN` ni infini. Un échec de sérialisation
+SHALL empêcher la publication d'un catalogue non conforme.
+
+#### Scenario: Prix non exploitable
+- **WHEN** un prix vaut `NaN`, un infini ou déborde lors du calcul
+- **THEN** le modèle est exclu comme coût non vérifiable
+- **AND** les prix finis admissibles restent classés selon les règles communes
 
 ### Requirement: Modalités et blacklists explicites
 Les sorties déclarées audio, vidéo, speech ou sound SHALL être exclues. Une

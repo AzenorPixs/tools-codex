@@ -1,0 +1,3 @@
+schema: spec-driven
+created: 2026-10-10
+goal: Documenter les extensions, corriger les écarts SCM, qualifier Python 3.13/3.14 puis synchroniser et archiver le change autorisé.

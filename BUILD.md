@@ -50,22 +50,31 @@ fournis par le plugin.
 ## Prérequis avant installation et test
 
 Avant d'installer et d'exécuter un plugin, assurez-vous que l'environnement
-dispose de Python 3, d'un accès HTTPS sortant et, pour `pllm` et `tfl`, de la
+dispose de Python 3.13 ou 3.14, d'un accès HTTPS sortant et, pour `pllm` et `tfl`, de la
 configuration locale nécessaire aux accès autorisés par l'utilisateur.
 Ces deux composants utilisent `secret-tool` et nécessitent un accès au
 trousseau de l'hôte. Leur présence et cet accès doivent être vérifiés dans
 l'environnement réel ; aucune installation de dépendance n'est implicite.
-La plage Python supportée reste à déterminer, conformément à `TECHNICAL.md`.
+La plage déclarée est `>=3.13,<3.15`, conformément à `pyproject.toml` et
+`TECHNICAL.md`. La métadonnée Python reprend la release de `VERSION` ; elle
+n'ajoute ni procédure de packaging ni publication d'un paquet Python.
 
 Installez `tfl` avec `pllm` : PLLM lit le catalogue produit par TFL. Les deux
 plugins écrivent des rapports dans leur répertoire `data/`. TFL accepte
-`--output-dir` ; PLLM exige son propre répertoire inscriptible, un fichier
-initial `data/pllm-current.json` décrivant les quatre modes et un catalogue
-TFL accessible dans le skill voisin `../tfl/data/tfl.json`.
-Les plugins étant séparés dans le dépôt, cette résolution après installation
-reste à qualifier. L'installation des deux plugins ne suffit pas à prouver
-leur fonctionnement conjoint ; les limites actuelles sont décrites dans
-`TECHNICAL.md` et nécessitent un travail fonctionnel distinct.
+`--output-dir` ; PLLM exige son propre répertoire inscriptible et un catalogue
+TFL accessible. Si le fichier courant PLLM manque, les quatre politiques sont
+initialisées automatiquement, sans reprendre de résultats historiques.
+Pour des plugins séparés, lancer depuis le skill PLLM :
+
+```bash
+python3 scripts/evaluate.py --tfl-catalog /chemin/vers/le/catalogue/tfl.json
+```
+
+Cette option accepte le fichier produit par TFL, y compris avec `--output-dir`.
+Sans option, PLLM conserve le chemin voisin `../tfl/data/tfl.json`.
+Les tests hors ligne couvrent des emplacements isolés ; un test réel
+d'installation dans une nouvelle session Codex reste à effectuer avant
+publication, conformément à `TECHNICAL.md`.
 
 TFL doit être exécuté hors sandbox pour accéder à ses fournisseurs. Si un accès
 OpenRouter est nécessaire, préparez-le localement sans jamais ajouter

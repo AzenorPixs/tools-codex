@@ -1,5 +1,31 @@
 ## ADDED Requirements
 
+### Requirement: Contrat Python déclaré et qualifié
+Tools Codex SHALL déclarer `requires-python = ">=3.13,<3.15"` dans
+`pyproject.toml`. Le support des branches 3.13 et 3.14 SHALL être étayé par
+les tests hors ligne, la compilation et les imports des scripts distribués
+sur chacune. La version observée d'un interpréteur seule SHALL NOT constituer
+une preuve de qualification.
+
+#### Scenario: Qualification des deux branches
+- **WHEN** les validations de compatibilité sont réalisées
+- **THEN** leurs résultats et versions exactes sont consignés séparément pour 3.13 et 3.14
+- **AND** un échec empêche de déclarer la qualification complète
+
+#### Scenario: Interpréteur hors plage
+- **WHEN** les prérequis Python du projet sont consultés
+- **THEN** les versions antérieures à 3.13 et à partir de 3.15 sont exclues de la plage déclarée
+
+### Requirement: Portée des métadonnées Python
+`pyproject.toml` SHALL décrire les métadonnées et prérequis Python du dépôt,
+sans constituer une annonce de publication d'un paquet Python. La
+qualification locale SHALL rester distincte des installations réelles et
+des accès fournisseurs, qui exigent leurs preuves propres.
+
+#### Scenario: Consultation des métadonnées
+- **WHEN** les métadonnées Python sont documentées
+- **THEN** leur rôle et la portée de qualification sont explicites sans annoncer une publication Python
+
 ### Requirement: Catalogue et ressources explicites
 Tools Codex SHALL décrire les plugins publiés dans
 `.agents/plugins/marketplace.json`, avec des chemins locaux relatifs à la

@@ -1,5 +1,31 @@
 ## ADDED Requirements
 
+### Requirement: Résolution explicite du catalogue TFL
+PLLM SHALL accepter `--tfl-catalog CHEMIN` pour les modes OpenCode Go,
+OpenRouter et les replis. Sans cette option, le chemin SHALL rester
+`../tfl/data/tfl.json` relatif au skill PLLM. Un catalogue absent ou invalide
+SHALL produire un diagnostic explicite sans sélection inventée.
+
+#### Scenario: Plugins installés séparément
+- **WHEN** le catalogue est fourni explicitement depuis un autre emplacement
+- **THEN** la résolution utilise ce fichier pour le rang initial et les replis
+- **AND** aucune recherche dans les configurations privées n'est nécessaire
+
+### Requirement: Initialisation sans historique
+Si `data/pllm-current.json` manque, PLLM SHALL initialiser les quatre modes,
+priorités et critères définis, sans sélection, quota ou mesure historique.
+Un fichier existant valide SHALL être chargé ; un fichier corrompu SHALL
+produire un diagnostic explicite et SHALL NOT être écrasé.
+
+#### Scenario: Première évaluation
+- **WHEN** aucun fichier courant n'existe
+- **THEN** les quatre modes sont disponibles pour les contrôles réels habituels
+- **AND** aucun résultat valide n'est créé par l'initialisation seule
+
+#### Scenario: Historique illisible
+- **WHEN** le fichier courant contient du JSON ou des politiques invalides
+- **THEN** l'évaluation échoue avant publication et préserve ce fichier
+
 ### Requirement: Politiques et sélection explicites
 PLLM SHALL évaluer les quatre modes définis dans l'ordre de priorité 1 à 4 :
 OpenCode Go pour les modes 1 et 2, OpenRouter pour le mode 3 et DeepSeek direct
@@ -80,6 +106,12 @@ configuration ; elle ne remplace jamais un nouveau contrôle réel.
 - **WHEN** une réussite mémorisée correspond à la même identité de configuration
 - **THEN** l'évaluation peut reprendre à ce palier avec de nouveaux contrôles
 - **AND** un échec ne remplace pas la dernière réussite mémorisée
+
+#### Scenario: Configuration remplacée après HTTP 429
+- **WHEN** un autre modèle remplace le candidat limité
+- **THEN** ses paliers sont recalculés selon sa propre identité de configuration
+- **AND** sans réussite mémorisée correspondante, il commence à 1 024 tokens
+- **AND** l'épuisement des candidats reste un échec sans sélection valide
 
 ### Requirement: Publication traçable
 PLLM SHALL publier `pllm-current.json` et `pllm-current.md` par remplacement

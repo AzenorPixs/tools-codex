@@ -75,7 +75,8 @@ Pour Muse, ne jamais envoyer une requête vers `/chat/completions` : le contrôl
 réalisé renvoie HTTP 500, alors que `/responses` fonctionne. Une route absente
 ou inconnue invalide le test avec une cause explicite. Le modèle est résolu
 avant le contrôle de quota depuis le premier élément de
-`~/.codex/skills/tfl/data/tfl.json`, section `opencode_go.models`.
+`../tfl/data/tfl.json` relatif au dossier de ce skill, section
+`opencode_go.models`, sauf chemin fourni par `--tfl-catalog CHEMIN`.
 Les détails du contrat, les champs récupérables et les routes de lecture
 observées en 404 sont documentés dans
 [references/opencode-go-api.md](references/opencode-go-api.md). Cette référence
@@ -193,7 +194,7 @@ Le rapport utilisateur contient un seul tableau Markdown multi-colonnes, avec un
 
 ### Contrat pour les futures commandes
 
-Lire `~/.codex/skills/pllm/data/pllm-current.json` en priorité. Vérifier sa version et son horodatage : il décrit la politique évaluée à cette date, pas une garantie de disponibilité permanente. Une demande d’actualisation exige une nouvelle invocation de `/pllm`, avec contrôle des quotas avant toute performance. Une simple lecture du catalogue ne lance pas de test.
+Lire `data/pllm-current.json` dans le dossier du skill PLLM effectivement utilisé en priorité. Vérifier sa version et son horodatage : il décrit la politique évaluée à cette date, pas une garantie de disponibilité permanente. Une demande d’actualisation exige une nouvelle invocation de `/pllm`, avec contrôle des quotas avant toute performance. Une simple lecture du catalogue ne lance pas de test.
 
 Classer `models` et les lignes du tableau par `priority` croissante : 1 est la priorité la plus haute. Les priorités doivent être explicites et uniques ; ne pas les déduire du coût ou des performances. Les Modes 1, 2, 3 et 4 ont respectivement les priorités 1, 2, 3 et 4. Toute future entrée doit recevoir une priorité définie par l’utilisateur.
 
@@ -257,6 +258,32 @@ uniquement dans le cadre de la bascule explicitement autorisée.
 Sous CAB, recontrôler `/mcp`, appeler réellement `broker_readiness` dans la
 session persistante, puis réussir le test CAB avant de reprendre les mandats.
 
+
+## Catalogue explicite et première évaluation
+
+Pour des plugins installés séparément, transmettre le catalogue produit par TFL :
+
+```bash
+python3 scripts/evaluate.py --tfl-catalog /chemin/vers/tfl.json
+python3 scripts/evaluate.py active --tfl-catalog /chemin/vers/tfl.json
+python3 scripts/evaluate.py 3 --tfl-catalog /chemin/vers/tfl.json
+```
+
+Le chemin explicite est utilisé pour OpenCode Go, OpenRouter et les replis.
+Sans option, le chemin voisin `../tfl/data/tfl.json` est conservé. Un catalogue
+absent ou invalide produit un diagnostic ; ne pas chercher dans les
+configurations privées pour le remplacer.
+
+Si `data/pllm-current.json` manque, le script initialise les quatre politiques
+sans quota, mesure ou sélection historique. Les contrôles réels restent
+obligatoires. Un fichier existant invalide bloque avant publication et reste
+préservé. Les répertoires nécessaires sont créés lors de la publication ou de
+la mémorisation d'une réussite.
+
+Après un repli HTTP 429, recalculer les paliers pour la nouvelle configuration :
+sans réussite mémorisée correspondante, commencer à 1 024 tokens. Recontrôler
+les quotas avant sa requête. Le dernier palier et l'épuisement des candidats
+ne permettent jamais de déclarer valide un modèle sans mesures concluantes.
 
 ## Protocole de performance reproductible — version 5
 

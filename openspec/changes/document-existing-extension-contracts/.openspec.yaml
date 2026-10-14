@@ -1,3 +1,0 @@
-schema: spec-driven
-created: 2026-10-10
-goal: Préparer les contrats des extensions existantes sans modifier leur implémentation.
