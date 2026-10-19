@@ -46,33 +46,114 @@ L'alignement des releases reste défini par `release-versioning`.
 
 ### Requirement: Modes de distribution distincts
 Tools Codex SHALL distinguer les plugins sous `plugins/`, les skills autonomes
-sous `skills/` et les commandes maison sous `.codex/commands/`. L'installation
-d'un plugin SHALL NOT être présentée comme installant à elle seule les
-commandes maison ou les skills autonomes du dépôt.
+sous `skills/` et les commandes sources sous `.codex/commands/`. L'installation
+d'un plugin SHALL NOT être présentée comme installant les copies autonomes ou
+les commandes sources. La documentation SHALL expliquer les deux distributions
+CM, la découverte locale et l'installation autonome hors du projet, sans
+prétendre qu'un fichier de commande enregistre une slash native.
 
 #### Scenario: Installation d'un plugin seul
 - **WHEN** un utilisateur suit la procédure d'installation d'un plugin
-- **THEN** la documentation distingue ses ressources embarquées des ressources autonomes
-- **AND** elle ne prétend pas que les commandes maison du dépôt sont automatiquement disponibles
+- **THEN** la documentation distingue son skill embarqué des copies autonomes
+- **AND** elle ne prétend pas que les commandes sources sont automatiquement disponibles
+
+#### Scenario: Installation autonome du catalogue
+- **WHEN** un utilisateur souhaite utiliser CM hors de Tools Codex
+- **THEN** il peut choisir le plugin CM ou l'installation de `skills/cm/` dans un emplacement reconnu
+- **AND** l'installation de PLLM ou TFL seule ne fournit pas CM
 
 ### Requirement: Catalogue des commandes cohérent
-La commande `/cm` SHALL décrire les commandes maison effectivement présentes
-avec leur syntaxe et leur responsabilité. Toute création, suppression ou
-renommage autorisé d'une commande SHALL mettre à jour ce catalogue.
+Le skill CM SHALL afficher un tableau français avec Commande, Utilisation et
+Description pour CM, PLLM, TFL, TCU et prompt. Les deux copies SHALL conserver
+les syntaxes documentées, dont $prompt LIST ou CODE et les déclencheurs /prompt et /cm.
+La consultation SHALL NOT exécuter les actions listées ni inventer une slash
+native. Toute évolution autorisée SHALL actualiser les deux catalogues.
 
 #### Scenario: Consultation du catalogue des commandes
-- **WHEN** `/cm` est consultée
-- **THEN** elle décrit `/cm`, `/pllm` et `/tfl` conformément aux commandes présentes
-- **AND** elle ne déclare pas une commande absente
+- **WHEN** $cm ou /cm est invoqué
+- **THEN** le tableau décrit les cinq invocations, dont $tcu [check] et $prompt LIST ou CODE
+- **AND** aucune mise à jour, évaluation ou exécution de prompt n'est déclenchée
+
+#### Scenario: Wrapper CM
+- **WHEN** .codex/commands/cm.md est utilisé
+- **THEN** il délègue au skill CM et conserve une seule entrée prompt dans chaque catalogue
+- **AND** il ne lance pas le prompt et ne promet pas une slash native automatiquement enregistrée
 
 ### Requirement: Préservation des copies et qualification de distribution
-Les ressources communes volontairement distribuées sous forme autonome et
-embarquée SHALL rester cohérentes. La qualification d'une distribution SHALL
-distinguer l'examen de ses sources d'un test réel d'installation dans une
-nouvelle session Codex et SHALL préserver les secrets et données personnelles
-hors des artefacts publiés.
+Les copies autonomes et embarquées de CM, PLLM, TFL, TCU et prompt SHALL rester
+cohérentes. Les skills et scripts TCU et prompt, ainsi que le skill CM, SHALL
+être identiques dans les deux distributions. La qualification SHALL distinguer
+contrôles locaux et exécution réelle d'un prompt ou installation dans une
+nouvelle session. Les secrets et données personnelles SHALL rester exclus.
 
 #### Scenario: Mise à jour d'instructions communes
-- **WHEN** les instructions communes PLLM ou TFL sont modifiées
-- **THEN** leurs copies autonomes et embarquées sont mises à jour et comparées
-- **AND** cette comparaison n'est pas présentée comme un test d'installation réussi
+- **WHEN** une ressource commune distribuée est modifiée
+- **THEN** les deux copies sont actualisées et comparées sans prétendre à une installation réelle
+
+#### Scenario: Vérification du paquet CM isolé
+- **WHEN** le seul répertoire du plugin CM est copié hors du dépôt
+- **THEN** son manifeste et son skill sont résolus sans source externe
+
+### Requirement: Découverte locale du skill cm
+Le projet SHALL exposer `.agents/skills/cm` comme lien symbolique relatif vers
+`../../skills/cm`. Le lien SHALL résoudre le même `SKILL.md` canonique sans
+copie divergente ni installation globale. La qualification locale SHALL
+distinguer le contrôle du format et du lien d'une invocation effective dans
+une nouvelle session Codex.
+
+#### Scenario: Résolution dans le projet
+- **WHEN** le répertoire de découverte des skills du projet est examiné
+- **THEN** `.agents/skills/cm/SKILL.md` résout `skills/cm/SKILL.md` dans ce projet
+- **AND** aucune seconde copie du catalogue n'est nécessaire
+
+#### Scenario: Limite de qualification
+- **WHEN** seuls le format et le lien ont été vérifiés
+- **THEN** les preuves ne déclarent pas qu'une nouvelle session Codex a exécuté `$cm`
+
+### Requirement: Plugin CM dans la marketplace
+La marketplace Tools Codex SHALL référencer `cm` via `./plugins/cm`. Le plugin
+SHALL fournir `.codex-plugin/plugin.json` déclarant `name: cm`, la release
+commune et `skills: ./skills/`, ainsi que `skills/cm/SKILL.md`. Il SHALL
+conserver la distribution autonome et son lien de découverte local. Il SHALL
+NOT ajouter de script, serveur MCP, application ou service externe.
+
+#### Scenario: Résolution du catalogue CM
+- **WHEN** le catalogue de marketplace est contrôlé
+- **THEN** il contient CM, PLLM et TFL avec leurs chemins, manifestes et skills présents
+- **AND** les trois manifestes déclarent la même release que VERSION et pyproject.toml
+
+### Requirement: Choix de distribution CM documenté
+La documentation SHALL présenter l'installation et la mise à jour du plugin
+CM via la marketplace, en conservant l'installation autonome. Elle SHALL
+signaler que le chargement des deux distributions peut produire deux entrées
+CM. La livraison SHALL NOT supprimer ni désactiver automatiquement une copie
+autonome ou un plugin installé.
+
+#### Scenario: Deux distributions disponibles
+- **WHEN** un utilisateur prépare l'installation du catalogue CM
+- **THEN** il peut choisir la distribution adaptée et identifier le risque de double entrée
+- **AND** les contrôles locaux ne sont pas annoncés comme une publication ou une installation réelle
+
+### Requirement: Distribution du plugin TCU
+La marketplace SHALL référencer ./plugins/tcu avec un manifeste de release
+commune et skills: ./skills/. Elle SHALL conserver CM, PLLM, TFL et prompt.
+Le projet SHALL fournir skills/tcu/, sa copie embarquée, le lien relatif
+.agents/skills/tcu et .codex/commands/TCU.md. Les cinq manifestes, VERSION,
+README et pyproject.toml SHALL déclarer la même release commune.
+
+#### Scenario: Résolution TCU
+- **WHEN** le catalogue et le paquet TCU sont vérifiés
+- **THEN** les cinq plugins, les sources et le script embarqué sont présents et leurs versions alignées
+- **AND** le paquet TCU copié isolément résout son script sans dépendre du dépôt
+
+### Requirement: Distribution du plugin prompt
+La marketplace SHALL référencer ./plugins/prompt, avec un manifeste de release
+commune et skills: ./skills/. Le projet SHALL fournir skills/prompt/, sa copie
+embarquée, .codex/commands/prompt.md et le lien relatif .agents/skills/prompt.
+Le paquet SHALL contenir son résolveur mais SHALL NOT embarquer les prompts
+du référentiel externe. Les cinq plugins SHALL partager la release du projet.
+
+#### Scenario: Paquet autonome
+- **WHEN** le paquet prompt est copié isolément
+- **THEN** son script fonctionne avec un projet explicite contenant DEVOPS.md
+- **AND** aucun fichier du dépôt Tools Codex n'est nécessaire hors du paquet
