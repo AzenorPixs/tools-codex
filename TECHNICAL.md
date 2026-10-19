@@ -26,7 +26,7 @@ reprend exactement la release de `VERSION`, qui reste la source de vérité.
 
 ## Arborescence
 
-Les commandes Codex sont placées dans :
+Les commandes sources PLLM/TFL sont conservées dans :
 
 ```text
 .codex/commands/
@@ -43,6 +43,11 @@ Les skills autonomes sont placés à la racine du dépôt :
 ```text
 skills/<NOM_DU_SKILL>/
 ```
+
+Le skill `cm` possède une source unique dans `skills/cm/SKILL.md`. Le lien
+symbolique relatif `.agents/skills/cm -> ../../skills/cm` l'expose dans
+l'emplacement de découverte des skills du dépôt. Il reste dans le projet et
+évite une copie du catalogue. Aucun fichier global Codex n'est modifié.
 
 Le catalogue de la marketplace du dépôt est placé dans :
 
@@ -112,16 +117,20 @@ plugin lorsque les deux modes de distribution sont nécessaires.
 
 Les correspondances actuellement publiées sont :
 
-| Commande | Skill autonome | Plugin |
+| Invocation de skill | Skill autonome | Plugin |
 |---|---|---|
-| `/cm` | — | — |
-| `/pllm` | `skills/pllm/` | `plugins/pllm/` |
-| `/tfl` | `skills/tfl/` | `plugins/tfl/` |
-| — | `skills/cgpt/` | — |
-| — | `skills/coding-session-statistics/` | — |
+| `$cm` | `skills/cm/` | — |
+| `$pllm` | `skills/pllm/` | `plugins/pllm/` |
+| `$tfl` | `skills/tfl/` | `plugins/tfl/` |
+| `$cgpt` | `skills/cgpt/` | — |
+| `$coding-session-statistics` | `skills/coding-session-statistics/` | — |
 
-La commande `/cm` doit rester synchronisée avec les commandes effectivement
-présentes dans `.codex/commands/`.
+Le catalogue de `$cm` doit rester synchronisé avec les noms, syntaxes et
+responsabilités des entrées maison publiées. Sa consultation n'exécute pas
+PLLM ou TFL. Elle ne vérifie pas que ces skills sont installés localement.
+La commande source `.codex/commands/cm.md` est supprimée : `/cm` est remplacé
+par `$cm`. Les fichiers sources PLLM/TFL restent inchangés ; leur présence
+n'enregistre pas automatiquement des commandes slash natives dans Codex.
 
 ## Prérequis d'exécution
 
@@ -135,7 +144,7 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 | `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les quatre politiques sont initialisées si le fichier courant manque. | OpenCode Go, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
-| `/cm` | Aucun. | Aucun. |
+| `$cm` | Skill découvert dans le projet ou installé dans un emplacement reconnu. | Aucun. |
 
 Les plugins `pllm` et `tfl` écrivent leurs rapports dans leur répertoire
 `data/`. TFL accepte une redirection par `--output-dir` ; PLLM ne propose pas
@@ -213,7 +222,10 @@ minimum le chargement du manifeste, la disponibilité des skills ou outils
 déclarés et l'absence de dépendance ou de donnée sensible non documentée.
 
 Les skills autonomes sont validés avec leur `SKILL.md` et leurs ressources
-nécessaires. Les scripts Python sont vérifiés au minimum par compilation sans
+nécessaires. Pour `cm`, le format, le lien de découverte et le catalogue sont
+contrôlés localement. Une invocation effective de `$cm` dans une nouvelle
+session Codex est une preuve distincte ; la résolution du lien seule ne la
+démontre pas. Les scripts Python sont vérifiés au minimum par compilation sans
 écriture d'artefact ; les fichiers JSON sont analysés avant publication.
 
 Les formats de manifeste, de catalogue et les règles de distribution suivent

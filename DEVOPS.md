@@ -1,9 +1,9 @@
 # DEVOPS.md — tools-codex
 
-Version : 0.5
+Version : 0.6
 
 Généré automatiquement par Debian Installeur Unifié (DIU).
-Début du relevé (UTC) : 2026-10-12T05:33:38Z
+Début du relevé (UTC) : 2026-10-19T11:19:12Z
 Environnement d'exécution DIU : PHYSICAL
 
 Les sondes système concernent le contexte d'exécution DIU.
@@ -24,7 +24,7 @@ Cet inventaire ne constitue pas une qualification fonctionnelle ni une preuve de
 
 # Docker
 
-  * 29.9.0
+  * 29.9.1
   * /usr/bin/docker
 
 
@@ -48,25 +48,25 @@ Cet inventaire ne constitue pas une qualification fonctionnelle ni une preuve de
 
 # Node
 
-  * 24.21.0
+  * 24.22.0
   * /home/devops/node/current/bin/node
 
 
 # NPM
 
-  * 11.19.0
+  * 11.19.1
   * /home/devops/node/current/bin/npm
 
 
 # OpenCode
 
-  * 1.19.0
+  * 1.19.3
   * /home/devops/.opencode/bin/opencode
 
 
 # OpenSpec
 
-  * 1.14.1
+  * 1.14.3
   * /home/devops/.local/npm/bin/openspec
 
 
@@ -108,19 +108,25 @@ Cet inventaire ne constitue pas une qualification fonctionnelle ni une preuve de
   * /home/devops/python/current/bin/pip3
 
 
+# Prompts
+
+  * Dossier des prompts : /home/devops/datas/prompts
+  * Index des prompts : /home/devops/datas/prompts/INDEX.md
+
+
 # Tests navigateurs extérieurs en mode headless
 
 La détection ne vérifie pas le fonctionnement du mode headless.
 
 ## Chromium
 
-  * 154.0.8037.92
+  * 155.0.8059.79
   * /usr/bin/chromium
   * Mode headless : --headless
 
 
 ## Firefox
 
-  * 153.4.0esr
+  * 153.5.0esr
   * /usr/bin/firefox
   * Mode headless : --headless

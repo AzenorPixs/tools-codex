@@ -31,7 +31,7 @@ constituent ni des changes actifs ni une liste de fonctionnalités à réimplém
 
 ## Organisation
 
-Les commandes maison sont stockées dans :
+Les commandes sources PLLM/TFL sont conservées dans :
 
 ```text
 .codex/commands/
@@ -49,6 +49,12 @@ Les skills maison autonomes sont stockés dans des répertoires dédiés :
 skills/<NOM_DU_SKILL>/
 ```
 
+Le skill `cm`, invocable avec `$cm`, fournit le catalogue des commandes maison.
+Il est découvert dans ce projet via le lien relatif `.agents/skills/cm` vers
+`skills/cm/`. Les fichiers de `.codex/commands/` ne sont pas enregistrés
+automatiquement comme commandes slash natives. L'installation autonome hors
+du projet est décrite dans `BUILD.md`.
+
 Un plugin peut également embarquer ses propres skills dans son répertoire
 `skills/`, selon les conventions applicables de Codex.
 
@@ -62,9 +68,9 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Skill | `coding-session-statistics` | Produit un bilan auditable d'une session de codage ou de pilotage. |
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
 | Skill | `tfl` | Expose le rapport TFL également en dehors du plugin. |
-| Commande | `/cm` | Affiche le catalogue des commandes maison publiées. |
-| Commande | `/pllm` | Lance l'évaluation PLLM. |
-| Commande | `/tfl` | Lance le rapport TFL. |
+| Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm` et `$tfl`. |
+| Commande source | `/pllm` | Instructions historiques de lancement de l'évaluation PLLM ; skill invocable avec `$pllm`. |
+| Commande source | `/tfl` | Instructions historiques de lancement du rapport TFL ; skill invocable avec `$tfl`. |
 
 Les skills `pllm` et `tfl` sont volontairement fournis sous forme autonome et
 embarquée afin de couvrir les deux modes de distribution. Le skill

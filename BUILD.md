@@ -28,6 +28,31 @@ des sources du dépôt. Leur mise à disposition ne résulte pas, à elle seule,
 l'installation d'un plugin depuis la marketplace ; elle doit suivre le mode de
 distribution Codex approprié à ces ressources.
 
+## Skill catalogue cm
+
+Le skill `cm` remplace l'ancienne commande `/cm`. Dans ce projet, la source
+`skills/cm/SKILL.md` est exposée par le lien relatif
+`.agents/skills/cm -> ../../skills/cm`. Utilisez `$cm` dans Codex pour afficher
+les invocations maison et leurs syntaxes. La consultation du catalogue ne
+lance ni PLLM ni TFL et ne vérifie pas leur installation.
+
+Pour utiliser le catalogue dans un autre projet, copiez le dossier `skills/cm/`
+dans `.agents/skills/cm/` de ce projet. Pour un usage personnel partagé entre
+projets, installez ce dossier dans `~/.agents/skills/cm/`. Conservez son
+`SKILL.md` ; une copie doit être actualisée depuis la source lors des mises à
+jour. Ces installations hors du dépôt sont des actions distinctes.
+
+Codex détecte les modifications de skills. Si `cm` n'apparaît pas, démarrez
+une nouvelle session ou redémarrez Codex. Vérifiez alors que `$cm` affiche le
+tableau français avec `$cm`, `$pllm` et `$tfl`, sans lancer d'évaluation. Le
+contrôle local du lien ne remplace pas ce test effectif de découverte.
+
+L'installation de PLLM ou TFL depuis la marketplace n'installe pas `cm`.
+Les commandes sources restantes dans `.codex/commands/` n'enregistrent pas
+automatiquement des commandes slash natives. Le mécanisme de skills et les
+emplacements de découverte sont décrits dans la
+[documentation officielle](https://learn.chatgpt.com/docs/build-skills).
+
 ## Installation
 
 Ajoutez la marketplace à Codex avec la commande suivante :
