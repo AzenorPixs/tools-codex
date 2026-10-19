@@ -7,6 +7,7 @@ import io
 import json
 from pathlib import Path
 import stat
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -581,6 +582,21 @@ class TcuUpdateTests(unittest.TestCase):
                 self.assertFalse(self.calls)
                 self.assertFalse(self.home.exists())
             self.files[key] = original
+
+    def test_command_sources_are_publishable_without_local_codex_files(self):
+        commands = ['.codex/commands/' + name for name in
+                    ('cm.md', 'TCU.md', 'prompt.md', 'pllm.md', 'tfl.md')]
+        local_files = ['.codex/config.toml', '.codex/private-local.txt',
+                       '.codex/state/runtime.json']
+        for path in commands:
+            self.assertTrue((ROOT / path).is_file(), path)
+        result = subprocess.run(
+            ['git', '-c', 'safe.directory=' + str(ROOT), '-C', str(ROOT),
+             'check-ignore', '--no-index', '--stdin'],
+            input='\n'.join(commands + local_files) + '\n',
+            capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), local_files)
 
     def test_prompt_incomplete_cache_is_repaired_through_cli(self):
         self.enable_prompt()
