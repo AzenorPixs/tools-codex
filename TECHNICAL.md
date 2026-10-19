@@ -85,6 +85,8 @@ ne déclare ni script, ni serveur MCP, ni application ou service externe.
 TCU embarque `skills/tcu/SKILL.md` et `skills/tcu/scripts/update.py`. Les deux
 copies autonomes et embarquées sont identiques. Le lien relatif
 `.agents/skills/tcu -> ../../skills/tcu` assure la découverte dans ce projet.
+Les deux distributions fournissent aussi `agents/openai.yaml` avec le nom
+d'affichage `TCU` pour les listes et pastilles de skills.
 
 Le plugin prompt embarque `skills/prompt/SKILL.md` et
 `skills/prompt/scripts/resolve_prompt.py`, identiques aux sources autonomes.
@@ -142,6 +144,9 @@ Les correspondances actuellement publiées sont :
 Le catalogue de `$cm` doit rester synchronisé avec les noms, syntaxes et
 responsabilités des entrées maison publiées. Sa consultation n'exécute pas
 PLLM, TFL, TCU ou un prompt. Elle ne vérifie pas que ces skills sont installés localement.
+La colonne `Commande` référence les skills disponibles avec leurs noms
+lisibles, dont `TCU`, pour permettre leur présentation native dans Codex ;
+les syntaxes `$…` restent dans `Utilisation`.
 Après une modification de sa source autonome, la copie embarquée doit être
 synchronisée et comparée octet pour octet. Le chargement simultané du plugin
 CM et du skill autonome peut afficher deux entrées ; la procédure de

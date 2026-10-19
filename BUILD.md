@@ -64,7 +64,9 @@ installation existante n'est supprimée ou désactivée automatiquement.
 
 Codex détecte les modifications de skills. Si `cm` n'apparaît pas, démarrez
 une nouvelle session ou redémarrez Codex. Vérifiez alors que `$cm` affiche le
-tableau français avec `$cm`, `$pllm`, `$tfl`, `$tcu` et `$prompt`, sans lancer les actions listées. Le
+tableau français avec CM, PLLM, TFL, TCU et Prompt dans `Commande`, sous forme
+de références aux skills disponibles, et leurs syntaxes `$…` dans `Utilisation`,
+sans lancer les actions listées. Le
 contrôle local du lien ne remplace pas ce test effectif de découverte.
 
 L'installation de PLLM ou TFL depuis la marketplace n'installe pas `cm`.

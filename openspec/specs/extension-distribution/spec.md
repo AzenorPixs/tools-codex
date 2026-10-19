@@ -79,6 +79,18 @@ native. Toute évolution autorisée SHALL actualiser les deux catalogues.
 - **THEN** il délègue au skill CM et conserve une seule entrée prompt dans chaque catalogue
 - **AND** il ne lance pas le prompt et ne promet pas une slash native automatiquement enregistrée
 
+### Requirement: Présentation native des commandes
+CM SHALL référencer le SKILL.md réel de chaque skill disponible, avec le
+libellé CM, PLLM, TFL, TCU ou Prompt dans Commande. Les syntaxes $… SHALL
+rester dans Utilisation. Sans référence, CM SHALL afficher le nom seul, sans
+URI ou icône inventée. Les deux distributions TCU SHALL déclarer
+display_name: TCU dans agents/openai.yaml avec un contenu identique.
+
+#### Scenario: Présentation uniforme de TCU
+- **WHEN** le skill TCU est disponible dans la session lors de la consultation
+- **THEN** sa première cellule porte le libellé TCU et référence son SKILL.md réel, selon la même règle que les autres entrées
+- **AND** $tcu [check] reste dans Utilisation et aucune mise à jour n'est exécutée
+
 ### Requirement: Préservation des copies et qualification de distribution
 Les copies autonomes et embarquées de CM, PLLM, TFL, TCU et prompt SHALL rester
 cohérentes. Les skills et scripts TCU et prompt, ainsi que le skill CM, SHALL

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Uniformiser la première colonne de CM avec des références aux skills et leurs noms lisibles, dont TCU ; conserver les syntaxes dans Utilisation et déclarer le nom d'affichage TCU dans les deux distributions.
+- Aligner les cinq plugins, VERSION et la métadonnée Python sur 0.4.2.
+
 - Gérer prompt comme composant TCU : installation ciblée du plugin absent, vérification du skill embarqué et déploiement du wrapper avec provenance dédiée ; conserver les autres briques absentes.
 - Laisser les opérations indépendantes continuer malgré un conflit local, préserver les liens et rapporter les succès partiels avec un code non nul.
 - Ajouter le wrapper `/cm` et son déclencheur dans le skill, en conservant une seule entrée prompt ; aligner les cinq plugins et la release commune sur 0.4.1.

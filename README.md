@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.4.1`.
+Version de release : `0.4.2`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
