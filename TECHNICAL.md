@@ -26,7 +26,7 @@ reprend exactement la release de `VERSION`, qui reste la source de vérité.
 
 ## Arborescence
 
-Les commandes sources PLLM/TFL sont conservées dans :
+Les commandes sources PLLM/TFL/TCU sont conservées dans :
 
 ```text
 .codex/commands/
@@ -44,10 +44,12 @@ Les skills autonomes sont placés à la racine du dépôt :
 skills/<NOM_DU_SKILL>/
 ```
 
-Le skill `cm` possède une source unique dans `skills/cm/SKILL.md`. Le lien
+Le skill `cm` possède sa source d'édition dans `skills/cm/SKILL.md`. Le lien
 symbolique relatif `.agents/skills/cm -> ../../skills/cm` l'expose dans
 l'emplacement de découverte des skills du dépôt. Il reste dans le projet et
-évite une copie du catalogue. Aucun fichier global Codex n'est modifié.
+évite une copie supplémentaire pour la découverte locale. Le plugin embarque
+un fichier identique dans `plugins/cm/skills/cm/SKILL.md`, sans lien vers
+l'extérieur du paquet. Aucun fichier global Codex n'est modifié.
 
 Le catalogue de la marketplace du dépôt est placé dans :
 
@@ -67,7 +69,7 @@ exactement cette version.
 
 ## Structure des plugins actuels
 
-Les plugins `pllm` et `tfl` possèdent un identifiant stable en kebab-case et
+Les plugins `cm`, `pllm`, `tfl` et `tcu` possèdent un identifiant stable en kebab-case et
 utilisent actuellement le manifeste de compatibilité Codex suivant :
 
 ```text
@@ -75,8 +77,14 @@ plugins/<NOM_DU_PLUGIN>/.codex-plugin/plugin.json
 ```
 
 Le manifeste déclare le nom, la version, la présentation et le répertoire de
-skills embarqués. Les deux plugins embarquent chacun le skill du même nom,
-ainsi que les scripts, références et données nécessaires à son exécution.
+skills embarqués. Les quatre plugins embarquent chacun le skill du même nom.
+PLLM et TFL incluent les scripts, références et données nécessaires à leur
+exécution. CM contient uniquement son manifeste et `skills/cm/SKILL.md` ; il
+ne déclare ni script, ni serveur MCP, ni application ou service externe.
+
+TCU embarque `skills/tcu/SKILL.md` et `skills/tcu/scripts/update.py`. Les deux
+copies autonomes et embarquées sont identiques. Le lien relatif
+`.agents/skills/tcu -> ../../skills/tcu` assure la découverte dans ce projet.
 
 Le format portable avec un manifeste `plugin.json` à la racine peut être adopté
 pour une évolution ultérieure validée. Il ne doit pas être ajouté uniquement
@@ -119,15 +127,20 @@ Les correspondances actuellement publiées sont :
 
 | Invocation de skill | Skill autonome | Plugin |
 |---|---|---|
-| `$cm` | `skills/cm/` | — |
+| `$cm` | `skills/cm/` | `plugins/cm/` |
 | `$pllm` | `skills/pllm/` | `plugins/pllm/` |
 | `$tfl` | `skills/tfl/` | `plugins/tfl/` |
+| `$tcu` (déclencheur `/TCU`) | `skills/tcu/` | `plugins/tcu/` |
 | `$cgpt` | `skills/cgpt/` | — |
 | `$coding-session-statistics` | `skills/coding-session-statistics/` | — |
 
 Le catalogue de `$cm` doit rester synchronisé avec les noms, syntaxes et
 responsabilités des entrées maison publiées. Sa consultation n'exécute pas
-PLLM ou TFL. Elle ne vérifie pas que ces skills sont installés localement.
+PLLM, TFL ou TCU. Elle ne vérifie pas que ces skills sont installés localement.
+Après une modification de sa source autonome, la copie embarquée doit être
+synchronisée et comparée octet pour octet. Le chargement simultané du plugin
+CM et du skill autonome peut afficher deux entrées ; la procédure de
+distribution n'en supprime ou désactive aucune automatiquement.
 La commande source `.codex/commands/cm.md` est supprimée : `/cm` est remplacé
 par `$cm`. Les fichiers sources PLLM/TFL restent inchangés ; leur présence
 n'enregistre pas automatiquement des commandes slash natives dans Codex.
@@ -145,6 +158,7 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
 | `$cm` | Skill découvert dans le projet ou installé dans un emplacement reconnu. | Aucun. |
+| `$tcu` | Python 3.13/3.14, CLI Codex, racines identifiées inscriptibles pour appliquer. | GitHub public HTTPS et marketplace officielle. |
 
 Les plugins `pllm` et `tfl` écrivent leurs rapports dans leur répertoire
 `data/`. TFL accepte une redirection par `--output-dir` ; PLLM ne propose pas
@@ -172,6 +186,9 @@ contexte, qui doit préserver l'interface et être suivi d'une réconciliation M
 et CAB.
 
 ## Données générées
+
+Les reçus et sauvegardes TCU restent dans les installations utilisateur,
+hors des sources versionnées. Ils ne doivent jamais être ajoutés au dépôt.
 
 Les scripts de `cgpt`, `pllm` et `tfl` peuvent générer ou actualiser des
 rapports locaux. Les données liées aux quotas ou à l'historique d'utilisation
@@ -202,8 +219,8 @@ dans ces répertoires, dans les scripts des skills ou dans `pyproject.toml`.
 `test_fournisseur_llm.py` est le générateur TFL, pas une suite de tests.
 La lecture des sources, les contrôles documentaires et la validation OpenSpec
 ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
-La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py` et
-`tests/test_extension_qualification.py`, exécutables avec
+La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py`,
+`tests/test_extension_qualification.py` et `tests/test_tcu_update.py`, exécutables avec
 `python3 -B -m unittest discover -s tests -v`. Elle couvre les deux
 distributions, le catalogue explicite, l'initialisation, la préservation d'un
 historique corrompu et les replis après HTTP 429. Chaque remplaçant recalcule
@@ -211,7 +228,7 @@ ses paliers et exige ses propres mesures avant de devenir valide.
 TFL exclut les prix OpenRouter non finis et les débordements, puis prépare
 une sérialisation JSON stricte avant publication. Ces tests isolés ne
 qualifient pas les services externes. La compatibilité Python est contrôlée
-sur les branches 3.13 et 3.14 avec ces 19 tests, la compilation de tous les
+sur les branches 3.13 et 3.14 avec la suite applicable, la compilation de tous les
 scripts et tests, leurs imports et la résolution du fuseau Europe/Paris.
 Les résultats et versions exactes sont consignés dans le change et son
 rapport d'archive ; aucune compatibilité avec une autre branche n'est déduite.
@@ -222,7 +239,8 @@ minimum le chargement du manifeste, la disponibilité des skills ou outils
 déclarés et l'absence de dépendance ou de donnée sensible non documentée.
 
 Les skills autonomes sont validés avec leur `SKILL.md` et leurs ressources
-nécessaires. Pour `cm`, le format, le lien de découverte et le catalogue sont
+nécessaires. Pour `cm`, le format des deux skills, leur parité, le lien de
+découverte, le catalogue et la résolution du paquet copié isolément sont
 contrôlés localement. Une invocation effective de `$cm` dans une nouvelle
 session Codex est une preuve distincte ; la résolution du lien seule ne la
 démontre pas. Les scripts Python sont vérifiés au minimum par compilation sans
@@ -230,3 +248,39 @@ démontre pas. Les scripts Python sont vérifiés au minimum par compilation san
 
 Les formats de manifeste, de catalogue et les règles de distribution suivent
 la [documentation officielle OpenAI sur les plugins](https://developers.openai.com/plugins/build/plugins).
+
+## Mise à jour TCU
+
+Le script utilise la bibliothèque standard Python. Sans option ou avec
+`check` (alias compatible `--check`), il lit les versions et un instantané GitHub identifié par SHA sans
+écriture. Le skill transforme une demande explicite sans option en `--apply`.
+Les réponses et archives sont bornées ; chemins, release et sources Python
+sont vérifiés sans exécuter le code téléchargé. `data/` est exclu des sources
+autonomes à remplacer.
+
+Les racines par défaut sont CODEX_HOME/skills, ~/.agents/skills,
+CODEX_HOME/prompts et CODEX_HOME/commands, avec ~/.codex par défaut pour
+CODEX_HOME. `--skills-dir` et `--commands-dir` désignent des racines explicites.
+Les absents ne sont pas installés. Liens et checkouts de développement restent
+en conflit sans modification ; aucun git pull ni redémarrage de service.
+
+Le reçu `.tools-codex-origin.json` suit dépôt, SHA, release et empreintes. Une
+copie différente sans reçu exige `--adopt`, jamais ajouté implicitement. Une
+source suivie modifiée reste en conflit avec ou sans adoption. Les fichiers
+retirés en amont sont conservés. Ni jeton ni configuration de connexion ne
+sont chargés. Les sauvegardes restent sous CODEX_HOME/tcu-backups, sans purge,
+dans un répertoire par exécution accessible au seul utilisateur (mode 0700).
+
+Le verrou CODEX_HOME/tcu.lock exclut deux applications simultanées. Les données
+JSON/Markdown des plugins sont sauvegardées avant le CLI puis restituées dans
+le cache vérifié ; une autre donnée bloque le rafraîchissement. Versions et
+activation sont relues après l'opération. Une divergence avec la release
+GitHub bloque les sources autonomes. Le code du cache reste géré par Codex.
+
+Chaque remplacement autonome est atomique ; une erreur restaure les sources
+déjà remplacées et conserve la sauvegarde. Le cycle CLI n'est pas une
+transaction commune : succès partiels et états inconnus sont rapportés sans
+promesse d'annulation globale. Le bilan distingue cible et version observée,
+avec code non nul sur conflit ou échec. La suite TCU simule réseau et CLI et
+utilise des profils temporaires sous tests ; elle ne qualifie pas une mise à
+jour du profil réel ni une publication GitHub.

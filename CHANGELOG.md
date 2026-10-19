@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Accepter `/tcu check` et `$tcu check` sans tirets pour le contrôle sans écriture ; conserver `--check` compatible et refuser `check --apply` avant toute opération.
+
+- Ajouter TCU (nom final de TFU), son plugin, son skill autonome et embarqué, son script et la commande source `/TCU` ; `$tcu` met à jour les briques présentes depuis marketplace et GitHub.
+- Ajouter le contrôle `--check`, les sauvegardes, la provenance, l’adoption explicite et la gestion des conflits ; préserver les données générées et distinguer les succès partiels.
+- Ajouter TCU au catalogue CM et aligner les quatre plugins, VERSION et la métadonnée Python sur 0.3.0.
+
+- Ajouter le plugin `cm` à la marketplace Tools Codex en conservant le skill autonome et son lien local ; synchroniser les deux copies du catalogue.
+- Documenter l'installation et la mise à jour du plugin CM ainsi que le risque de double entrée avec une copie autonome ; distinguer les contrôles locaux d'une installation réelle.
+- Aligner la release commune, la métadonnée Python et les trois manifestes CM/PLLM/TFL sur 0.2.3.
+
 - Remplacer `/cm` par le skill `$cm`, avec un catalogue français des invocations `$cm`, `$pllm` et `$tfl`, sans lancer les générateurs. Supprimer l'ancienne commande source.
 - Exposer `skills/cm/` dans le projet par le lien relatif `.agents/skills/cm` et documenter l'installation autonome ; le contrôle local ne prouve pas une invocation dans une nouvelle session Codex.
 - Aligner la release Tools Codex, les manifestes PLLM/TFL et la métadonnée Python sur 0.2.2.

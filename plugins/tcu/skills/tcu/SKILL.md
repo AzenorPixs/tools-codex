@@ -1,0 +1,50 @@
+---
+name: tcu
+description: Mettre à jour les briques Tools Codex installées depuis marketplace et GitHub. Utiliser pour $tcu, /TCU, /tcu ou une demande explicite de mise à jour Tools Codex.
+---
+
+TCU est le nom final de l'outil initialement proposé comme TFU. Une demande
+d'explication ne déclenche aucune mise à jour.
+
+Pour une invocation explicite, exécute le script depuis ce skill installé :
+
+- `$tcu` ou `/TCU` : `python3 -B scripts/update.py --apply` ;
+- `$tcu check` ou `/tcu check` : `python3 -B scripts/update.py check` ;
+- transmettre les options `--skills-dir CHEMIN` et `--commands-dir CHEMIN`
+  explicitement fournies, avec chaque chemin comme argument distinct ;
+- transmettre `--adopt` uniquement s'il est explicitement demandé. Ne pas
+  l'ajouter pour contourner un conflit. Il adopte avec sauvegarde une copie
+  historique sans reçu ; il ne force pas les fichiers suivis modifiés.
+
+Le script utilise Python 3.13/3.14, le CLI Codex et HTTPS public GitHub. Son
+invocation explicite autorise le rafraîchissement de la seule marketplace
+`tools-codex`, les sauvegardes et la mise à jour des copies déjà installées
+dans les racines identifiées. Aucune brique absente n'est installée. Le code
+du cache plugin reste géré par le CLI. Ne pas lancer PLLM/TFL pendant TCU.
+
+Le mot `check` a priorité sur le lancement par défaut : ne jamais appliquer
+une demande `/tcu check`. `--check` reste un alias compatible. Le script seul
+vérifie sans écriture par défaut ; appliquer exige `--apply`.
+Les racines par défaut sont CODEX_HOME/skills, ~/.agents/skills,
+CODEX_HOME/prompts et CODEX_HOME/commands (CODEX_HOME vaut ~/.codex par défaut).
+Un lien ou checkout de développement est signalé sans modification. Aucun
+git pull ni redémarrage de service. Les fichiers retirés en amont restent
+conservés. Aucun secret ni configuration personnelle n'est chargé.
+
+Les reçus `.tools-codex-origin.json` suivent les sources autonomes. Les
+sauvegardes restent sous CODEX_HOME/tcu-backups, sans purge automatique. Les
+données JSON/Markdown des plugins sont sauvegardées puis restituées ; une
+donnée non prise en charge bloque le rafraîchissement. Si la lecture finale
+du CLI échoue, la sauvegarde reste disponible et l'état est inconnu. Aucune
+annulation globale de la marketplace n'est garantie.
+
+Restitue le bilan JSON en tableau français par brique : canal, état, version
+avant/après connue et cause. En contrôle seul, distinguer version cible et
+version appliquée. Indique sauvegarde, conflits, succès partiels et code de
+sortie réel sans exposer les contenus sauvegardés. Une nouvelle session
+Codex charge les skills actualisés.
+
+`/TCU` est une commande source et un déclencheur reconnu par le skill ; ce
+fichier ne crée pas une slash native. `$tcu` est l'invocation directement
+prise en charge. Maintenir SKILL.md et scripts/update.py identiques dans les
+distributions autonome et embarquée.

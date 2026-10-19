@@ -20,6 +20,8 @@ Les plugins destinés à la marketplace sont actuellement :
 
 | Plugin | Skill embarqué | Fonction |
 |---|---|---|
+| `cm` | `cm` | Catalogue des commandes maison et de leurs syntaxes. |
+| `tcu` | `tcu` | Mise à jour vérifiée des briques déjà installées. |
 | `pllm` | `pllm` | Évaluation et application contrôlée d'une politique LLM. |
 | `tfl` | `tfl` | Rapport comparatif OpenCode Go puis OpenRouter. |
 
@@ -36,11 +38,27 @@ Le skill `cm` remplace l'ancienne commande `/cm`. Dans ce projet, la source
 les invocations maison et leurs syntaxes. La consultation du catalogue ne
 lance ni PLLM ni TFL et ne vérifie pas leur installation.
 
+Le plugin `cm` embarque une copie identique dans
+`plugins/cm/skills/cm/SKILL.md`. Une fois cette source disponible dans la
+marketplace configurée, installez le catalogue avec :
+
+```bash
+codex plugin add cm@tools-codex
+```
+
+Cette commande installe le skill embarqué ; elle ne copie pas le dossier
+autonome du dépôt. Le plugin ne requiert aucune connexion ni service externe.
+
 Pour utiliser le catalogue dans un autre projet, copiez le dossier `skills/cm/`
 dans `.agents/skills/cm/` de ce projet. Pour un usage personnel partagé entre
 projets, installez ce dossier dans `~/.agents/skills/cm/`. Conservez son
 `SKILL.md` ; une copie doit être actualisée depuis la source lors des mises à
 jour. Ces installations hors du dépôt sont des actions distinctes.
+
+Choisissez une distribution adaptée à votre usage : le chargement simultané
+du plugin et du skill autonome peut afficher deux entrées CM. L'ajout du
+plugin au catalogue conserve le skill autonome et le lien local ; aucune
+installation existante n'est supprimée ou désactivée automatiquement.
 
 Codex détecte les modifications de skills. Si `cm` n'apparaît pas, démarrez
 une nouvelle session ou redémarrez Codex. Vérifiez alors que `$cm` affiche le
@@ -112,6 +130,55 @@ Ils ne sont pas installés automatiquement avec les plugins de la marketplace.
 
 ## Mise à jour
 
+TCU automatise la mise à jour des briques déjà installées. Une fois son plugin
+publié dans la marketplace configurée, installez-le avec
+`codex plugin add tcu@tools-codex`, ou utilisez le skill autonome `skills/tcu/`.
+Dans ce projet, `.agents/skills/tcu` pointe vers cette source. `$tcu` lance la
+mise à jour ; `/TCU` est son déclencheur et sa commande source, sans
+enregistrement automatique d'une slash native.
+
+```text
+$tcu check
+$tcu
+```
+
+Depuis le répertoire du skill installé, les équivalents sont :
+
+```bash
+python3 -B scripts/update.py check
+python3 -B scripts/update.py --apply
+```
+
+Le script seul contrôle sans écriture par défaut. Il nécessite le CLI Codex,
+Python 3.13/3.14 et HTTPS public GitHub, sans nouvelle dépendance Python ni
+secret. Il rafraîchit uniquement la marketplace officielle tools-codex,
+vérifie les versions et préserve les données générées prises en charge.
+
+Les copies autonomes présentes sont actualisées depuis le dépôt officiel,
+à un SHA identifié. Les emplacements par défaut sont CODEX_HOME/skills,
+~/.agents/skills, CODEX_HOME/prompts et CODEX_HOME/commands, avec ~/.codex pour
+CODEX_HOME par défaut. Pour une installation spécifique, transmettez
+`--skills-dir CHEMIN` ou `--commands-dir CHEMIN`. Les liens et checkouts de
+développement sont signalés sans modification ; TCU ne met pas à jour le
+checkout de travail par git pull. Les briques absentes ne sont pas installées.
+
+Une copie sans reçu et différente de la source est ambiguë. Après examen du
+contrôle, `--adopt` permet explicitement son adoption avec sauvegarde. Cette
+option ne force jamais une source suivie modifiée. Les reçus gardent les
+empreintes et la release ; les sauvegardes restent dans CODEX_HOME/tcu-backups.
+Les données, configurations personnelles et fichiers retirés en amont restent
+préservés. Les anciens fichiers conservés ne sont pas purgés automatiquement.
+
+En cas d'échec autonome, les fichiers remplacés sont restaurés et la
+sauvegarde reste disponible. Le rafraîchissement CLI peut déjà avoir réussi :
+le bilan distingue chaque canal, les versions connues et les états inconnus.
+Il retourne un code non nul sur conflit ou échec ; aucun succès complet n'est
+déduit d'un simple téléchargement. Une nouvelle session charge les skills
+actualisés. La livraison et les tests locaux n'installent pas TCU dans le profil
+réel et ne publient pas la release distante.
+
+Les commandes manuelles de rafraîchissement restent disponibles :
+
 Rafraîchissez toutes les marketplaces configurées, y compris Tools Codex :
 
 ```bash
@@ -127,6 +194,13 @@ codex plugin marketplace upgrade <NOM_DE_LA_MARKETPLACE>
 
 Après la mise à jour, ouvrez `/plugins` pour vérifier les versions et les
 plugins proposés, puis démarrez une nouvelle session avant toute utilisation.
+
+Le rafraîchissement inclut désormais le plugin CM lorsqu'il est installé
+depuis cette marketplace. Les copies autonomes restent à actualiser depuis
+`skills/cm/` ; la copie embarquée du dépôt doit rester identique à cette
+source. Une modification locale non publiée n'est pas récupérée par une
+marketplace distante. La vérification du paquet en local ne remplace pas son
+installation réelle et l'invocation de `$cm` dans une nouvelle session.
 
 ## Vérification avant publication
 

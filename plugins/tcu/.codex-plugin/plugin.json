@@ -1,0 +1,18 @@
+{
+  "name": "tcu",
+  "version": "0.3.0",
+  "description": "Met à jour les briques Tools Codex installées depuis la marketplace et GitHub.",
+  "author": {"name": "AzenorPixs"},
+  "homepage": "https://github.com/AzenorPixs/tools-codex",
+  "repository": "https://github.com/AzenorPixs/tools-codex",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "TCU",
+    "shortDescription": "Mise à jour des briques Tools Codex installées.",
+    "longDescription": "Vérifie et actualise plugins et copies autonomes, avec sauvegardes et gestion des conflits.",
+    "developerName": "AzenorPixs",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Utilise $tcu pour mettre à jour les briques Tools Codex installées."
+  }
+}
