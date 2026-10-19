@@ -1,13 +1,13 @@
 # Tools Codex
 
-Version de release : `0.3.0`.
+Version de release : `0.4.0`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
 supportées sont 3.13 et 3.14 (`>=3.13,<3.15`), avec qualification hors ligne.
 
 Utilisez **`$cm`** pour afficher le catalogue des commandes maison : `$cm`,
-`$pllm`, `$tfl` et `$tcu`, leurs syntaxes et descriptions. Ce skill remplace `/cm`.
+`$pllm`, `$tfl`, `$tcu` et `$prompt`, leurs syntaxes et descriptions. Ce skill remplace `/cm`.
 Sa source est [`skills/cm/SKILL.md`](skills/cm/SKILL.md), exposée dans ce
 projet via le lien relatif `.agents/skills/cm`. Le plugin
 [`cm`](plugins/cm/.codex-plugin/plugin.json) est également référencé dans la
@@ -36,3 +36,20 @@ slash native. Le plugin [`tcu`](plugins/tcu/.codex-plugin/plugin.json) conserve
 le [skill autonome](skills/tcu/SKILL.md) et son script identiques à la copie
 embarquée. Sauvegardes, adoption et conflits sont décrits dans BUILD. TCU ne
 modifie pas le checkout de développement et n'installe pas les briques absentes.
+
+Le nouveau [skill prompt](skills/prompt/SKILL.md) utilise exclusivement le
+référentiel indiqué dans le `DEVOPS.md` du projet courant :
+
+```text
+/prompt LIST
+/prompt CISMP3
+/prompt 1CISMP3
+```
+
+`LIST` affiche l'index. `CISMP3` lance le cycle du RUN CISMP3. `1CISMP3` borne
+ce RUN à un change complet, archivage, statistiques puis arrêt de la session
+de codage. Les codes sont en MAJUSCULE et les alias GCM/GCMP sélectionnent
+GSCM.md/GSCMP.md. Le skill est directement invocable avec `$prompt CODE`.
+Les sources de prompts restent externes ; les conditions du prompt choisi
+continuent de s'appliquer. Les arguments et l'installation du plugin sont
+décrits dans [BUILD](BUILD.md#utilisation-de-prompt).

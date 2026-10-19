@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Ajouter le plugin et le skill prompt, leur résolveur et la commande source `/prompt`, avec référentiel exclusif DEVOPS.md du projet courant et LIST issu de son index.
+- Ajouter les 38 actions en MAJUSCULE, les alias GCM/GCMP et les variantes 1CISMP1 à 1CISMP8 : un change complet, archivage, statistiques puis arrêt de la session de codage.
+- Ajouter prompt au catalogue CM et aligner les cinq plugins, VERSION et la métadonnée Python sur 0.4.0.
+
 - Accepter `/tcu check` et `$tcu check` sans tirets pour le contrôle sans écriture ; conserver `--check` compatible et refuser `check --apply` avant toute opération.
 
 - Ajouter TCU (nom final de TFU), son plugin, son skill autonome et embarqué, son script et la commande source `/TCU` ; `$tcu` met à jour les briques présentes depuis marketplace et GitHub.

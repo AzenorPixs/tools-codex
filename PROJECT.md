@@ -31,7 +31,7 @@ constituent ni des changes actifs ni une liste de fonctionnalités à réimplém
 
 ## Organisation
 
-Les commandes sources PLLM/TFL/TCU sont conservées dans :
+Les commandes sources PLLM/TFL/TCU/prompt sont conservées dans :
 
 ```text
 .codex/commands/
@@ -64,6 +64,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 
 | Type | Nom | Rôle |
 |---|---|---|
+| Plugin | `prompt` | Liste et lance les prompts du projet depuis son DEVOPS et son index. |
 | Plugin | `tcu` | Met à jour les briques installées depuis marketplace et GitHub. |
 | Plugin | `cm` | Distribue le catalogue des commandes maison, invocable avec `$cm`. |
 | Plugin | `pllm` | Évalue une politique de modèles LLM et l'applique à une session OpenCode autorisée. |
@@ -72,13 +73,15 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Skill | `coding-session-statistics` | Produit un bilan auditable d'une session de codage ou de pilotage. |
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
 | Skill | `tfl` | Expose le rapport TFL également en dehors du plugin. |
-| Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm`, `$tfl` et `$tcu`. |
+| Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm`, `$tfl`, `$tcu` et `$prompt`. |
+| Skill | `prompt` (`$prompt`) | LIST et 38 actions en MAJUSCULE, dont les huit variantes à un change. |
+| Commande source | `/prompt` | Délègue au skill prompt avec LIST ou CODE ; ne crée pas une slash native. |
 | Skill | `tcu` (`$tcu`) | Met à jour les briques présentes ; `check` contrôle sans écriture. |
 | Commande source | `/TCU` | Délègue au skill TCU ; ne crée pas une slash native. |
 | Commande source | `/pllm` | Instructions historiques de lancement de l'évaluation PLLM ; skill invocable avec `$pllm`. |
 | Commande source | `/tfl` | Instructions historiques de lancement du rapport TFL ; skill invocable avec `$tfl`. |
 
-Les skills `cm`, `pllm`, `tfl` et `tcu` sont volontairement fournis sous forme autonome et
+Les skills `cm`, `pllm`, `tfl`, `tcu` et `prompt` sont volontairement fournis sous forme autonome et
 embarquée afin de couvrir les deux modes de distribution. Le skill
 `coding-session-statistics` s'appuie sur `cgpt` pour les relevés de quota
 hebdomadaires lorsqu'ils sont demandés.
@@ -101,3 +104,15 @@ Les extensions doivent privilégier :
 
 Les évolutions fonctionnelles du projet sont décrites et validées dans
 OpenSpec avant leur implémentation, conformément aux règles du dépôt.
+
+## Lancement de prompts
+
+`/prompt LIST` affiche l'index déclaré par le DEVOPS.md du projet courant.
+`/prompt CODE` ou `$prompt CODE` charge le prompt correspondant et exécute
+son processus jusqu'à ses conditions terminales ou une condition imposant
+une décision. Aucun prompt n'est embarqué dans Tools Codex.
+
+GCM et GCMP sont les alias validés de GSCM.md et GSCMP.md. CISMP1 à CISMP8
+conservent le RUN demandé et le cycle normal de CISMP.md. Les variantes
+1CISMP1 à 1CISMP8 bornent le même RUN à un change complet, suivi de
+l'archivage, des statistiques puis de l'arrêt de la session de codage.

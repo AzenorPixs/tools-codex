@@ -20,6 +20,7 @@ Les plugins destinés à la marketplace sont actuellement :
 
 | Plugin | Skill embarqué | Fonction |
 |---|---|---|
+| `prompt` | `prompt` | Liste et lancement des prompts définis par le DEVOPS du projet. |
 | `cm` | `cm` | Catalogue des commandes maison et de leurs syntaxes. |
 | `tcu` | `tcu` | Mise à jour vérifiée des briques déjà installées. |
 | `pllm` | `pllm` | Évaluation et application contrôlée d'une politique LLM. |
@@ -36,7 +37,7 @@ Le skill `cm` remplace l'ancienne commande `/cm`. Dans ce projet, la source
 `skills/cm/SKILL.md` est exposée par le lien relatif
 `.agents/skills/cm -> ../../skills/cm`. Utilisez `$cm` dans Codex pour afficher
 les invocations maison et leurs syntaxes. La consultation du catalogue ne
-lance ni PLLM ni TFL et ne vérifie pas leur installation.
+lance ni PLLM, ni TFL, ni TCU, ni prompt et ne vérifie pas leur installation.
 
 Le plugin `cm` embarque une copie identique dans
 `plugins/cm/skills/cm/SKILL.md`. Une fois cette source disponible dans la
@@ -62,7 +63,7 @@ installation existante n'est supprimée ou désactivée automatiquement.
 
 Codex détecte les modifications de skills. Si `cm` n'apparaît pas, démarrez
 une nouvelle session ou redémarrez Codex. Vérifiez alors que `$cm` affiche le
-tableau français avec `$cm`, `$pllm` et `$tfl`, sans lancer d'évaluation. Le
+tableau français avec `$cm`, `$pllm`, `$tfl`, `$tcu` et `$prompt`, sans lancer les actions listées. Le
 contrôle local du lien ne remplace pas ce test effectif de découverte.
 
 L'installation de PLLM ou TFL depuis la marketplace n'installe pas `cm`.
@@ -72,6 +73,12 @@ emplacements de découverte sont décrits dans la
 [documentation officielle](https://learn.chatgpt.com/docs/build-skills).
 
 ## Installation
+
+Le plugin `prompt` s'installe, une fois sa version disponible dans la
+marketplace configurée, avec `codex plugin add prompt@tools-codex`. Le skill
+autonome `skills/prompt/` conserve le même résolveur. Dans ce projet, le lien
+`.agents/skills/prompt` pointe vers cette source. Choisir une distribution
+adaptée évite deux entrées du même skill dans le sélecteur.
 
 Ajoutez la marketplace à Codex avec la commande suivante :
 
@@ -127,6 +134,51 @@ marketplace.
 Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.
 Ils ne sont pas installés automatiquement avec les plugins de la marketplace.
+
+## Utilisation de prompt
+
+Le seul référentiel est le dossier et l'index indiqués par le DEVOPS.md du
+projet courant. Les sources restent externes au plugin et ne sont pas copiées.
+Les arguments sont en MAJUSCULE ; ils ne comportent pas de tirets :
+
+```text
+/prompt LIST
+/prompt CISMP3
+/prompt 1CISMP3
+```
+
+Les mêmes actions sont disponibles avec `$prompt LIST`, `$prompt CISMP3` et
+`$prompt 1CISMP3`. `/prompt` est une commande source et un déclencheur du skill,
+sans enregistrement automatique d'une slash native.
+
+| Arguments | Source et effet |
+|---|---|
+| LIST | Affiche la table réelle de l'index, sans lire les corps ni lancer un prompt. |
+| ACSP, ACSM, ACSMP, CGP, CISM | Charge le fichier du même nom et exécute son processus. |
+| DOP, DOPP, EDP, ISM, ISMP | Charge le fichier du même nom et exécute son processus. |
+| GCM, GCMP | Alias validés de GSCM.md et GSCMP.md, avec leurs entrées dans l'index. |
+| PPSC, PPSCP, RCAM, RCAMP | Charge le fichier du même nom et exécute son processus. |
+| SPCM, SPCMP, RSM, RSMP, SCM, SCMP | Charge le fichier du même nom et exécute son processus. |
+| CISMP1 à CISMP8 | Charge CISMP.md avec le RUN CISMPn et son cycle normal. |
+| 1CISMP1 à 1CISMP8 | Même RUN, un change complet, archivage, statistiques puis arrêt de la session de codage. |
+
+Les 38 arguments d'exécution et LIST sont résolus à chaque appel. Un nom
+inconnu ou en minuscules, un RUN hors bornes, une déclaration absente/ambiguë,
+un fichier manquant ou une sortie du dossier déclaré provoquent un blocage
+explicite. Aucun autre référentiel n'est recherché.
+
+Le résolveur s'appelle depuis une installation quelconque avec le projet
+explicitement fourni :
+
+```text
+python3 -B <skill>/scripts/resolve_prompt.py LIST --project-root <projet>
+```
+
+Pour une action, il prépare le texte et l'instruction, puis le skill lit et
+exécute réellement le processus du prompt. Les validations, préconditions et
+conditions imposant de rendre la main restent applicables. Pour 1CISMPn, la
+directive borne la sélection après un change ; les clôtures requises sont
+effectuées avant l'arrêt et aucun deuxième change n'est engagé.
 
 ## Mise à jour
 
@@ -203,6 +255,11 @@ marketplace distante. La vérification du paquet en local ne remplace pas son
 installation réelle et l'invocation de `$cm` dans une nouvelle session.
 
 ## Vérification avant publication
+
+Pour prompt, valider le paquet isolé avec une racine de projet explicite,
+sa parité avec le skill autonome et LIST depuis le vrai DEVOPS en lecture
+seule. La disponibilité locale du plugin ne démontre pas une installation
+dans un profil ni l'exécution d'un RUN ; ces étapes restent distinctes.
 
 Avant de publier ou de mettre à jour la marketplace :
 

@@ -63,29 +63,27 @@ prétendre qu'un fichier de commande enregistre une slash native.
 - **AND** l'installation de PLLM ou TFL seule ne fournit pas CM
 
 ### Requirement: Catalogue des commandes cohérent
-Le skill `cm` SHALL afficher un tableau français concis avec Commande,
-Utilisation et Description. Il SHALL présenter `$cm`, `$pllm`, `$tfl` et
-`$tcu` avec leurs syntaxes documentées, dont le déclencheur `/TCU`. Il SHALL
-NOT exécuter les commandes listées ni inventer de slash native. Toute évolution
-autorisée des entrées SHALL actualiser les copies autonome et embarquée.
+Le skill CM SHALL afficher un tableau français avec Commande, Utilisation et
+Description pour CM, PLLM, TFL, TCU et prompt. Les deux copies SHALL conserver
+les syntaxes documentées, dont $prompt LIST ou CODE et le déclencheur /prompt.
+La consultation SHALL NOT exécuter les actions listées ni inventer une slash
+native. Toute évolution autorisée SHALL actualiser les deux catalogues.
 
 #### Scenario: Consultation du catalogue des commandes
 - **WHEN** $cm est invoqué
-- **THEN** le tableau contient `$cm`, `$pllm [active|MODE] [--tfl-catalog CHEMIN]`, `$tfl [auto|mode1|mode2]` et `$tcu [check]`
-- **AND** la description TCU indique le déclencheur /TCU sans promettre une slash native
-- **AND** aucune mise à jour ou évaluation n'est déclenchée
+- **THEN** le tableau décrit les cinq invocations, dont $tcu [check] et $prompt LIST ou CODE
+- **AND** aucune mise à jour, évaluation ou exécution de prompt n'est déclenchée
 
 ### Requirement: Préservation des copies et qualification de distribution
-Les copies autonomes et embarquées de CM, PLLM, TFL et TCU SHALL rester
-cohérentes. Les skills et scripts TCU, ainsi que le skill CM, SHALL être
-identiques dans les deux distributions. La qualification SHALL distinguer
-les contrôles locaux d'une installation réelle dans une nouvelle session.
-Les secrets et données personnelles SHALL rester hors des artefacts publiés.
+Les copies autonomes et embarquées de CM, PLLM, TFL, TCU et prompt SHALL rester
+cohérentes. Les skills et scripts TCU et prompt, ainsi que le skill CM, SHALL
+être identiques dans les deux distributions. La qualification SHALL distinguer
+contrôles locaux et exécution réelle d'un prompt ou installation dans une
+nouvelle session. Les secrets et données personnelles SHALL rester exclus.
 
 #### Scenario: Mise à jour d'instructions communes
 - **WHEN** une ressource commune distribuée est modifiée
-- **THEN** les deux copies sont actualisées et comparées
-- **AND** cette comparaison n'est pas présentée comme une installation réussie
+- **THEN** les deux copies sont actualisées et comparées sans prétendre à une installation réelle
 
 #### Scenario: Vérification du paquet CM isolé
 - **WHEN** le seul répertoire du plugin CM est copié hors du dépôt
@@ -142,3 +140,15 @@ README et pyproject.toml SHALL déclarer la même release commune.
 - **WHEN** le catalogue et le paquet TCU sont vérifiés
 - **THEN** les quatre plugins, les sources et le script embarqué sont présents et leurs versions alignées
 - **AND** le paquet TCU copié isolément résout son script sans dépendre du dépôt
+
+### Requirement: Distribution du plugin prompt
+La marketplace SHALL référencer ./plugins/prompt, avec un manifeste de release
+commune et skills: ./skills/. Le projet SHALL fournir skills/prompt/, sa copie
+embarquée, .codex/commands/prompt.md et le lien relatif .agents/skills/prompt.
+Le paquet SHALL contenir son résolveur mais SHALL NOT embarquer les prompts
+du référentiel externe. Les cinq plugins SHALL partager la release du projet.
+
+#### Scenario: Paquet autonome
+- **WHEN** le paquet prompt est copié isolément
+- **THEN** son script fonctionne avec un projet explicite contenant DEVOPS.md
+- **AND** aucun fichier du dépôt Tools Codex n'est nécessaire hors du paquet

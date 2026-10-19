@@ -26,7 +26,7 @@ reprend exactement la release de `VERSION`, qui reste la source de vérité.
 
 ## Arborescence
 
-Les commandes sources PLLM/TFL/TCU sont conservées dans :
+Les commandes sources PLLM/TFL/TCU/prompt sont conservées dans :
 
 ```text
 .codex/commands/
@@ -69,7 +69,7 @@ exactement cette version.
 
 ## Structure des plugins actuels
 
-Les plugins `cm`, `pllm`, `tfl` et `tcu` possèdent un identifiant stable en kebab-case et
+Les plugins `cm`, `pllm`, `tfl`, `tcu` et `prompt` possèdent un identifiant stable en kebab-case et
 utilisent actuellement le manifeste de compatibilité Codex suivant :
 
 ```text
@@ -77,7 +77,7 @@ plugins/<NOM_DU_PLUGIN>/.codex-plugin/plugin.json
 ```
 
 Le manifeste déclare le nom, la version, la présentation et le répertoire de
-skills embarqués. Les quatre plugins embarquent chacun le skill du même nom.
+skills embarqués. Les cinq plugins embarquent chacun le skill du même nom.
 PLLM et TFL incluent les scripts, références et données nécessaires à leur
 exécution. CM contient uniquement son manifeste et `skills/cm/SKILL.md` ; il
 ne déclare ni script, ni serveur MCP, ni application ou service externe.
@@ -85,6 +85,10 @@ ne déclare ni script, ni serveur MCP, ni application ou service externe.
 TCU embarque `skills/tcu/SKILL.md` et `skills/tcu/scripts/update.py`. Les deux
 copies autonomes et embarquées sont identiques. Le lien relatif
 `.agents/skills/tcu -> ../../skills/tcu` assure la découverte dans ce projet.
+
+Le plugin prompt embarque `skills/prompt/SKILL.md` et
+`skills/prompt/scripts/resolve_prompt.py`, identiques aux sources autonomes.
+Le lien `.agents/skills/prompt -> ../../skills/prompt` expose le skill local.
 
 Le format portable avec un manifeste `plugin.json` à la racine peut être adopté
 pour une évolution ultérieure validée. Il ne doit pas être ajouté uniquement
@@ -131,12 +135,13 @@ Les correspondances actuellement publiées sont :
 | `$pllm` | `skills/pllm/` | `plugins/pllm/` |
 | `$tfl` | `skills/tfl/` | `plugins/tfl/` |
 | `$tcu` (déclencheur `/TCU`) | `skills/tcu/` | `plugins/tcu/` |
+| `$prompt` (déclencheur `/prompt`) | `skills/prompt/` | `plugins/prompt/` |
 | `$cgpt` | `skills/cgpt/` | — |
 | `$coding-session-statistics` | `skills/coding-session-statistics/` | — |
 
 Le catalogue de `$cm` doit rester synchronisé avec les noms, syntaxes et
 responsabilités des entrées maison publiées. Sa consultation n'exécute pas
-PLLM, TFL ou TCU. Elle ne vérifie pas que ces skills sont installés localement.
+PLLM, TFL, TCU ou un prompt. Elle ne vérifie pas que ces skills sont installés localement.
 Après une modification de sa source autonome, la copie embarquée doit être
 synchronisée et comparée octet pour octet. Le chargement simultané du plugin
 CM et du skill autonome peut afficher deux entrées ; la procédure de
@@ -158,6 +163,7 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
 | `$cm` | Skill découvert dans le projet ou installé dans un emplacement reconnu. | Aucun. |
+| `$prompt` | Python 3.13/3.14, DEVOPS.md du projet courant et référentiel déclaré lisibles. | Aucun pour résoudre ; dépend ensuite du prompt choisi. |
 | `$tcu` | Python 3.13/3.14, CLI Codex, racines identifiées inscriptibles pour appliquer. | GitHub public HTTPS et marketplace officielle. |
 
 Les plugins `pllm` et `tfl` écrivent leurs rapports dans leur répertoire
@@ -220,7 +226,8 @@ dans ces répertoires, dans les scripts des skills ou dans `pyproject.toml`.
 La lecture des sources, les contrôles documentaires et la validation OpenSpec
 ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
 La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py`,
-`tests/test_extension_qualification.py` et `tests/test_tcu_update.py`, exécutables avec
+`tests/test_extension_qualification.py`, `tests/test_tcu_update.py` et
+`tests/test_prompt_dispatch.py`, exécutables avec
 `python3 -B -m unittest discover -s tests -v`. Elle couvre les deux
 distributions, le catalogue explicite, l'initialisation, la préservation d'un
 historique corrompu et les replis après HTTP 429. Chaque remplaçant recalcule
@@ -284,3 +291,37 @@ promesse d'annulation globale. Le bilan distingue cible et version observée,
 avec code non nul sur conflit ou échec. La suite TCU simule réseau et CLI et
 utilise des profils temporaires sous tests ; elle ne qualifie pas une mise à
 jour du profil réel ni une publication GitHub.
+
+## Résolution et lancement de prompts
+
+Le résolveur Python lit uniquement DEVOPS.md dans la racine de projet fournie
+par `--project-root`. Le skill relève cette racine dans le contexte de la tâche
+avant de lancer le script, indépendamment de son installation. Les chemins
+relatifs déclarés sont résolus depuis ce projet. Il n'existe pas de recherche
+de repli dans le répertoire parent ou les dossiers globaux de Codex.
+
+Les deux déclarations Dossier des prompts et Index des prompts sont uniques.
+La table Sigle/Prompt/Fichier de l'index constitue le catalogue. Ses chemins
+sont relatifs au dossier déclaré et restent dans celui-ci après résolution
+des liens. Les liens déclarés et internes peuvent être lus sans être modifiés.
+Doublon, déclaration ambiguë, sortie de dossier ou source invalide produisent
+une erreur explicite. Les textes sont bornés à 1 Mio et lus en UTF-8.
+
+LIST retourne les entrées et disponibilités sans lire les corps. Une action
+retourne un état `ready`, le texte complet, le chemin et l'instruction à suivre.
+Le résolveur n'exécute pas ce texte : le skill le lit intégralement puis conduit
+son processus. Une résolution réussie ne vaut pas preuve de fin de RUN.
+
+Les 38 actions sont en MAJUSCULE. GCM et GCMP sélectionnent les entrées GSCM et
+GSCMP de l'index. CISMPn et 1CISMPn, pour n de 1 à 8, conservent exactement
+le RUN CISMPn. Les variantes préfixées 1 portent `max_changes=1` et l'ordre
+change complet, archivage, statistiques, arrêt de la session de codage. Cette
+directive borne la boucle de sélection après le premier change sans supprimer
+les validations, clôtures ou conditions imposant une décision. Le bilan ne
+prétend pas terminer tous les changes du dépôt.
+
+La suite `test_prompt_dispatch.py` utilise des projets et référentiels
+temporaires. Elle couvre les 38 correspondances, l'isolation des projets,
+les variantes de RUN, LIST, les liens lus sans modification et les erreurs.
+Les paquets isolés et LIST réel sont contrôlés séparément ; aucun RUN piloté
+ou prompt à effets réels n'est lancé pendant cette qualification.
