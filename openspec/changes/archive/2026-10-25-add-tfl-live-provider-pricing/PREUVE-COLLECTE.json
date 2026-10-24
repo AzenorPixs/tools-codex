@@ -1,0 +1,184 @@
+{
+  "collectes": [
+    {
+      "generated_at": "2026-10-25T00:21:52+02:00",
+      "go_pricing_source": "https://opencode.ai/v2/docs/console/go/",
+      "go_pricing_retrieved_at": "2026-10-25T00:21:52+02:00",
+      "go_models": [
+        {
+          "id": "beam-free",
+          "reference_average_usd_per_million_tokens": 0.0,
+          "routing_warning": "route de génération non vérifiée"
+        },
+        {
+          "id": "muse-spark-1.3-contributor",
+          "reference_average_usd_per_million_tokens": 0.15000000000000002,
+          "routing_warning": null
+        },
+        {
+          "id": "mimo-v2.5",
+          "reference_average_usd_per_million_tokens": 0.21000000000000002,
+          "routing_warning": null
+        },
+        {
+          "id": "mimo-v2.6-flash",
+          "reference_average_usd_per_million_tokens": 0.21000000000000002,
+          "routing_warning": "route de génération non vérifiée"
+        },
+        {
+          "id": "qwen3.8-flash",
+          "reference_average_usd_per_million_tokens": 0.31,
+          "routing_warning": null
+        },
+        {
+          "id": "glm-5.3-flash",
+          "reference_average_usd_per_million_tokens": 0.325,
+          "routing_warning": null
+        },
+        {
+          "id": "deepseek-v4.1-flash",
+          "reference_average_usd_per_million_tokens": 0.375,
+          "routing_warning": "route de génération non vérifiée"
+        },
+        {
+          "id": "minimax-m3.1-flash",
+          "reference_average_usd_per_million_tokens": 0.375,
+          "routing_warning": "route de génération non vérifiée"
+        },
+        {
+          "id": "gpt-6-luna",
+          "reference_average_usd_per_million_tokens": 0.475,
+          "routing_warning": "route de génération non vérifiée"
+        }
+      ],
+      "minimax_exclusions": [
+        {
+          "id": "minimax-m3",
+          "name": "minimax-m3",
+          "context_length": 1000000,
+          "reference_average_usd_per_million_tokens": 0.75,
+          "pricing_variants": [
+            {
+              "label": "MiniMax M3",
+              "period": "standard",
+              "qualifier": null,
+              "input": 0.3,
+              "output": 1.2,
+              "cache_read": 0.06,
+              "cache_write": null
+            }
+          ],
+          "reason": "coût moyen 0.75 $/M supérieur au seuil maximal de 0.5 $/M"
+        }
+      ],
+      "openrouter_pricing_source": "https://openrouter.ai/api/v1/models?sort=pricing-low-to-high&output_modalities=text&limit=1000",
+      "openrouter_pricing_retrieved_at": "2026-10-25T00:21:52+02:00",
+      "openrouter_models": [
+        {
+          "id": "qwen/qwen3.7-flash",
+          "average": 0.08
+        },
+        {
+          "id": "deepseek/deepseek-v4-flash-0731",
+          "average": 0.08888
+        },
+        {
+          "id": "deepseek/deepseek-v4-flash",
+          "average": 0.1365
+        }
+      ]
+    },
+    {
+      "generated_at": "2026-10-25T00:25:30+02:00",
+      "version": "0.5.2",
+      "script_sha256": "93a6ba71e70f7a55790f2e4ce233927f41aab8b524ae3513b97932a474b1f865",
+      "go_pricing_source": "https://opencode.ai/v2/docs/console/go/",
+      "go_pricing_retrieved_at": "2026-10-25T00:25:30+02:00",
+      "go_models": [
+        {
+          "id": "beam-free",
+          "reference_average_usd_per_million_tokens": 0.0,
+          "routing_warning": "route de génération non vérifiée"
+        },
+        {
+          "id": "muse-spark-1.3-contributor",
+          "reference_average_usd_per_million_tokens": 0.15000000000000002,
+          "routing_warning": null
+        },
+        {
+          "id": "mimo-v2.5",
+          "reference_average_usd_per_million_tokens": 0.21000000000000002,
+          "routing_warning": null
+        },
+        {
+          "id": "mimo-v2.6-flash",
+          "reference_average_usd_per_million_tokens": 0.21000000000000002,
+          "routing_warning": "route de génération non vérifiée"
+        },
+        {
+          "id": "qwen3.8-flash",
+          "reference_average_usd_per_million_tokens": 0.31,
+          "routing_warning": null
+        },
+        {
+          "id": "glm-5.3-flash",
+          "reference_average_usd_per_million_tokens": 0.325,
+          "routing_warning": null
+        },
+        {
+          "id": "deepseek-v4.1-flash",
+          "reference_average_usd_per_million_tokens": 0.375,
+          "routing_warning": "route de génération non vérifiée"
+        },
+        {
+          "id": "minimax-m3.1-flash",
+          "reference_average_usd_per_million_tokens": 0.375,
+          "routing_warning": "route de génération non vérifiée"
+        },
+        {
+          "id": "gpt-6-luna",
+          "reference_average_usd_per_million_tokens": 0.475,
+          "routing_warning": "route de génération non vérifiée"
+        }
+      ],
+      "minimax_exclusions": [
+        {
+          "id": "minimax-m3",
+          "name": "minimax-m3",
+          "context_length": 1000000,
+          "reference_average_usd_per_million_tokens": 0.75,
+          "pricing_variants": [
+            {
+              "label": "MiniMax M3",
+              "period": "standard",
+              "qualifier": null,
+              "input": 0.3,
+              "output": 1.2,
+              "cache_read": 0.06,
+              "cache_write": null
+            }
+          ],
+          "reason": "coût moyen 0.75 $/M supérieur au seuil maximal de 0.5 $/M"
+        }
+      ],
+      "openrouter_pricing_source": "https://openrouter.ai/api/v1/models?sort=pricing-low-to-high&output_modalities=text&limit=1000",
+      "openrouter_pricing_retrieved_at": "2026-10-25T00:25:30+02:00",
+      "openrouter_models": [
+        {
+          "id": "qwen/qwen3.7-flash",
+          "average": 0.08
+        },
+        {
+          "id": "deepseek/deepseek-v4-flash-0731",
+          "average": 0.08888
+        },
+        {
+          "id": "deepseek/deepseek-v4-flash",
+          "average": 0.1365
+        }
+      ]
+    }
+  ],
+  "generation_de_tokens": false,
+  "installation_profil": false
+}

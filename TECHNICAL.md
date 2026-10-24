@@ -246,6 +246,38 @@ scripts et tests, leurs imports et la résolution du fuseau Europe/Paris.
 Les résultats et versions exactes sont consignés dans le change et son
 rapport d'archive ; aucune compatibilité avec une autre branche n'est déduite.
 
+Les tarifs OpenCode Go sont collectés à chaque génération depuis les tableaux
+officiels de `https://opencode.ai/docs/go/`, par HTMLParser et urllib de la
+bibliothèque standard. L'unité par million, les montants courants, les
+correspondances et les doublons Go/Go Plus sont vérifiés ; les anciens prix
+barrés sont ignorés. Les variantes, prix de cache, source, date et empreinte
+de la documentation restent dans `opencode_go.pricing_reference`. Le prix
+de classement est le maximum des moyennes hors pointe entre les paliers de
+contexte disponibles. Les estimations de requêtes non collectées sont `null`
+avec un statut N/A ; aucun historique tarifaire ou d'estimation n'est repris.
+
+OpenRouter conserve la collecte `pricing.prompt/completion` et le classement
+sur les prix API de base, avec conversion par million. Les caches et les
+paliers `overrides` sont conservés dans `pricing_details`, y compris les
+conditions de contexte et les jours/horaires UTC publiés. Aucun seuil de
+contexte n'est inventé pour une variante temporelle. La requête modèles
+interroge tout le catalogue sans filtre de catégorie, modalité ni limite
+artificielle de nombre. La sélection est dynamique, sans liste d'identifiants :
+contexte ≥ 1M, moyenne API de base entre zéro et 0,50 USD/M inclus, modalités
+de sortie et blacklist. Les prix négatifs, non finis ou débordants
+sont non exploitables. La provenance tarifaire des deux fournisseurs est
+horodatée. Une source indispensable invalide ou des tarifs Go contradictoires
+font échouer la génération avant publication ; les rapports existants restent
+intacts. Aucun repli statique ou historique n'existe. Une correspondance
+tarifaire absente exclut le modèle avec son motif ; une route de génération
+Go inconnue est signalée sans protocole déduit. `tests/test_tfl_pricing.py`
+couvre ces comportements sur les deux distributions, hors réseau et trousseau.
+Cette suite couvre aussi l'arrivée et la disparition de modèles, les prix
+gratuits et les bornes, l'audit des exclusions et un catalogue de plus de
+1 000 modèles. Le JSON désigne cette sélection par
+`live-api-context-cost-modalities`. L'absence d'un ancien modèle n'est plus
+bloquante ; l'absence de tout résultat admissible reste une erreur explicite.
+
 Avant publication, chaque plugin doit être vérifié dans une nouvelle session
 Codex après son installation depuis la marketplace. La validation couvre au
 minimum le chargement du manifeste, la disponibilité des skills ou outils

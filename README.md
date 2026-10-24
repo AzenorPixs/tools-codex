@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.4.2`.
+Version de release : `0.5.3`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -25,6 +25,14 @@ plugins sont installés séparément. Sans fichier courant initial, les quatre
 politiques sont créées sans résultats historiques ; un fichier corrompu est
 préservé. Les replis exigent les mesures du modèle effectivement sélectionné.
 TFL exclut les prix non finis et publie un catalogue JSON strict.
+À chaque génération, TFL récupère les tarifs OpenCode Go dans sa documentation
+officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,
+la date et les variantes tarifaires. Une collecte indispensable en échec
+préserve les rapports précédents sans reprendre silencieusement leurs prix.
+La sélection OpenRouter examine tout le catalogue API sans liste prédéfinie :
+contexte ≥ 1M, coût moyen de base ≤ 0,50 USD/M, sorties admissibles et blacklist.
+Les modèles gratuits vérifiés sont inclus ; les exclusions sont motivées dans
+le JSON. Un nouveau modèle admissible apparaît sans modification du code.
 
 Les prérequis et limites de qualification sont décrits dans
 [`BUILD.md`](BUILD.md) et [`TECHNICAL.md`](TECHNICAL.md).

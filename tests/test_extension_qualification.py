@@ -15,6 +15,7 @@ from urllib.error import HTTPError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+OPENROUTER_FIXTURE_IDS = ('fixture/first', 'fixture/second', 'fixture/third')
 PLLM = (ROOT / 'skills/pllm/scripts/evaluate.py',
         ROOT / 'plugins/pllm/skills/pllm/scripts/evaluate.py')
 TFL = (ROOT / 'skills/tfl/scripts/test_fournisseur_llm.py',
@@ -237,7 +238,14 @@ class ExtensionQualificationTests(unittest.TestCase):
         return {'data': [{'id': name, 'context_length': 1_000_000,
                           'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
                           'architecture': {'output_modalities': ['text']}}
-                         for name in module.OPENROUTER_FIXED_IDS]}
+                         for name in OPENROUTER_FIXTURE_IDS]}
+
+    def tfl_go_pricing(self, module):
+        return {'source': module.SOURCE_URL, 'retrieved_at': '2026-10-25T01:00:00+02:00',
+                'models': module.parse_go_pricing(
+                    '<p>Token prices are per 1M tokens.</p><table><tr><th>Model</th>'
+                    '<th>Input</th><th>Output</th></tr><tr><td>Qwen3.8 Flash</td>'
+                    '<td>$0.15</td><td>$0.47</td></tr></table>')}
 
     def test_nonfinite_prices_and_overflows_are_excluded(self):
         for script in TFL:
@@ -283,6 +291,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                     stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={'data': []}))
                     stack.enter_context(patch.object(module, 'fetch_context_metadata', return_value={}))
+                    stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     stack.enter_context(patch.object(module, 'build_rows', return_value=([{'fixture': float('nan')}], [])))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=self.tfl_payload(module)))
                     stack.enter_context(patch.object(module, 'format_opencode_table', return_value='fixture'))
@@ -312,6 +321,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={
                         'data': [{'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
                     stack.enter_context(patch.object(module, 'fetch_context_metadata', return_value={}))
+                    stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=payload))
                     stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
                     self.assertEqual(module.main(), 0)

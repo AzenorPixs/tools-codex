@@ -134,6 +134,21 @@ OpenRouter est nécessaire, préparez-le localement sans jamais ajouter
 d'information d'authentification au dépôt ou à la configuration de la
 marketplace.
 
+TFL nécessite également l'accès HTTPS à la documentation tarifaire officielle
+OpenCode Go : ses tableaux sont relus à chaque exécution. Une page inaccessible,
+une unité ou un format non reconnu, ou des prix contradictoires bloquent la
+collecte avant publication, sans repli sur un catalogue ancien. Le JSON trace
+la provenance, la date et les variantes tarifaires Go et OpenRouter. Les
+estimations Go non collectées restent N/A. Ces changements n'ajoutent aucune
+dépendance Python ni étape d'installation. Le script et le SKILL.md autonome
+et embarqué doivent rester identiques ; une modification des sources ne met
+pas à jour les copies déjà installées dans le profil Codex.
+La sélection OpenRouter lit désormais tout le catalogue API et applique les
+filtres localement, sans liste prédéfinie d'identifiants ni catégorie imposée.
+Les modèles gratuits vérifiables sont admissibles aux mêmes conditions de
+contexte et de sortie. Un changement du catalogue ou des tarifs peut donc
+modifier les modèles retenus sans nouvelle release du générateur.
+
 Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.
 Ils ne sont pas installés automatiquement avec les plugins de la marketplace.

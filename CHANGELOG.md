@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Sélectionner dynamiquement tous les modèles OpenRouter admissibles du catalogue API, sans liste d'identifiants, catégorie ni limite artificielle de nombre ; appliquer contexte ≥ 1M, moyenne de base ≤ 0,50 USD/M, modalités et blacklist, modèles gratuits vérifiés inclus.
+- Supprimer l'échec lié à la disparition d'un ancien identifiant ; conserver les exclusions auditables, le tri, la provenance tarifaire, les variantes conditionnées par jours/horaires UTC et la préservation des rapports si aucun modèle n'est admissible.
+- Qualifier cette sélection dans les deux distributions TFL et aligner VERSION, pyproject.toml, README et les cinq plugins sur 0.5.3, sans modifier la précédente archive ni les installations utilisateur.
+
+- Actualiser les tarifs OpenCode Go depuis sa documentation officielle à chaque exécution TFL, sans table statique ni repli historique ; vérifier unité, correspondances et doublons, ignorer les prix barrés et conserver les variantes dans le JSON.
+- Tracer source et date tarifaires des deux fournisseurs ; conserver les prix de cache et les paliers OpenRouter sans changer son classement de base. Signaler les prix absents, préserver les rapports si la collecte échoue et laisser N/A les estimations Go non collectées.
+- Qualifier les deux distributions TFL hors ligne et par une collecte réelle ; aligner VERSION, pyproject.toml, README et les cinq plugins sur 0.5.2. Les installations utilisateur ne sont pas modifiées par cette livraison locale.
+
 - Uniformiser la première colonne de CM avec des références aux skills et leurs noms lisibles, dont TCU ; conserver les syntaxes dans Utilisation et déclarer le nom d'affichage TCU dans les deux distributions.
 - Aligner les cinq plugins, VERSION et la métadonnée Python sur 0.4.2.
 

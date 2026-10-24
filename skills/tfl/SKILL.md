@@ -87,6 +87,17 @@ vérifié, 🔴 au-delà du seuil.
   tableau commun.
 - La source tarifaire de référence est `https://opencode.ai/docs/go/`.
 
+Les tarifs sont récupérés dans les tableaux de cette documentation à chaque
+exécution, sans table tarifaire statique ni repli sur un ancien catalogue.
+Les noms publiés sont rapprochés des identifiants disponibles sans recherche
+approximative. Une correspondance absente exclut le modèle avec son motif ;
+une ambiguïté ou des prix contradictoires font échouer la génération.
+Les prix barrés sont ignorés. Les variantes et les prix de cache sont conservés
+dans le JSON. Pour plusieurs paliers de contexte, le classement utilise le
+coût moyen hors pointe maximal, afin de ne pas appliquer un prix réservé aux
+contextes courts. Les estimations de requêtes non collectées restent `N/A`
+(`null` dans les champs numériques JSON).
+
 La clé est recherchée avec `service=pllm`, `policy=mode1|mode2`,
 `provider=opencodego` et le compte associé, sans afficher sa valeur.
 
@@ -114,26 +125,40 @@ doit pas être remplacée silencieusement par une autre.
 ## Règles OpenRouter
 
 - Source API : `https://openrouter.ai/api/v1/models`.
-- La sélection reste volontairement figée sur les identifiants validés par le
-  catalogue programmation économique :
-  `qwen/qwen3.7-flash`, `deepseek/deepseek-v4-flash-0731` et
-  `deepseek/deepseek-v4-flash`.
+- La sélection examine tous les modèles renvoyés par l'API, sans liste
+  prédéfinie d'identifiants, filtre de catégorie ou limite artificielle du
+  nombre de modèles. Les filtres TFL sont appliqués localement.
 - Les modèles multimodaux en entrée sont conservés ; le tableau commun affiche
   uniquement la modalité de sortie. Les sorties non textuelles audio, vidéo,
   speech ou sound sont exclues.
-- Le contexte doit être au moins de 1M et le coût moyen au plus de 0.5 $/M.
+- Le contexte doit être au moins de 1M et le coût moyen compris entre zéro et
+  0.5 $/M inclus. Un modèle gratuit vérifié reste admissible.
 - `meta/muse-spark-1.2-contributor` est une blacklist permanente.
 - Les modalités d’entrée/sortie, capacités (`tools`, `reasoning`, `JSON`),
   paramètres API et motifs d’exclusion restent dans la section OpenRouter du
   JSON.
-- Si un identifiant figé est absent de l’API, TFL échoue explicitement et ne le
-  remplace pas silencieusement.
+- Un nouveau modèle admissible est classé automatiquement. La disparition
+  d'un ancien modèle ne provoque pas d'échec si d'autres résultats sont
+  admissibles. Si aucun modèle ne satisfait les filtres, TFL échoue explicitement.
+
+Les prix OpenRouter sont récupérés à chaque exécution dans `pricing.prompt`
+et `pricing.completion`, puis convertis par million de tokens. Les prix de
+cache et les éventuels paliers `overrides` sont conservés séparément dans le
+JSON, avec leurs conditions de contexte ou de jours et horaires UTC ; le
+classement conserve les prix API de base. Les prix négatifs, non
+finis ou débordants ne sont pas exploitables.
 
 ## Robustesse et présentation
 
 TFL exécute et affiche le tableau OpenCode Go avant celui d’OpenRouter. Une
 erreur d’authentification, de réseau, de JSON ou de filtre fait échouer la
 génération plutôt que de produire un classement partiel silencieux.
+
+Le JSON conserve la source et la date de récupération tarifaire de chaque
+fournisseur. Une source indispensable inaccessible, invalide ou de format
+non reconnu fait échouer la collecte avant publication et préserve les
+rapports précédents. Aucun prix historique n'est réutilisé silencieusement.
+Une route de génération Go inconnue reste signalée sans protocole inventé.
 
 Le rapport commence par `# TFL — Test Fournisseur LLM`, puis affiche les titres
 `Rapport des LMM OpenCode Go les moins onéreux` et `Rapports des LMM OpenRouter
