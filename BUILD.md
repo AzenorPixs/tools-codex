@@ -148,6 +148,12 @@ filtres localement, sans liste prédéfinie d'identifiants ni catégorie imposé
 Les modèles gratuits vérifiables sont admissibles aux mêmes conditions de
 contexte et de sortie. Un changement du catalogue ou des tarifs peut donc
 modifier les modèles retenus sans nouvelle release du générateur.
+models.dev fournit aussi les modalités et le transport Go courant, avec
+surcharges SDK/base API par modèle. TFL ne contient aucune liste de modèles
+pour ces résolutions. Une information inconnue reste signalée ; une
+contradiction ou une URL non sûre bloque la publication. La route documentée
+n'est pas une qualification de génération. Les tests de compatibilité avec
+PLLM ne lancent ni quotas ni benchmarks ; aucune dépendance SDK n'est installée.
 
 Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.

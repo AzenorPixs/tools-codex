@@ -71,15 +71,17 @@ vérifié, 🔴 au-delà du seuil.
 ## Règles OpenCode Go
 
 - Source de disponibilité : `https://opencode.ai/zen/go/v1/models`.
-- Source complémentaire de contexte : `https://models.dev/api.json`, fournisseur
-  `opencode-go`, champ `limit.context`.
+- Source complémentaire : `https://models.dev/api.json`, fournisseur
+  `opencode-go`, pour `limit.context`, `modalities.input/output` et le
+  transport `npm`/`api` du fournisseur avec ses surcharges par modèle.
 - Le contexte est strictement vérifié et doit être supérieur ou égal à 1M de
   tokens. Un contexte absent ou inférieur à 1M exclut le modèle.
 - Le coût de référence hors pointe doit être vérifiable et sa moyenne doit être
   inférieure ou égale à 0.5 $/M. Les coûts inconnus ou supérieurs sont exclus.
 - Les sorties audio, vidéo, speech et sound sont exclues. Une capacité
-  multimodale uniquement en entrée reste admissible ; une sortie non fournie
-  est affichée `Non vérifié` sans être inventée.
+  multimodale uniquement en entrée reste admissible ; une sortie absente des
+  sources reste `Non vérifié`. Les déclarations API et models.dev sont
+  confrontées ; des modalités contradictoires font échouer la génération.
 - `muse-spark-1.2-contributor` est une blacklist permanente et reste auditable
   dans `excluded_models`.
 - Les tarifs pointe/hors pointe, estimations rolling/weekly/monthly, sources de
@@ -103,18 +105,25 @@ La clé est recherchée avec `service=pllm`, `policy=mode1|mode2`,
 
 ### Routage API par modèle
 
-OpenCode Go ne fournit pas un protocole de génération uniforme. Pour chaque
-modèle retenu, le script publie `api_endpoint`, `api_protocol` et
-`endpoint_source=opencode-go-docs` dans le catalogue JSON ; les consommateurs
-doivent utiliser ces champs et ne jamais déduire la route depuis le nom.
+OpenCode Go ne fournit pas un protocole de génération uniforme. TFL publie
+`api_endpoint`, `api_protocol` et `endpoint_source` à partir des métadonnées
+courantes, sans liste de modèles ni déduction par famille ou nom. Une route
+explicite API prime ; sinon le SDK et la base API publiés par models.dev sont
+résolus avec les surcharges du modèle sur le fournisseur. Un modèle absent
+des métadonnées de transport ne reçoit aucun routage par défaut inventé.
 
-- `muse-spark-1.3-contributor`, `muse-spark-1.2-contributor`,
-  `gpt-5.6-luna` et `grok-4.6` utilisent
-  `https://opencode.ai/zen/go/v1/responses` (`responses`).
-- Les familles MiniMax et Qwen prises en charge utilisent `/messages`
-  (`messages`).
-- Les autres modèles texte retenus utilisent `/chat/completions`
-  (`chat_completions`).
+Les contrats génériques reconnus sont `@ai-sdk/openai-compatible` pour
+`chat_completions`, `@ai-sdk/openai` pour `responses` et `@ai-sdk/anthropic`
+pour `messages`. Un protocole explicitement publié est conservé lorsqu'il
+est reconnu. Un SDK/protocole inconnu ou une base absente restent signalés.
+Ces règles décrivent les transports, jamais une liste d'identifiants de modèles.
+
+Les bases et endpoints publiés doivent être HTTPS, de la même origine
+OpenCode, sans identifiants utilisateur, query ou fragment. Une URL non sûre
+bloque la publication. Le JSON conserve les sources et dates dans
+`modalities_metadata` et `routing_metadata`. Le statut de route `documented`
+indique une résolution de métadonnées ; `generation_tested=false` ne doit
+jamais être présenté comme un appel de génération réussi.
 
 Pour `responses`, le corps utilise `input`, `max_output_tokens`, `stream=true`,
 `store=false` et `reasoning.effort=low`. Pour `chat_completions`, il utilise

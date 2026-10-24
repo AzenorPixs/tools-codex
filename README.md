@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.5.3`.
+Version de release : `0.5.5`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -33,6 +33,11 @@ La sélection OpenRouter examine tout le catalogue API sans liste prédéfinie :
 contexte ≥ 1M, coût moyen de base ≤ 0,50 USD/M, sorties admissibles et blacklist.
 Les modèles gratuits vérifiés sont inclus ; les exclusions sont motivées dans
 le JSON. Un nouveau modèle admissible apparaît sans modification du code.
+Pour OpenCode Go, modalités et routage sont également collectés depuis les
+déclarations API et models.dev, sans listes statiques de modèles. Le JSON
+conserve les sources et dates ; une information absente reste non vérifiée,
+une contradiction ou une URL de routage non sûre bloque la publication.
+Une route documentée reste distincte d'un test réel de génération.
 
 Les prérequis et limites de qualification sont décrits dans
 [`BUILD.md`](BUILD.md) et [`TECHNICAL.md`](TECHNICAL.md).

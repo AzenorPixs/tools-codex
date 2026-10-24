@@ -256,6 +256,29 @@ de classement est le maximum des moyennes hors pointe entre les paliers de
 contexte disponibles. Les estimations de requêtes non collectées sont `null`
 avec un statut N/A ; aucun historique tarifaire ou d'estimation n'est repris.
 
+Les modalités Go sont collectées dans les déclarations API et dans
+`modalities.input/output` de models.dev, sans liste de modèles connus. Les
+déclarations concordantes utilisent la provenance API lorsqu'elle existe ;
+des déclarations contradictoires bloquent la publication. Une absence reste
+non vérifiée. Les sources et dates sont conservées dans `modalities_metadata`.
+Les filtres de sortie s'appliquent aux modalités ainsi récupérées.
+
+Le transport Go utilise une route API explicitement publiée ou les champs
+`npm`/`api` de models.dev, avec surcharge du modèle sur le fournisseur. Les
+contrats génériques reconnus sont openai-compatible → chat_completions,
+openai → responses (fabrique par défaut) et anthropic → messages. Aucun nom
+ni famille de modèle ne détermine le protocole ou l'endpoint. Un modèle non
+documenté, un SDK inconnu ou une base absente restent signalés sans repli.
+HTTPS, origine OpenCode, port HTTPS, absence d'identifiants utilisateur,
+query et fragment sont vérifiés avant publication des URL. Une URL non sûre
+ou une route explicite contradictoire avec son protocole bloque la génération.
+Les champs consommés par PLLM restent présents ; `routing_metadata` conserve
+source, date, SDK, portée des surcharges et référence du contrat de protocole.
+`routing_status=documented` et `generation_tested=false` distinguent la preuve
+documentaire d'un appel réel. `tests/test_tfl_go_metadata.py` couvre ces cas
+sur les deux distributions et vérifie la lecture par les consommateurs PLLM
+inchangés, sans quota ni benchmark.
+
 OpenRouter conserve la collecte `pricing.prompt/completion` et le classement
 sur les prix API de base, avec conversion par million. Les caches et les
 paliers `overrides` sont conservés dans `pricing_details`, y compris les

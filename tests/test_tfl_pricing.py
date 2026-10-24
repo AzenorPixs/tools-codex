@@ -65,7 +65,7 @@ class PricingTests(unittest.TestCase):
             policy_option=None, policy='auto', timeout=1, output_dir=output)))
         stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
         stack.enter_context(patch.object(module, 'fetch_models', return_value=self.payload()))
-        stack.enter_context(patch.object(module, 'fetch_context_metadata', return_value={}))
+        stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
         stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=self.openrouter(module)))
 
     def test_new_model_is_ranked_without_static_reference(self):
@@ -78,7 +78,8 @@ class PricingTests(unittest.TestCase):
                 self.assertEqual(rows[0]['reference_pricing_usd_per_million_tokens']['cache_read_off_peak'], 0.015)
                 self.assertIsNone(rows[0]['quota_estimates_requests']['monthly'])
                 self.assertIsNone(rows[0]['api_endpoint'])
-                self.assertIn('non vérifiée', rows[0]['routing_warning'])
+                self.assertEqual(rows[0]['routing_status'], 'not_verified')
+                self.assertTrue(rows[0]['routing_warning'])
                 self.assertIn('minimax-m3.1-flash', module.format_opencode_table(rows, 'mode1', 'fixture'))
 
     def test_changed_go_prices_are_used_on_next_collection(self):

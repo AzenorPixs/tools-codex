@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Collecter les modalités et le routage OpenCode Go depuis les déclarations API et models.dev, sans listes statiques de modèles ; conserver sources, dates, surcharges SDK/base API et informations inconnues explicites.
+- Vérifier les contradictions de modalités, les contrats de transport génériques et les URL HTTPS d'origine OpenCode avant publication ; distinguer route documentée et génération testée, avec compatibilité des consommateurs PLLM inchangés.
+- Qualifier les deux distributions TFL et aligner VERSION, pyproject.toml, README et les cinq plugins sur 0.5.5, sans installation de profil, génération ni consultation des quotas.
+
 - Sélectionner dynamiquement tous les modèles OpenRouter admissibles du catalogue API, sans liste d'identifiants, catégorie ni limite artificielle de nombre ; appliquer contexte ≥ 1M, moyenne de base ≤ 0,50 USD/M, modalités et blacklist, modèles gratuits vérifiés inclus.
 - Supprimer l'échec lié à la disparition d'un ancien identifiant ; conserver les exclusions auditables, le tri, la provenance tarifaire, les variantes conditionnées par jours/horaires UTC et la préservation des rapports si aucun modèle n'est admissible.
 - Qualifier cette sélection dans les deux distributions TFL et aligner VERSION, pyproject.toml, README et les cinq plugins sur 0.5.3, sans modifier la précédente archive ni les installations utilisateur.

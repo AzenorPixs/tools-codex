@@ -290,7 +290,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                         policy_option=None, policy='auto', timeout=1, output_dir=output)))
                     stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={'data': []}))
-                    stack.enter_context(patch.object(module, 'fetch_context_metadata', return_value={}))
+                    stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     stack.enter_context(patch.object(module, 'build_rows', return_value=([{'fixture': float('nan')}], [])))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=self.tfl_payload(module)))
@@ -320,7 +320,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                     stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={
                         'data': [{'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
-                    stack.enter_context(patch.object(module, 'fetch_context_metadata', return_value={}))
+                    stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=payload))
                     stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
