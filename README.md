@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.6.0`.
+Version de release : `0.7.1`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -20,18 +20,31 @@ Choisissez le plugin CM ou la distribution autonome selon l'usage ; les deux
 chargés simultanément peuvent produire deux entrées. Leur disponibilité dans
 les sources ne démontre pas une installation dans un profil Codex.
 
-PLLM accepte `--tfl-catalog CHEMIN` pour utiliser le catalogue TFL lorsque les
-plugins sont installés séparément. Sans fichier courant initial, les quatre
-politiques sont créées sans résultats historiques ; un fichier corrompu est
-préservé. Les replis exigent les mesures du modèle effectivement sélectionné.
-Avec ressources disponibles, PLLM compare uniquement les payants TFL. Après
-épuisement confirmé, les modes 1/2 comparent les gratuits Go et OpenCode général,
-le mode 3 les gratuits OpenRouter. Le retour des ressources rétablit les
-payants. Tous les candidats de la catégorie autorisée sont testés ; le débit
-maximal puis le TTFT minimal désignent le gagnant du mode, sans changer les
-priorités 1 à 4. Le tableau signale le repli gratuit et les erreurs
-d'authentification dans État. Un gratuit doit réussir les mêmes tests ; ses
-limites et restrictions d'accès restent celles du fournisseur.
+PLLM accepte `--tfl-catalog CHEMIN` pour des plugins installés séparément.
+Les six politiques sont évaluées par priorité :
+
+| Modes | Candidats | Conditions spécifiques |
+|---|---|---|
+| 1/2 | Payants Go des comptes actuels | Quotas disponibles ; épuisement → rouge et invalide, sans gratuit |
+| 3/4 | Gratuits vérifiés Go puis OpenCode général, comptes de 1/2 | Aucun contrôle de quota ; contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s |
+| 5 | Ancien mode 3 OpenRouter | Crédit pour payants ; repli gratuit après épuisement confirmé |
+| 6 | Ancien mode 4 DeepSeek direct | Solde utilisable positif |
+
+Les modes 1/2/5/6 gardent TTFT <90 s et débit >15 tokens/s. Les filtres TFL,
+Low, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
+aux limitations fournisseur. Dans chaque mode, le débit maximal puis le TTFT
+minimal désignent le gagnant sans changer les priorités 1 à 6.
+Les références de secrets restent inchangées. Les historiques à quatre modes
+sont adaptés au schéma 2 sans sélection actuelle héritée ; les nouveaux 3/4
+commencent sans mesure ni apprentissage. Un fichier corrompu est préservé.
+Le schéma 2 nécessite une copie des anciennes données pour revenir à l'ancien
+évaluateur. Les forçages OpenRouter 31–33 deviennent 51–53 ; 31–33 et 41–43
+ciblent désormais la liste gratuite admissible des nouveaux modes 3/4.
+Pour Chat Completions OpenCode, Low est envoyé sans le paramètre thinking
+spécifique à d'autres contrats. Les refus HTTP 400 et les limitations 429
+arrêtent les paliers du candidat ; le diagnostic filtré et le Retry-After
+disponible restent visibles, sans répétition aux budgets supérieurs ni
+promesse de disponibilité après l'échéance indiquée.
 TFL exclut les prix non finis et publie un catalogue JSON strict.
 À chaque génération, TFL récupère les tarifs OpenCode Go dans sa documentation
 officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,
@@ -51,7 +64,7 @@ puis OpenRouter. Le catalogue général est collecté publiquement et conserve
 ses propres tarifs et métadonnées `opencode`, indépendants de `opencode-go`.
 Les trois catalogues exigent contexte ≥ 1M et coût moyen ≤ 0,50 USD/M ; une
 variante gratuite à 200K reste exclue. La section JSON supplémentaire
-`opencode` fournit également le repli gratuit PLLM des modes 1/2 décrit plus haut.
+`opencode` fournit également les gratuits PLLM des modes 3/4 décrits plus haut.
 
 Les prérequis et limites de qualification sont décrits dans
 [`BUILD.md`](BUILD.md) et [`TECHNICAL.md`](TECHNICAL.md).

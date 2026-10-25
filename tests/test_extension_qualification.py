@@ -76,7 +76,7 @@ class ExtensionQualificationTests(unittest.TestCase):
             model['performance_test'] = {'status': 'running', 'max_tokens': budget}
             if behavior:
                 behavior(model, budget)
-            model.update(ttft_seconds=70.4, tokens_per_second=20)
+            model.update(ttft_seconds=5 if model['mode'] in module.FREE_MODES else 70.4, tokens_per_second=25)
             model['performance_test']['status'] = 'completed'
             return True
 
@@ -122,7 +122,7 @@ class ExtensionQualificationTests(unittest.TestCase):
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
                 state = module.load_current()
-                self.assertEqual([m['mode'] for m in state['models']], ['mode1', 'mode2', 'mode3', 'mode4'])
+                self.assertEqual([m['mode'] for m in state['models']], [f'mode{i}' for i in range(1, 7)])
                 self.assertIsNone(state['selected_mode'])
                 self.assertTrue(all(m['state'] == 'Invalide' and m['quotas'] is None and m['ttft_seconds'] is None for m in state['models']))
                 self.assertFalse((module.ROOT / 'data').exists())
@@ -167,18 +167,23 @@ class ExtensionQualificationTests(unittest.TestCase):
         for script in PLLM:
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
-                result, calls = self.run_evaluation(module, catalog, forced={'mode': 'mode3'})
-                self.assertEqual(result['selected_mode'], 'mode3')
+                result, calls = self.run_evaluation(module, catalog, forced={'mode': 'mode5'})
+                self.assertEqual(result['selected_mode'], 'mode5')
                 self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'router-fixture'), ('benchmark', 'router-fixture', 1024)])
 
     def test_all_modes_can_start_without_a_current_file(self):
         for script in PLLM:
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
+                payload = json.loads(catalog.read_text())
+                free = candidate('free-fixture')
+                free['reference_pricing_usd_per_million_tokens'] = {'input_off_peak': 0, 'output_off_peak': 0}
+                payload['opencode_go']['models'].append(free)
+                catalog.write_text(json.dumps(payload))
                 result, calls = self.run_evaluation(module, catalog)
                 self.assertTrue(all(m['evaluated_this_run'] and m['state'] == 'Valide' for m in result['models']))
-                self.assertEqual(len(calls), 16)
-                self.assertEqual(result['models'][3]['model'], 'deepseek-v4-flash')
+                self.assertEqual(len(calls), 18)
+                self.assertEqual(result['models'][5]['model'], 'deepseek-v4-flash')
 
     def test_last_tier_fallback_requires_its_own_measurements(self):
         for script in PLLM:

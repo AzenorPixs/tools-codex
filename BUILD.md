@@ -115,7 +115,7 @@ n'ajoute ni procédure de packaging ni publication d'un paquet Python.
 Installez `tfl` avec `pllm` : PLLM lit le catalogue produit par TFL. Les deux
 plugins écrivent des rapports dans leur répertoire `data/`. TFL accepte
 `--output-dir` ; PLLM exige son propre répertoire inscriptible et un catalogue
-TFL accessible. Si le fichier courant PLLM manque, les quatre politiques sont
+TFL accessible. Si le fichier courant PLLM manque, les six politiques sont
 initialisées automatiquement, sans reprendre de résultats historiques.
 Pour des plugins séparés, lancer depuis le skill PLLM :
 
@@ -125,14 +125,28 @@ python3 scripts/evaluate.py --tfl-catalog /chemin/vers/le/catalogue/tfl.json
 
 Cette option accepte le fichier produit par TFL, y compris avec `--output-dir`.
 Sans option, PLLM conserve le chemin voisin `../tfl/data/tfl.json`.
-Ce catalogue fournit les candidats payants et les replis gratuits : Go et
-OpenCode général pour modes 1/2, OpenRouter pour mode 3. Les gratuits sont
-utilisés uniquement après épuisement confirmé ; le retour des ressources
-rétablit les payants. Le gagnant d'un mode résulte de la comparaison de toutes
-ses réussites par débit maximal puis TTFT minimal. Le tableau rend explicites
-authentification refusée et repli gratuit. Les restrictions d'accès des
-fournisseurs restent applicables, y compris celles de certains gratuits au
-client natif OpenCode. Les tests hors ligne ne prouvent pas cet accès réel.
+Ce catalogue fournit les payants Go pour 1/2, les gratuits Go et OpenCode
+général pour 3/4, et OpenRouter pour 5 ; 6 conserve DeepSeek direct.
+Les modes 1/2 épuisés deviennent rouges et invalides sans essai gratuit.
+Les modes 3/4 utilisent les comptes de 1/2 respectivement sans consulter de
+quota ou solde. Ils exigent prix nuls vérifiés, contexte ≥1M, réponse complète,
+TTFT <30 s et débit >20 tokens/s. Les autres modes gardent leurs seuils
+<90 s et >15 tokens/s et leurs contrôles de ressources ; seul 5 conserve le
+repli gratuit OpenRouter après crédit épuisé. Les références de trousseau
+restent celles des anciens comptes, sans nouveau secret ni migration de clé.
+Les historiques à quatre modes sont adaptés au schéma 2 (ancien 3→5, ancien
+4→6, nouveaux 3/4 initialisés), sans résultat courant ni sélection hérités.
+La mémoire suit ce déplacement sans apprentissage pour les nouveaux 3/4.
+Un ancien évaluateur ne lit pas le schéma 2 : sauvegarder ses données avant
+un retour de version. Aucun historique invalide n'est écrasé.
+Le gagnant de chaque mode résulte du débit maximal puis du TTFT minimal,
+avec priorités 1 à 6. Les restrictions fournisseur restent applicables aux
+gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
+Les diagnostics HTTP 400/429 et le Retry-After disponible figurent dans les
+rapports PLLM sans corps d'erreur brut. Ils n'entraînent plus d'essais aux
+budgets supérieurs ; une limitation conserve ses contraintes fournisseur.
+Les champs JSON de diagnostic restent conservés ; l'adaptation des historiques
+PLLM est automatique et ne nécessite aucun nouveau secret.
 Les tests hors ligne couvrent des emplacements isolés ; un test réel
 d'installation dans une nouvelle session Codex reste à effectuer avant
 publication, conformément à `TECHNICAL.md`.
@@ -167,8 +181,7 @@ et à ses tarifs Console officiels, sans secret Go ni nouvelle dépendance.
 Les métadonnées proviennent de `opencode` dans models.dev. Les trois tableaux
 s'affichent dans l'ordre Go, OpenCode général, OpenRouter, avec mêmes colonnes
 et seuils 1M/0,50 USD/M. Une source indispensable en échec empêche la publication.
-La section JSON `opencode` est additive ; PLLM l'utilise pour le seul repli
-gratuit des modes 1/2, sans changer le classement tarifaire de TFL.
+La section JSON `opencode` est additive ; PLLM l'utilise pour les gratuits autonomes 3/4, sans changer le classement tarifaire de TFL.
 
 Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.

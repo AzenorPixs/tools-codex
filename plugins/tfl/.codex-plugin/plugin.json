@@ -1,7 +1,7 @@
 {
   "name": "tfl",
-  "version": "0.6.0",
-  "description": "G\u00e9n\u00e8re un rapport comparatif des mod\u00e8les Go, OpenCode g\u00e9n\u00e9ral et OpenRouter.",
+  "version": "0.7.1",
+  "description": "Génère un rapport comparatif des modèles Go, OpenCode général et OpenRouter.",
   "author": {
     "name": "AzenorPixs"
   },
@@ -10,11 +10,11 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "TFL",
-    "shortDescription": "Compare Go, OpenCode g\u00e9n\u00e9ral et OpenRouter.",
-    "longDescription": "TFL g\u00e9n\u00e8re un rapport filtr\u00e9 des mod\u00e8les disponibles, de leur contexte et de leurs tarifs.",
+    "shortDescription": "Compare Go, OpenCode général et OpenRouter.",
+    "longDescription": "TFL génère un rapport filtré des modèles disponibles, de leur contexte et de leurs tarifs.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Utilise le plugin TFL pour g\u00e9n\u00e9rer les rapports OpenCode Go, catalogue g\u00e9n\u00e9ral OpenCode puis OpenRouter, toujours hors sandbox."
+    "defaultPrompt": "Utilise le plugin TFL pour générer les rapports OpenCode Go, catalogue général OpenCode puis OpenRouter, toujours hors sandbox."
   }
 }

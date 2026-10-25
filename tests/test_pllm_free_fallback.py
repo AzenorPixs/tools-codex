@@ -51,7 +51,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
         return module, path, catalog
 
     def run_evaluation(self, module, path, exhausted=False, quota_behavior=None,
-                       benchmark_behavior=None, secret_ok=True, **kwargs):
+                       benchmark_behavior=None, secret_ok=True, secret_lookup=None, **kwargs):
         events = []
 
         def quota(model, key):
@@ -71,7 +71,10 @@ class PllmFreeFallbackTests(unittest.TestCase):
 
         def benchmark(model, key, budget, metadata, session_id=None):
             events.append(('benchmark', model['mode'], model['model_id'], budget, model['provider']))
-            self.assertEqual(events[-2][0], 'quota')
+            if model['mode'] in module.FREE_MODES:
+                self.assertFalse(any(event[0] == 'quota' and event[1] == model['mode'] for event in events))
+            else:
+                self.assertEqual(events[-2][0], 'quota')
             model['performance_test'] = {'status': 'running', 'max_tokens': budget, 'requests': 1}
             complete = True
             if benchmark_behavior:
@@ -84,7 +87,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
         metadata = [{'id': item['id'], 'reasoning': {'supported_efforts': ['low']}}
                     for item in json.loads(path.read_text())['openrouter']['models']]
         with ExitStack() as stack:
-            stack.enter_context(patch.object(module.subprocess, 'run', return_value=SimpleNamespace(
+            stack.enter_context(patch.object(module.subprocess, 'run', side_effect=secret_lookup, return_value=SimpleNamespace(
                 returncode=0 if secret_ok else 1, stdout=b'offline-fixture' if secret_ok else b'')))
             stack.enter_context(patch.object(module, 'quota', side_effect=quota))
             stack.enter_context(patch.object(module, 'benchmark', side_effect=benchmark))
@@ -106,40 +109,47 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertFalse(any(event[1] != 'mode1' for event in events))
             self.assertEqual(output, '')
 
-    def test_both_go_modes_include_general_free_and_keep_exhausted_quotas(self):
+    def test_paid_go_modes_exhausted_and_free_modes_independent(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             data, events, output = self.run_evaluation(module, path, exhausted=True)
             for model in data['models'][:2]:
+                self.assertEqual(model['state'], 'Invalide')
+                self.assertEqual(model['quota_status'], 'exhausted')
+                self.assertEqual(model['quotas']['weekly']['percent'], 100)
+                self.assertIn('Hebdo : 0 %', model['quota_display']['text'])
+                self.assertFalse(any(event[0] == 'benchmark' and event[1] == model['mode'] for event in events))
+            for model in data['models'][2:4]:
                 self.assertEqual((model['model_id'], model['provider'], model['state']),
                                  ('free-general', 'opencode', 'Valide'))
-                self.assertEqual(model['quotas']['weekly']['percent'], 100)
+                self.assertIsNone(model['quotas'])
+                self.assertEqual(model['quota_status'], 'not_applicable')
                 self.assertEqual(model['selection_category'], 'free')
-                self.assertIn('Hebdo : 0 %', model['quota_display']['text'])
-            self.assertIn('🟢 Valide — repli gratuit', output)
-            self.assertTrue(all(event[2].startswith('free-') for event in events
-                                if event[0] == 'benchmark' and event[1] != 'mode4'))
+                self.assertIn('Non applicable', model['quota_display']['text'])
+            self.assertEqual(data['selected_mode'], 'mode3')
+            self.assertIn('🟢 Valide — gratuit', output)
+            self.assertIn('🔴 Invalide — Quota épuisé', output)
 
     def test_openrouter_free_only_when_credit_exhausted_and_returns_to_paid(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
-            first, events, _ = self.run_evaluation(module, path, exhausted=True, forced={'mode': 'mode3'})
-            self.assertEqual(first['models'][2]['model_id'], 'free-router')
-            self.assertEqual(first['models'][2]['state'], 'Valide')
+            first, events, _ = self.run_evaluation(module, path, exhausted=True, forced={'mode': 'mode5'})
+            self.assertEqual(first['models'][4]['model_id'], 'free-router')
+            self.assertEqual(first['models'][4]['state'], 'Valide')
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['free-router'])
-            second, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode3'})
-            self.assertEqual(second['models'][2]['model_id'], 'paid-router')
+            second, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode5'})
+            self.assertEqual(second['models'][4]['model_id'], 'paid-router')
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['paid-router'])
 
-    def test_general_winner_history_reloads_with_original_go_account(self):
+    def test_free_winner_history_keeps_its_category_when_go_recovers(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             self.run_evaluation(module, path, exhausted=True, active=True)
-            self.assertEqual(module.load_current()['models'][0]['provider'], 'opencode')
-            data, events, _ = self.run_evaluation(module, path, active=True)
-            self.assertEqual(data['models'][0]['provider'], 'opencodego')
-            self.assertEqual(data['models'][0]['model_id'], 'paid-b')
-            self.assertFalse(any(event[2].startswith('free-') for event in events if event[0] == 'benchmark'))
+            self.assertEqual(module.load_current()['models'][2]['provider'], 'opencode')
+            data, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode3'})
+            self.assertEqual(data['models'][2]['model_id'], 'free-go')
+            self.assertTrue(all(event[0] != 'quota' for event in events))
+            self.assertTrue(all(event[2].startswith('free-') for event in events))
 
     def test_ttft_then_catalog_order_break_ties(self):
         for script in PLLM:
@@ -195,7 +205,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             def unavailable(model, events):
                 raise RuntimeError('Source de quota indisponible')
 
-            data, events, _ = self.run_evaluation(module, path, quota_behavior=unavailable)
+            data, events, _ = self.run_evaluation(module, path, quota_behavior=unavailable, forced={'mode': 'mode1'})
             self.assertFalse(any(event[0] == 'benchmark' for event in events))
             self.assertIsNone(data['selected_mode'])
 
@@ -215,7 +225,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 data, events, _ = self.run_evaluation(module, path, exhausted=True,
                                                       benchmark_behavior=fail, active=True)
                 self.assertIsNone(data['selected_mode'])
-                relevant = [event for event in events if event[0] == 'benchmark' and event[1] == 'mode1']
+                relevant = [event for event in events if event[0] == 'benchmark' and event[1] == 'mode3']
                 self.assertEqual(len(relevant), 0 if empty else 8)
                 self.assertTrue(all(event[2].startswith('free-') for event in relevant))
 
@@ -235,28 +245,33 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertIn('Authentification refusée (HTTP 401)', output)
             self.assertEqual(len([event for event in events if event[0] == 'benchmark' and event[1] == 'mode1']), 2)
 
-    def test_recovered_resources_switch_to_paid_before_free_generation(self):
+    def test_paid_go_recovers_only_on_next_evaluation(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
+            first, events, _ = self.run_evaluation(module, path, exhausted=True, forced={'mode': 'mode1'})
+            self.assertEqual(first['models'][0]['state'], 'Invalide')
+            self.assertFalse(any(event[0] == 'benchmark' for event in events))
+            second, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode1'})
+            self.assertEqual(second['models'][0]['model_id'], 'paid-a')
+            self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['paid-a'])
 
-            def recovered(model, events):
-                return len([event for event in events if event[0] == 'quota']) == 1
-
-            data, events, _ = self.run_evaluation(module, path, quota_behavior=recovered, active=True)
-            self.assertEqual(data['models'][0]['model_id'], 'paid-b')
-            self.assertFalse(any(event[2].startswith('free-') for event in events if event[0] == 'benchmark'))
-
-    def test_oscillating_resources_are_bounded(self):
+    def test_openrouter_oscillating_resources_are_bounded(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
 
             def oscillating(model, events):
                 return len([event for event in events if event[0] == 'quota']) % 2 == 1
 
-            data, events, _ = self.run_evaluation(module, path, quota_behavior=oscillating, active=True)
-            self.assertIsNone(data['selected_mode'])
-            self.assertFalse(any(event[0] == 'benchmark' for event in events))
-            self.assertLessEqual(len(events), 13)
+            def fail(model, budget):
+                model.update(ttft_seconds=90, tokens_per_second=15)
+                return True
+
+            data, events, _ = self.run_evaluation(module, path, quota_behavior=oscillating,
+                                                  benchmark_behavior=fail)
+            router = data['models'][4]
+            self.assertEqual(router['state'], 'Invalide')
+            router_calls = [event for event in events if event[1] == 'mode5']
+            self.assertLessEqual(len(router_calls), 4)
 
     def test_forced_rank_cannot_substitute_free_or_paid(self):
         for script in PLLM:
@@ -275,7 +290,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             data, events, _ = self.run_evaluation(module, path, exhausted=True, active=True)
             calls = [event for event in events if event[0] == 'benchmark']
             self.assertEqual([event[-1] for event in calls], ['opencodego', 'opencode'])
-            self.assertEqual(data['models'][0]['provider'], 'opencodego')
+            self.assertEqual(data['models'][2]['provider'], 'opencodego')
 
     def test_eligibility_checks_prices_context_protocol_and_endpoint(self):
         for script in PLLM:
@@ -361,7 +376,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                  'usage': {'completion_tokens': 101, 'completion_tokens_details': {'reasoning_tokens': 80}}},
             ]
             stream = io.BytesIO(b''.join(b'data: ' + json.dumps(event).encode() + b'\n' for event in events) + b'data: [DONE]\n')
-            model = {'mode': 'mode3', 'provider': 'openrouter', 'model_id': 'fixture'}
+            model = {'mode': 'mode5', 'provider': 'openrouter', 'model_id': 'fixture'}
             with patch.object(module, 'request', return_value=stream) as request, \
                     patch.object(module.time, 'monotonic', side_effect=(0, 1, 2, 3, 4, 5)):
                 self.assertTrue(module.benchmark(model, 'offline-fixture', 1024,
@@ -384,7 +399,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertEqual(data['models'][0]['state'], 'Invalide')
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark' and event[1] == 'mode1'], ['paid-a'])
 
-    def test_paid_quota_exhaustion_discards_paid_winner_and_tests_only_free(self):
+    def test_paid_quota_exhaustion_discards_paid_winner_without_free_fallback(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
 
@@ -392,14 +407,16 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 return any(event[0] == 'benchmark' for event in events)
 
             data, events, _ = self.run_evaluation(module, path, quota_behavior=exhausted_after_first, active=True)
-            self.assertEqual(data['models'][0]['model_id'], 'free-general')
-            self.assertEqual(data['models'][0]['selection_category'], 'free')
-            self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['paid-a', 'free-go', 'free-general'])
+            self.assertEqual(data['models'][0]['state'], 'Invalide')
+            self.assertEqual(data['models'][0]['selection_category'], 'paid')
+            self.assertIsNone(data['models'][0]['ttft_seconds'])
+            self.assertEqual([event[2] for event in events if event[0] == 'benchmark' and event[1] == 'mode1'], ['paid-a'])
+            self.assertEqual(data['selected_mode'], 'mode3')
 
     def test_low_incompatible_metadata_prevents_generation(self):
         for script in PLLM:
             module, _, _ = self.workspace(script)
-            model = {'mode': 'mode3', 'provider': 'openrouter', 'model_id': 'fixture'}
+            model = {'mode': 'mode5', 'provider': 'openrouter', 'model_id': 'fixture'}
             with patch.object(module, 'request') as request, self.assertRaisesRegex(RuntimeError, 'Low non pris en charge'):
                 module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['high']}})
             request.assert_not_called()

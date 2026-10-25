@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Déclarer le nom d'affichage du skill PLLM en majuscules dans les distributions autonome et embarquée, sans changement de version ni d'identifiant technique.
+- Séparer les gratuits Go et OpenCode général en modes PLLM 3/4, avec les comptes de 1/2, sans contrôle de quota ni solde : contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s.
+- Réserver 1/2 aux payants Go : un quota épuisé les rend rouges et invalides sans repli ; déplacer OpenRouter vers 5 et DeepSeek direct vers 6, avec leurs contrôles et seuils conservés.
+- Adapter les historiques et mémoires au schéma 2 sans succès courant hérité, conserver les références des secrets et déplacer les forçages OpenRouter 31–33 vers 51–53 ; les nouveaux 31–33 et 41–43 ciblent les gratuits admissibles.
+- Aligner les deux distributions, la documentation et les cinq manifestes sur 0.7.1. Le schéma 2 n'est pas lisible par l'ancien évaluateur ; conserver ses données avant retour de version. Cette livraison locale n'installe ni ne publie la release distante.
+
+
+- Corriger le corps Chat Completions OpenCode Go/général : reasoning_effort=low sans thinking ; préserver les contrats Responses, Messages, DeepSeek direct et OpenRouter.
+- Conserver des diagnostics HTTP bornés et filtrés, avec paramètre connu refusé et Retry-After numérique/date HTTP ; afficher l'échéance disponible sans corps brut ni contenu privé.
+- Arrêter les paliers du candidat sur HTTP 400/429 et poursuivre les autres candidats autorisés ; préserver les reprises après troncature, quotas, classement, mémoire, forçages et silence de active.
+- Qualifier les deux distributions et aligner VERSION, pyproject.toml, README et les cinq plugins sur 0.6.1 ; aucune installation de profil ou publication distante n'est réalisée par cette livraison locale.
+
 - Comparer les payants PLLM quand les ressources sont disponibles ; après épuisement confirmé, limiter les modes 1/2 aux gratuits TFL Go et OpenCode général, et le mode 3 aux gratuits OpenRouter. Revenir aux payants au rétablissement des ressources.
 - Retenir le débit maximal puis le TTFT minimal parmi toutes les réussites d'un mode, avec ordre TFL pour dernier départage ; préserver priorités, Low, seuils stricts, forçages et silence de active.
 - Afficher authentification refusée, accès refusé et repli gratuit dans État ; conserver quotas réels, candidats et tentatives dans le JSON, avec mémoire par configuration et sans secret dans les erreurs.

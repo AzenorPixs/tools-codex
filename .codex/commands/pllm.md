@@ -1,5 +1,5 @@
 ---
-description: Évaluer les politiques PLLM avec repli gratuit et classement débit puis TTFT
+description: Évaluer les six politiques PLLM avec gratuits autonomes et classement débit puis TTFT
 ---
 
 Utilise obligatoirement la skill `pllm` installée par Tools Codex.
@@ -14,15 +14,19 @@ l'option `--tfl-catalog CHEMIN` au même script, sans modifier leur valeur.
 Le chemin explicite s'applique aussi aux replis ; sans option, le chemin
 voisin du skill reste utilisé.
 
-Exécute la commande depuis le répertoire du skill PLLM installé. Ne remplace pas cette exécution par une lecture des anciens fichiers `data/pllm-current.*`. Le script contrôle les quotas avant les tests, publie les résultats et ne doit jamais afficher de secret.
+Exécute la commande depuis le répertoire du skill PLLM installé. Ne remplace pas cette exécution par une lecture des anciens fichiers `data/pllm-current.*`. Le script contrôle les ressources applicables avant les tests (aucun quota en 3/4), publie les résultats et ne doit jamais afficher de secret.
 
-Quand les ressources sont disponibles, comparer les payants admissibles TFL.
-Après épuisement confirmé, comparer uniquement les gratuits Go/OpenCode général
-pour les modes 1/2, OpenRouter pour le mode 3. Revenir aux payants au
-rétablissement des ressources. Classer les réussites d'un mode par débit
-maximal puis TTFT minimal, avec ordre TFL comme dernier départage. Les priorités
-entre modes restent inchangées. Les erreurs d'authentification sont visibles
-dans État ; elles n'ouvrent jamais un repli gratuit. active reste silencieux.
+Modes 1/2 : payants Go seulement ; quota épuisé → rouge et invalide sans repli.
+Modes 3/4 : gratuits vérifiés Go puis OpenCode général avec les comptes de 1/2,
+sans aucun appel de quota ou solde, contexte ≥1M, réponse complète, TTFT <30 s
+et débit >20 tokens/s. Modes 5/6 : anciens OpenRouter/DeepSeek, contrôles et
+seuils conservés (<90 s, >15 tokens/s comme 1/2). Seul mode5 conserve son repli
+gratuit OpenRouter sur crédit épuisé. Les forçages OpenRouter 31–33 deviennent
+51–53 ; 31–33 et 41–43 ciblent la liste gratuite admissible de 3/4.
+Classer les réussites par débit maximal, TTFT minimal puis ordre TFL stable.
+Les priorités restent 1 à 6, l'authentification et les limites HTTP sont
+explicites, active reste silencieux. Les secrets gardent leurs références
+historiques ; les anciens historiques sont adaptés sans sélection actuelle héritée.
 
 Restitue exactement la sortie produite par le script, sans ajouter de titre, commentaire, légende ou conclusion. Si l’exécution échoue, indique l’erreur réelle et ne présente pas les fichiers comme actualisés.
 
