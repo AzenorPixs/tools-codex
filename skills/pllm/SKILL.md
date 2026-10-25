@@ -28,9 +28,18 @@ Seul le mode 5 garde le repli gratuit OpenRouter après crédit épuisé confirm
 avec retour aux payants si le crédit revient et transitions bornées. Une panne
 ou un refus d'authentification ne prouve jamais un épuisement.
 
-Comparer tous les candidats admissibles du mode, hors forçage. Classer les
-réussites par débit décroissant, TTFT croissant puis ordre stable TFL (Go avant
-général en 3/4). Go et général utilisent le débit raisonnement+réponse ;
+Comparer tous les candidats admissibles du mode, hors forçage. Les tests
+déterminent l'admissibilité. Pour les payants de 1/2 et de la catégorie payante
+de 5, classer les réussites par coût moyen TFL croissant ; les performances ne
+départagent que les prix égaux : débit décroissant, TTFT croissant puis ordre
+stable TFL. Un payant plus rapide mais plus cher ne devance jamais un payant
+moins cher valide. Utiliser la moyenne des prix d'entrée/sortie de référence :
+hors pointe Go, prix de base OpenRouter. Conserver le coût vérifié dans
+average_price_usd_per_million_tokens et les prix/provenances dans model_source.
+Pour les gratuits 3/4 et le repli gratuit de 5, classer par débit décroissant,
+TTFT croissant puis ordre stable TFL (Go avant général en 3/4). Mode6 conserve
+son candidat direct unique sans prix inventé.
+Go et général utilisent le débit raisonnement+réponse ;
 OpenRouter et DeepSeek le débit réponse seule. Les priorités 1 à 6 priment
 sur les performances entre modes. Le JSON conserve catégories, critères,
 candidats, exclusions, tentatives, routes et dates sans mesure historique
@@ -44,7 +53,7 @@ Ne publier ni corps d'erreur brut, compte, clé ou identifiant de session.
 ## Mode 1
 
 - Priorité : 1 (priorité la plus haute actuellement définie).
-- Modèle : meilleur candidat payant TFL OpenCode Go exclusivement.
+- Modèle : candidat payant TFL OpenCode Go le moins cher parmi ceux qualifiés exclusivement.
 - Raisonnement : HIGH.
 - Fournisseur : OpenCode Go (`opencodego`).
 - TTFT : évalué par le test, en secondes.
@@ -162,7 +171,7 @@ performance restent obligatoires partout.
 
 ### Mode 2 — priorité 2
 
-- Meilleur payant TFL Go uniquement, HIGH, fournisseur `opencodego`.
+- Payant TFL Go le moins cher parmi ceux qualifiés uniquement, HIGH, fournisseur `opencodego`.
 - Référence existante : `service=pllm`, `policy=mode2`, `provider=opencodego`,
   `account=az.github@pixs.fr`.
 - Contrôler les trois périodes Go avec ce compte avant chaque requête.
@@ -187,8 +196,9 @@ performance restent obligatoires partout.
 
 ### Mode 5 — priorité 5 — ancien mode 3 OpenRouter
 
-- Meilleur payant TFL `openrouter` avec solde >0 ; après épuisement confirmé,
-  meilleur gratuit de cette section. Retour aux payants si le crédit revient.
+- Payant TFL `openrouter` le moins cher parmi ceux qualifiés avec solde >0 ;
+  après épuisement confirmé, gratuit le plus performant de cette section.
+  Retour aux payants si le crédit revient.
 - Référence inchangée : `service=pllm`, `policy=mode3`, `provider=openrouter`,
   `account=az.openrouter@pixs.fr`. Le numéro de politique du trousseau reste historique.
 - Contrôle : `GET https://openrouter.ai/api/v1/credits`, solde =
@@ -256,7 +266,7 @@ Si un accès nécessaire manque (secret, authentification, API de test ou source
 
 TTFT (Time To First Token) désigne le temps écoulé entre l’envoi de la requête et la réception du premier token de réponse. Mesurer côté client avec une horloge monotone et une réponse en streaming ; un événement vide ou contenant uniquement des métadonnées ne constitue pas un premier token. Cette mesure inclut la latence réseau et l’attente du fournisseur. Distinguer un éventuel flux de raisonnement du contenu de réponse et expliciter lequel est mesuré. En l’absence de protocole explicitement fourni, choisir un test de génération de code court et borné, indiquer le prompt, le budget de sortie et le nombre de requêtes utilisés, et garder ce protocole identique entre les modèles comparés. Ne pas bloquer une invocation uniquement pour demander ces paramètres. Mesurer le débit avec un comptage de tokens fiable, jamais avec le nombre de fragments de streaming ; signaler si le fournisseur ne permet pas de le déterminer. Les points d’accès, identifiants API et sources de quotas doivent être vérifiés avant toute exécution ; ne pas les déduire du nom commercial.
 
-Les modes 1 à 6 sont définis, dans cet ordre de priorité. Ne pas inventer d’autres modes ni leurs priorités. La sélection entre politiques suit l’ordre de priorité explicite décrit ci-dessous ; le classement de performance départage les candidats d’un même mode. Ne pas modifier la configuration des agents lors d’une simple présentation ou évaluation de PLLM.
+Les modes 1 à 6 sont définis, dans cet ordre de priorité. Ne pas inventer d’autres modes ni leurs priorités. La sélection entre politiques suit l’ordre de priorité explicite décrit ci-dessous ; dans un même mode, le prix classe les payants qualifiés et les performances classent les gratuits. Ne pas modifier la configuration des agents lors d’une simple présentation ou évaluation de PLLM.
 
 
 ## Publication de la politique en vigueur

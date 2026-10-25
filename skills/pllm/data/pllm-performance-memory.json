@@ -1,47 +1,602 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "policies": {
     "mode2": {
       "identity": {
-        "model_id": "muse-spark-1.3-contributor",
+        "model_id": "gpt-6-luna",
         "provider": "opencodego",
-        "reasoning": "Low",
+        "reasoning": "high",
         "throughput_scope": "reasoning_and_response",
         "api_protocol": "responses",
-        "api_endpoint": "https://opencode.ai/zen/go/v1/responses"
-      },
-      "last_successful_max_tokens": 2048,
-      "succeeded_at": "2026-09-14T08:15:46+02:00",
-      "ttft_seconds": 7.8036,
-      "tokens_per_second": 4556.329
-    },
-    "mode3": {
-      "identity": {
-        "model_id": "deepseek/deepseek-v4-flash-0731",
-        "provider": "openrouter",
-        "reasoning": "Low",
-        "throughput_scope": "response_only",
-        "api_protocol": null,
-        "api_endpoint": null
+        "api_endpoint": "https://opencode.ai/inference/go/openai/v1/responses",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
       },
       "last_successful_max_tokens": 1024,
-      "succeeded_at": "2026-09-13T11:04:23+02:00",
-      "ttft_seconds": 2.2335,
-      "tokens_per_second": 53.64
+      "succeeded_at": "2026-10-26T00:37:42+01:00",
+      "ttft_seconds": 5.7336,
+      "tokens_per_second": 96.691,
+      "configurations": {
+        "{\"api_endpoint\": \"https://opencode.ai/zen/go/v1/responses\", \"api_protocol\": \"responses\", \"model_id\": \"muse-spark-1.3-contributor\", \"provider\": \"opencodego\", \"reasoning\": \"Low\", \"throughput_scope\": \"reasoning_and_response\"}": {
+          "identity": {
+            "model_id": "muse-spark-1.3-contributor",
+            "provider": "opencodego",
+            "reasoning": "Low",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "responses",
+            "api_endpoint": "https://opencode.ai/zen/go/v1/responses"
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-09-14T08:15:46+02:00",
+          "ttft_seconds": 7.8036,
+          "tokens_per_second": 4556.329
+        },
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/responses\", \"api_protocol\": \"responses\", \"measurement_protocol_version\": 8, \"model_id\": \"muse-spark-1.3-contributor\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "muse-spark-1.3-contributor",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "responses",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/responses",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-26T00:36:24+01:00",
+          "ttft_seconds": 5.533,
+          "tokens_per_second": 140.54
+        },
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"mimo-v2.5\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "mimo-v2.5",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:36:30+01:00",
+          "ttft_seconds": 3.6149,
+          "tokens_per_second": 48.768
+        },
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"mimo-v2.6-flash\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "mimo-v2.6-flash",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:36:32+01:00",
+          "ttft_seconds": 0.6664,
+          "tokens_per_second": 191.437
+        },
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/anthropic/v1/messages\", \"api_protocol\": \"messages\", \"measurement_protocol_version\": 8, \"model_id\": \"qwen3.8-flash\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "qwen3.8-flash",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "messages",
+            "api_endpoint": "https://opencode.ai/inference/go/anthropic/v1/messages",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-26T00:37:22+01:00",
+          "ttft_seconds": 24.3325,
+          "tokens_per_second": 60.447
+        },
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"glm-5.3-flash\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "glm-5.3-flash",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:37:25+01:00",
+          "ttft_seconds": 1.0196,
+          "tokens_per_second": 92.368
+        },
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"deepseek-v4.1-flash\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "deepseek-v4.1-flash",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:37:30+01:00",
+          "ttft_seconds": 3.9935,
+          "tokens_per_second": 146.092
+        },
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"minimax-m3.1-flash\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "minimax-m3.1-flash",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:37:34+01:00",
+          "ttft_seconds": 2.2517,
+          "tokens_per_second": 102.245
+        },
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/responses\", \"api_protocol\": \"responses\", \"measurement_protocol_version\": 8, \"model_id\": \"gpt-6-luna\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "gpt-6-luna",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "responses",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/responses",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:37:42+01:00",
+          "ttft_seconds": 5.7336,
+          "tokens_per_second": 96.691
+        }
+      }
     },
-    "mode4": {
+    "mode5": {
+      "identity": {
+        "model_id": "deepseek/deepseek-v4-flash-vision-exp",
+        "provider": "openrouter",
+        "reasoning": "high",
+        "throughput_scope": "response_only",
+        "api_protocol": "chat_completions",
+        "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
+      },
+      "last_successful_max_tokens": 1024,
+      "succeeded_at": "2026-10-26T00:44:30+01:00",
+      "ttft_seconds": 4.5132,
+      "tokens_per_second": 55.962,
+      "configurations": {
+        "{\"api_endpoint\": null, \"api_protocol\": null, \"model_id\": \"deepseek/deepseek-v4-flash-0731\", \"provider\": \"openrouter\", \"reasoning\": \"Low\", \"throughput_scope\": \"response_only\"}": {
+          "identity": {
+            "model_id": "deepseek/deepseek-v4-flash-0731",
+            "provider": "openrouter",
+            "reasoning": "Low",
+            "throughput_scope": "response_only",
+            "api_protocol": null,
+            "api_endpoint": null
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-09-13T11:04:23+02:00",
+          "ttft_seconds": 2.2335,
+          "tokens_per_second": 53.64
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"~z-ai/glm-flash-latest\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "~z-ai/glm-flash-latest",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:37:53+01:00",
+          "ttft_seconds": 0.7219,
+          "tokens_per_second": 193.958
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"deepseek/deepseek-v4-flash-0731\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "deepseek/deepseek-v4-flash-0731",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-26T00:40:00+01:00",
+          "ttft_seconds": 5.8375,
+          "tokens_per_second": 34.415
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"~deepseek/deepseek-v4-flash-latest\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "~deepseek/deepseek-v4-flash-latest",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-26T00:40:16+01:00",
+          "ttft_seconds": 8.819,
+          "tokens_per_second": 18.372
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"deepseek/deepseek-v4-flash\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "deepseek/deepseek-v4-flash",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:40:27+01:00",
+          "ttft_seconds": 8.1187,
+          "tokens_per_second": 15.585
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"inception/mercury-3\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "inception/mercury-3",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:40:34+01:00",
+          "ttft_seconds": 1.7449,
+          "tokens_per_second": 138.664
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"anthropic/claude-haiku-5.5\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "anthropic/claude-haiku-5.5",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:40:40+01:00",
+          "ttft_seconds": 4.4586,
+          "tokens_per_second": 64.104
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"openai/gpt-6-luna\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "openai/gpt-6-luna",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:40:51+01:00",
+          "ttft_seconds": 9.0333,
+          "tokens_per_second": 23.76
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"openai/gpt-6-luna-pro\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "openai/gpt-6-luna-pro",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:41:06+01:00",
+          "ttft_seconds": 14.6343,
+          "tokens_per_second": 36.978
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"~anthropic/claude-haiku-latest\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "~anthropic/claude-haiku-latest",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-26T00:41:18+01:00",
+          "ttft_seconds": 6.1555,
+          "tokens_per_second": 59.194
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"~openai/gpt-luna-latest\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "~openai/gpt-luna-latest",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:41:26+01:00",
+          "ttft_seconds": 5.3923,
+          "tokens_per_second": 36.773
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"qwen/qwen3.8-flash\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "qwen/qwen3.8-flash",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-26T00:41:34+01:00",
+          "ttft_seconds": 1.3722,
+          "tokens_per_second": 51.434
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"qwen/qwen3.8-omni-flash\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "qwen/qwen3.8-omni-flash",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:41:39+01:00",
+          "ttft_seconds": 3.0717,
+          "tokens_per_second": 55.029
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"z-ai/glm-5.3-flash\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "z-ai/glm-5.3-flash",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:44:11+01:00",
+          "ttft_seconds": 0.8514,
+          "tokens_per_second": 136.492
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"deepseek/deepseek-v4.1-flash-1017\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "deepseek/deepseek-v4.1-flash-1017",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:44:17+01:00",
+          "ttft_seconds": 2.8135,
+          "tokens_per_second": 62.158
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"minimax/minimax-m3.1-flash\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "minimax/minimax-m3.1-flash",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:44:24+01:00",
+          "ttft_seconds": 3.822,
+          "tokens_per_second": 78.912
+        },
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"deepseek/deepseek-v4-flash-vision-exp\", \"provider\": \"openrouter\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "deepseek/deepseek-v4-flash-vision-exp",
+            "provider": "openrouter",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:44:30+01:00",
+          "ttft_seconds": 4.5132,
+          "tokens_per_second": 55.962
+        }
+      }
+    },
+    "mode6": {
       "identity": {
         "model_id": "deepseek-v4-flash",
         "provider": "deepseek",
-        "reasoning": "Low",
+        "reasoning": "high",
         "throughput_scope": "response_only",
-        "api_protocol": null,
-        "api_endpoint": null
+        "api_protocol": "chat_completions",
+        "api_endpoint": "https://api.deepseek.com/chat/completions",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
       },
-      "last_successful_max_tokens": 4096,
-      "succeeded_at": "2026-09-13T11:04:34+02:00",
-      "ttft_seconds": 9.1687,
-      "tokens_per_second": 434.103
+      "last_successful_max_tokens": 2048,
+      "succeeded_at": "2026-10-26T00:44:49+01:00",
+      "ttft_seconds": 9.2543,
+      "tokens_per_second": 28.291,
+      "configurations": {
+        "{\"api_endpoint\": null, \"api_protocol\": null, \"model_id\": \"deepseek-v4-flash\", \"provider\": \"deepseek\", \"reasoning\": \"Low\", \"throughput_scope\": \"response_only\"}": {
+          "identity": {
+            "model_id": "deepseek-v4-flash",
+            "provider": "deepseek",
+            "reasoning": "Low",
+            "throughput_scope": "response_only",
+            "api_protocol": null,
+            "api_endpoint": null
+          },
+          "last_successful_max_tokens": 4096,
+          "succeeded_at": "2026-09-13T11:04:34+02:00",
+          "ttft_seconds": 9.1687,
+          "tokens_per_second": 434.103
+        },
+        "{\"api_endpoint\": \"https://api.deepseek.com/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"deepseek-v4-flash\", \"provider\": \"deepseek\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "deepseek-v4-flash",
+            "provider": "deepseek",
+            "reasoning": "high",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://api.deepseek.com/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-26T00:44:49+01:00",
+          "ttft_seconds": 9.2543,
+          "tokens_per_second": 28.291
+        }
+      }
+    },
+    "mode3": {
+      "identity": {
+        "model_id": "beam-free",
+        "provider": "opencodego",
+        "reasoning": "high",
+        "throughput_scope": "reasoning_and_response",
+        "api_protocol": "chat_completions",
+        "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
+      },
+      "last_successful_max_tokens": 2048,
+      "succeeded_at": "2026-10-26T00:37:48+01:00",
+      "ttft_seconds": 2.7653,
+      "tokens_per_second": 250.688,
+      "configurations": {
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"beam-free\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "beam-free",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-26T00:37:48+01:00",
+          "ttft_seconds": 2.7653,
+          "tokens_per_second": 250.688
+        }
+      }
+    },
+    "mode4": {
+      "identity": {
+        "model_id": "beam-free",
+        "provider": "opencodego",
+        "reasoning": "high",
+        "throughput_scope": "reasoning_and_response",
+        "api_protocol": "chat_completions",
+        "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
+      },
+      "last_successful_max_tokens": 1024,
+      "succeeded_at": "2026-10-26T00:37:50+01:00",
+      "ttft_seconds": 1.5514,
+      "tokens_per_second": 303.91,
+      "configurations": {
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"beam-free\", \"provider\": \"opencodego\", \"reasoning\": \"high\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "beam-free",
+            "provider": "opencodego",
+            "reasoning": "high",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-26T00:37:50+01:00",
+          "ttft_seconds": 1.5514,
+          "tokens_per_second": 303.91
+        }
+      }
     }
-  }
+  },
+  "migrated_from_schema_version": 1
 }

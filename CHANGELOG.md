@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Classer les payants PLLM qualifiés par coût moyen TFL croissant ; utiliser le débit, le TTFT puis l'ordre TFL uniquement à prix égal. Conserver le classement des gratuits par performances et les priorités entre les six politiques.
+- Conserver dans le JSON le coût vérifié et ses prix/provenances ; préserver les seuils, contrôles, forçages, mode active et protocole 8. Cette modification des sources ne met pas à jour les installations utilisateur ni la release distante.
+- Incrémenter la release commune de 0.7.3 à 0.7.4 dans VERSION, pyproject.toml, la documentation et les cinq manifestes de plugins.
+
 - Corriger les tokens/s PLLM/TFL face aux fragments reçus en rafale : comptage API sur la durée complète non arrondie de la requête, attente et TTFT inclus, sans soustraction du premier token ni écrêtage.
 - Accepter une réponse complète reçue en un bloc avec mesures fiables ; tracer les durées et le profil request_average_v1/request_total, protocole 8 ; rendre les mesures invalides indisponibles sans réutiliser une ancienne valeur.
 - Séparer la mémoire par profil de débit, préserver les succès historiques et les seuils numériques ; le nouveau débit moyen n'est pas directement comparable à l'ancien et peut modifier classement et éligibilité.

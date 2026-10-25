@@ -139,8 +139,12 @@ Les historiques à quatre modes sont adaptés au schéma 2 (ancien 3→5, ancien
 La mémoire suit ce déplacement sans apprentissage pour les nouveaux 3/4.
 Un ancien évaluateur ne lit pas le schéma 2 : sauvegarder ses données avant
 un retour de version. Aucun historique invalide n'est écrasé.
-Le gagnant de chaque mode résulte du débit maximal puis du TTFT minimal,
-avec priorités 1 à 6. Tous les benchmarks demandent HIGH, puis XHIGH seulement si HIGH est
+Le gagnant payant de 1/2 et de la catégorie payante de 5 est le moins cher
+parmi les candidats qualifiés, selon le coût moyen de référence TFL (hors
+pointe Go, prix de base OpenRouter). À prix égal seulement, départager par
+débit maximal, TTFT minimal puis ordre TFL stable. Les gratuits 3/4 et le repli
+gratuit de 5 restent classés par performances ; 6 garde son candidat unique.
+Les priorités entre politiques 1 à 6 restent inchangées. Tous les benchmarks demandent HIGH, puis XHIGH seulement si HIGH est
 indisponible et XHIGH pris en charge ; aucun repli inférieur. Les restrictions
 fournisseur restent applicables aux gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
 Les diagnostics HTTP 400/429 et le Retry-After disponible figurent dans les
@@ -373,7 +377,7 @@ locale est qualifiée hors ligne et n'exécute aucun benchmark fournisseur réel
 ## Protocole 8 de débit moyen
 
 Distribuer les quatre copies identiques de performance.py avec les scripts
-PLLM/TFL de la même release 0.7.3. Le débit utilise désormais le comptage API
+PLLM/TFL de la même release 0.7.4. Le débit utilise désormais le comptage API
 sur la durée totale non arrondie de la requête, attente et TTFT inclus.
 Les rafales et réponses en un bloc ne sont plus extrapolées sur la fenêtre
 entre fragments. Les durées invalides produisent une mesure indisponible,

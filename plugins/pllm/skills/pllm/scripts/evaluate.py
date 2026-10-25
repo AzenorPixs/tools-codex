@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from email.utils import parsedate_to_datetime
 from http.client import HTTPException
 from pathlib import Path
@@ -701,11 +702,22 @@ def catalog_candidate(row, section, rank, generated_at):
     if any(price < 0 for price in prices) or not math.isfinite(sum(prices)) or sum(prices) / 2 > 0.5:
         raise RuntimeError('Prix TFL hors critères ou non vérifiable')
     free = performance.is_free(row, section)
+    average_price = float(sum(Decimal(str(price)) for price in prices) / 2)
     return {'model_id': row['id'], 'model': row.get('name') or row['id'], 'provider': provider,
             'api_endpoint': endpoint, 'api_protocol': protocol,
             'throughput_scope': 'reasoning_and_response' if section != 'openrouter' else 'response_only',
-            'is_free': free, 'reasoning_capabilities': performance.capabilities(row), 'model_source': {'selector': 'tfl_performance_ranking', 'section': section,
-                                             'rank': rank, 'generated_at': generated_at}}
+            'average_price_usd_per_million_tokens': average_price,
+            'is_free': free, 'reasoning_capabilities': performance.capabilities(row), 'model_source': {'selector': 'tfl_performance_ranking' if free else 'tfl_price_then_performance_ranking', 'section': section,
+                                             'rank': rank, 'generated_at': generated_at,
+                                             'input_price_usd_per_million_tokens': prices[0],
+                                             'output_price_usd_per_million_tokens': prices[1]}}
+
+
+def candidate_sort_key(model):
+    performance_key = (-model['tokens_per_second'], model['ttft_seconds'])
+    if model['mode'] in ('mode1', 'mode2', 'mode5') and not model['is_free']:
+        return (model['average_price_usd_per_million_tokens'], *performance_key)
+    return performance_key
 
 
 def candidates_for(model, category, catalog_path, forced=None):
@@ -866,7 +878,8 @@ def main(active=False, forced=None, tfl_catalog=None):
                      performance_criteria=initial_model(model['priority'], provider)['performance_criteria'],
                      quota_status='not_applicable' if model['mode'] in FREE_MODES else 'not_evaluated',
                      performance_test={'status': 'not_run', 'reason': 'Contrôle des ressources requis'})
-        for field in ('quotas_evaluated_at', 'quota_provider', 'api_endpoint', 'api_protocol', 'model_source', 'is_free'):
+        for field in ('quotas_evaluated_at', 'quota_provider', 'api_endpoint', 'api_protocol', 'model_source', 'is_free',
+                      'average_price_usd_per_million_tokens'):
             model.pop(field, None)
         key = ''
         try:
@@ -909,7 +922,7 @@ def main(active=False, forced=None, tfl_catalog=None):
                     category = error.category
                     continue
                 valid = [result for result in results if result['state'] == 'Valide']
-                winner = min(valid, key=lambda result: (-result['tokens_per_second'], result['ttft_seconds'])) if valid else results[-1]
+                winner = min(valid, key=candidate_sort_key) if valid else results[-1]
                 records, exclusions = model['candidate_results'], model['candidate_exclusions']
                 quotas, quota_time = model['quotas'], model.get('quotas_evaluated_at')
                 model.update(winner)

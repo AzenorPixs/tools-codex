@@ -213,8 +213,17 @@ une identité native et ne crée pas de secret. La configuration OpenCode reste
 inchangée. L'état historique accepte `opencode` pour les anciens 1/2 et les gratuits 3/4 ;
 les candidats courants 1/2 restent exclusivement payants Go.
 
-Les réussites de même mode sont classées par débit maximal, TTFT minimal puis
-ordre TFL stable ; l'arrêt au premier succès concerne seulement ses paliers.
+Les tests déterminent l'admissibilité. Les réussites payantes de 1/2 et de la
+catégorie payante de 5 sont classées par coût moyen TFL croissant : moyenne des
+prix d'entrée/sortie hors pointe Go ou de base OpenRouter. À prix égal seulement,
+le débit maximal, le TTFT minimal puis l'ordre TFL stable départagent les
+payants. Les gratuits de 3/4 et du repli de 5 gardent ce classement par
+performances. Mode6 garde son unique candidat direct sans tarif inventé.
+Le coût vérifié est conservé dans average_price_usd_per_million_tokens et les
+prix/provenances dans model_source. Les moyennes décimales égales ne sont pas
+départagées par un artefact d'addition binaire ; un prix non vérifiable reste
+exclu et aucun prix antérieur n'est hérité lors d'une nouvelle évaluation.
+L'arrêt au premier succès concerne seulement les paliers d'un candidat.
 Go/général comptent la sortie raisonnement+réponse ; OpenRouter/DeepSeek la
 réponse seule. Le protocole 8 divise ce comptage par la durée complète non
 arrondie de la requête, attente et TTFT inclus. Aucun premier token n'est
@@ -325,7 +334,7 @@ La lecture des sources, les contrôles documentaires et la validation OpenSpec
 ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
 La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py`,
 `tests/test_pllm_free_fallback.py`,
-`tests/test_pllm_http_diagnostics.py`, `tests/test_pllm_six_modes.py`, `tests/test_free_performance.py`, `tests/test_throughput_measurement.py`,
+`tests/test_pllm_http_diagnostics.py`, `tests/test_pllm_six_modes.py`, `tests/test_pllm_price_priority.py`, `tests/test_free_performance.py`, `tests/test_throughput_measurement.py`,
 `tests/test_extension_qualification.py`, `tests/test_tcu_update.py` et
 `tests/test_prompt_dispatch.py`, exécutables avec
 `python3 -B -m unittest discover -s tests -v`. Elle couvre les deux

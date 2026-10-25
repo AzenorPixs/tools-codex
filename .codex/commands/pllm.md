@@ -1,5 +1,5 @@
 ---
-description: Évaluer les six politiques PLLM avec gratuits autonomes et classement débit puis TTFT
+description: Évaluer les six politiques PLLM avec prix prioritaire des payants qualifiés et performances des gratuits
 ---
 
 Utilise obligatoirement la skill `pllm` installée par Tools Codex.
@@ -25,7 +25,11 @@ gratuit OpenRouter sur crédit épuisé. Les forçages OpenRouter 31–33 devien
 51–53 ; 31–33 et 41–43 ciblent la liste gratuite admissible de 3/4.
 Tous les tests demandent HIGH, puis XHIGH uniquement si HIGH est indisponible
 et XHIGH pris en charge ; aucun repli inférieur.
-Classer les réussites par débit maximal, TTFT minimal puis ordre TFL stable.
+Classer les payants qualifiés par coût moyen TFL croissant (hors pointe Go,
+prix de base OpenRouter) ; à prix égal seulement, départager par débit maximal,
+TTFT minimal puis ordre TFL stable. Pour les gratuits, garder le débit maximal,
+TTFT minimal puis ordre TFL stable. Les tests restent obligatoires et un payant
+plus cher ne devance jamais un payant moins cher valide grâce à son débit.
 Les priorités restent 1 à 6, l'authentification et les limites HTTP sont
 explicites, active reste silencieux. Les secrets gardent leurs références
 historiques ; les anciens historiques sont adaptés sans sélection actuelle héritée.

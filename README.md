@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.3`.
+Version de release : `0.7.4`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -33,8 +33,12 @@ Les six politiques sont évaluées par priorité :
 Les payants gardent TTFT <90 s et débit >15 tokens/s ; tous les gratuits,
 y compris le repli OpenRouter de 5, exigent <30 s et >20 tokens/s. Les filtres TFL,
 HIGH/XHIGH autorisé, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
-aux limitations fournisseur. Dans chaque mode, le débit maximal puis le TTFT
-minimal désignent le gagnant sans changer les priorités 1 à 6.
+aux limitations fournisseur. Les tests déterminent l'admissibilité ; parmi les
+payants qualifiés de 1/2 et de la catégorie payante de 5, le prix croissant
+établit le classement : coût moyen TFL hors pointe Go ou de base OpenRouter.
+Les performances ne départagent que les prix égaux, par débit maximal puis
+TTFT minimal et ordre TFL stable. Les gratuits 3/4 et le repli gratuit de 5
+restent classés par ces performances. Les priorités 1 à 6 restent inchangées.
 Tous les benchmarks demandent HIGH ; XHIGH est le seul repli autorisé si
 HIGH est indisponible et XHIGH pris en charge. Les tokens/s représentent désormais une moyenne sur la requête complète,
 attente et TTFT inclus, sans extrapolation entre fragments reçus. Le protocole
