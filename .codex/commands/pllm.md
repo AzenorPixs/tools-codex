@@ -20,9 +20,11 @@ Modes 1/2 : payants Go seulement ; quota épuisé → rouge et invalide sans rep
 Modes 3/4 : gratuits vérifiés Go puis OpenCode général avec les comptes de 1/2,
 sans aucun appel de quota ou solde, contexte ≥1M, réponse complète, TTFT <30 s
 et débit >20 tokens/s. Modes 5/6 : anciens OpenRouter/DeepSeek, contrôles et
-seuils conservés (<90 s, >15 tokens/s comme 1/2). Seul mode5 conserve son repli
+seuils payants conservés (<90 s, >15 tokens/s comme 1/2), gratuits à <30 s et >20 tokens/s. Seul mode5 conserve son repli
 gratuit OpenRouter sur crédit épuisé. Les forçages OpenRouter 31–33 deviennent
 51–53 ; 31–33 et 41–43 ciblent la liste gratuite admissible de 3/4.
+Tous les tests demandent HIGH, puis XHIGH uniquement si HIGH est indisponible
+et XHIGH pris en charge ; aucun repli inférieur.
 Classer les réussites par débit maximal, TTFT minimal puis ordre TFL stable.
 Les priorités restent 1 à 6, l'authentification et les limites HTTP sont
 explicites, active reste silencieux. Les secrets gardent leurs références

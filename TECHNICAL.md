@@ -188,12 +188,12 @@ un épuisement les rend rouges et invalides sans repli gratuit. Les modes 3/4
 ne consultent jamais quota ni solde, même entre paliers ; ils affichent
 `quota_status=not_applicable`, `quotas=null` et `Non applicable`.
 Ils exigent gratuité vérifiée, contexte ≥1M, réponse complète, comptage fiable,
-TTFT <30 s et débit >20 tokens/s. Les modes 1/2/5/6 gardent TTFT <90 s et débit
->15 tokens/s. Les critères sont publiés par politique dans `performance_criteria`.
+TTFT <30 s et débit >20 tokens/s. Tous les gratuits, y compris le repli OpenRouter de 5, exigent <30 s et >20
+tokens/s ; seuls les payants gardent TTFT <90 s et débit >15 tokens/s. Les critères sont publiés par politique dans `performance_criteria`.
 Le mode5 garde les payants OpenRouter avec crédit et ses gratuits après
 épuisement confirmé, avec transitions bornées et retour aux payants. Mode6
 garde le contrôle de solde DeepSeek. Les gratuits restent soumis aux accès,
-Low, filtres TFL, protocoles et limitations HTTP du fournisseur.
+HIGH/XHIGH autorisé, filtres TFL, protocoles et limitations HTTP du fournisseur.
 
 Les références des secrets sont conservées : policy=mode1 pour 1/3,
 policy=mode2 pour 2/4, ancien policy=mode3 pour 5 et ancien policy=mode4 pour 6.
@@ -223,21 +223,41 @@ palier d'un autre candidat n'est pas affiché. Les erreurs HTTP/SSE sont filtré
 et rendues dans État sans corps brut. active termine le classement du mode
 avant de s'arrêter silencieusement ; les forçages gardent un seul candidat.
 
-Chat Completions OpenCode Go et général représente Low par reasoning_effort=low
-sans thinking. Responses conserve reasoning.effort=low, Messages son budget
-thinking et DeepSeek direct thinking activé avec reasoning_effort=low.
-La résolution OpenRouter reste fondée sur ses métadonnées. Aucun nom de modèle
-ne choisit ce contrat. Les erreurs HTTP sont lues au plus sur 64 Kio, fermées
-et réduites à des codes et paramètres connus ; aucun message libre ou corps
-brut n'est publié. Le diagnostic filtré est réutilisable sans relire le corps.
+Tous les benchmarks PLLM et les gratuits TFL demandent HIGH, avec le seul
+repli XHIGH si HIGH est indisponible et XHIGH pris en charge. Chat Completions
+utilise reasoning_effort ; Responses reasoning.effort ; Messages thinking
+adaptive et output_config.effort ; DeepSeek thinking activé et reasoning_effort.
+OpenRouter suit les métadonnées ou le budget HIGH de 80 % lorsque seul
+max_tokens est disponible. Aucun niveau inférieur n'est utilisé. Le niveau
+effectif est tracé et participe à l'identité de mémoire ; une réussite Low
+n'amorce pas un test HIGH. Un refus 400 propre à l'effort permet au plus un
+repli XHIGH annoncé avec ses propres paliers ; 401/403/429 ne le déclenchent pas.
+Les erreurs HTTP sont lues au plus sur 64 Kio, fermées et filtrées sans corps
+brut, compte ou secret. Le diagnostic est réutilisable sans relire le corps.
 
-HTTP 400 et HTTP 429 arrêtent les paliers de ce candidat, puis les autres
+scripts/performance.py embarque le même moteur dans les quatre distributions
+PLLM/TFL : seuils, gratuité vérifiable, paramètres et mesure streaming. Les
+plugins restent autonomes et leurs paquets isolés contiennent ce module.
+Les dépendances réseau/horloge sont injectées dans le parseur pour les tests.
+TFL teste tous les gratuits structurellement admissibles des trois catalogues,
+sans appel de quota, crédit ou solde. Il utilise la clé Go de sa politique
+pour Go/général et la clé OpenRouter existante (environnement, sinon trousseau
+historique du mode 5). Les valeurs restent en mémoire et hors des sorties.
+Les gratuits échoués sont retirés de models et conservés dans excluded_models
+et free_performance_results avec critères, dates, niveaux et tentatives.
+Les trois tableaux fournisseurs conservent leurs huit colonnes ; un tableau
+commun des essais gratuits est ajouté. Une section vide après qualification
+arrête la publication et préserve les rapports. Le filtre dépend du compte
+TFL utilisé : un autre compte peut avoir un accès différent, sans que PLLM
+réintègre automatiquement un candidat exclu du catalogue.
+
+Hors l'unique repli d'effort autorisé, HTTP 400 et HTTP 429 arrêtent les paliers de ce candidat, puis les autres
 candidats autorisés continuent avec leurs contrôles. Retry-After accepte
 secondes entières et dates HTTP avec fuseau ; une valeur inexploitable reste
 indisponible. Le JSON conserve http_error, délai et échéance ; État affiche
 le refus ou le réessai disponible en heure de Paris. Aucune attente jusqu'à
 un quota journalier ni reprise planifiée n'est créée. Les troncatures et les
-seuils mesurés continuent de permettre les paliers habituels, sans réduire Low.
+seuils mesurés continuent de permettre les paliers habituels, sans réduire le niveau requis.
 
 La résolution du catalogue par PLLM accepte `--tfl-catalog CHEMIN` pour
 OpenCode Go, les gratuits 3/4 et OpenRouter 5. Sans option, elle conserve
@@ -292,7 +312,7 @@ La lecture des sources, les contrôles documentaires et la validation OpenSpec
 ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
 La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py`,
 `tests/test_pllm_free_fallback.py`,
-`tests/test_pllm_http_diagnostics.py`, `tests/test_pllm_six_modes.py`,
+`tests/test_pllm_http_diagnostics.py`, `tests/test_pllm_six_modes.py`, `tests/test_free_performance.py`,
 `tests/test_extension_qualification.py`, `tests/test_tcu_update.py` et
 `tests/test_prompt_dispatch.py`, exécutables avec
 `python3 -B -m unittest discover -s tests -v`. Elle couvre les deux

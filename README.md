@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.1`.
+Version de release : `0.7.2`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -30,18 +30,20 @@ Les six politiques sont évaluées par priorité :
 | 5 | Ancien mode 3 OpenRouter | Crédit pour payants ; repli gratuit après épuisement confirmé |
 | 6 | Ancien mode 4 DeepSeek direct | Solde utilisable positif |
 
-Les modes 1/2/5/6 gardent TTFT <90 s et débit >15 tokens/s. Les filtres TFL,
-Low, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
+Les payants gardent TTFT <90 s et débit >15 tokens/s ; tous les gratuits,
+y compris le repli OpenRouter de 5, exigent <30 s et >20 tokens/s. Les filtres TFL,
+HIGH/XHIGH autorisé, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
 aux limitations fournisseur. Dans chaque mode, le débit maximal puis le TTFT
 minimal désignent le gagnant sans changer les priorités 1 à 6.
-Les références de secrets restent inchangées. Les historiques à quatre modes
+Tous les benchmarks demandent HIGH ; XHIGH est le seul repli autorisé si
+HIGH est indisponible et XHIGH pris en charge. Les références de secrets restent inchangées. Les historiques à quatre modes
 sont adaptés au schéma 2 sans sélection actuelle héritée ; les nouveaux 3/4
 commencent sans mesure ni apprentissage. Un fichier corrompu est préservé.
 Le schéma 2 nécessite une copie des anciennes données pour revenir à l'ancien
 évaluateur. Les forçages OpenRouter 31–33 deviennent 51–53 ; 31–33 et 41–43
 ciblent désormais la liste gratuite admissible des nouveaux modes 3/4.
-Pour Chat Completions OpenCode, Low est envoyé sans le paramètre thinking
-spécifique à d'autres contrats. Les refus HTTP 400 et les limitations 429
+Pour Chat Completions OpenCode, HIGH est envoyé sans le paramètre thinking
+spécifique à d'autres contrats. Hors le repli d'effort XHIGH autorisé, les refus HTTP 400 et les limitations 429
 arrêtent les paliers du candidat ; le diagnostic filtré et le Retry-After
 disponible restent visibles, sans répétition aux budgets supérieurs ni
 promesse de disponibilité après l'échéance indiquée.
@@ -52,19 +54,26 @@ la date et les variantes tarifaires. Une collecte indispensable en échec
 préserve les rapports précédents sans reprendre silencieusement leurs prix.
 La sélection OpenRouter examine tout le catalogue API sans liste prédéfinie :
 contexte ≥ 1M, coût moyen de base ≤ 0,50 USD/M, sorties admissibles et blacklist.
-Les modèles gratuits vérifiés sont inclus ; les exclusions sont motivées dans
-le JSON. Un nouveau modèle admissible apparaît sans modification du code.
+Les gratuits vérifiés doivent aussi réussir les tests HIGH/XHIGH : réponse
+complète, TTFT <30 s et débit >20 tokens/s. Les échecs sont retirés de models
+et leurs preuves sont conservées dans les exclusions JSON. Un nouveau modèle admissible apparaît sans modification du code.
 Pour OpenCode Go, modalités et routage sont également collectés depuis les
 déclarations API et models.dev, sans listes statiques de modèles. Le JSON
 conserve les sources et dates ; une information absente reste non vérifiée,
 une contradiction ou une URL de routage non sûre bloque la publication.
-Une route documentée reste distincte d'un test réel de génération.
-Le rapport comprend trois tableaux : OpenCode Go, catalogue général OpenCode,
-puis OpenRouter. Le catalogue général est collecté publiquement et conserve
+Une route documentée reste distincte d'un test réel de génération : les
+gratuits TFL sont désormais testés, les payants restent un catalogue tarifaire.
+Le rapport comprend trois tableaux fournisseurs : OpenCode Go, catalogue général OpenCode,
+puis OpenRouter, suivis du tableau détaillé des tests gratuits. Le catalogue général est collecté publiquement et conserve
 ses propres tarifs et métadonnées `opencode`, indépendants de `opencode-go`.
 Les trois catalogues exigent contexte ≥ 1M et coût moyen ≤ 0,50 USD/M ; une
 variante gratuite à 200K reste exclue. La section JSON supplémentaire
 `opencode` fournit également les gratuits PLLM des modes 3/4 décrits plus haut.
+TFL ne consulte aucun quota pour ses tests gratuits. Une section devenue vide
+après qualification bloque la publication et préserve les rapports précédents.
+Un échec dépend du compte TFL utilisé ; les exclus ne sont pas réintégrés par
+PLLM. Le moteur scripts/performance.py est embarqué dans chaque paquet pour
+préserver son autonomie, sans nouvelle dépendance Python.
 
 Les prérequis et limites de qualification sont décrits dans
 [`BUILD.md`](BUILD.md) et [`TECHNICAL.md`](TECHNICAL.md).

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Evaluate PLLM quotas before bounded streaming benchmarks; publish no secrets."""
 import json
+import importlib.util
 import argparse
 import copy
 import math
@@ -28,6 +29,10 @@ POLICY_PROVIDERS = ('opencodego', 'opencodego', 'opencodego', 'opencodego', 'ope
 SECRET_POLICIES = ('mode1', 'mode2', 'mode1', 'mode2', 'mode3', 'mode4')
 SECRET_ACCOUNT_INDICES = (0, 1, 0, 1, 2, 3)
 MEMORY_PATH = ROOT / 'data/pllm-performance-memory.json'
+_PERFORMANCE_SPEC = importlib.util.spec_from_file_location('pllm_performance', Path(__file__).with_name('performance.py'))
+performance = importlib.util.module_from_spec(_PERFORMANCE_SPEC)
+_PERFORMANCE_SPEC.loader.exec_module(performance)
+
 
 OPENCODE_GO_ROUTE_BY_MODEL = {
     'muse-spark-1.3-contributor': ('https://opencode.ai/zen/go/v1/responses', 'responses'),
@@ -91,7 +96,7 @@ def filtered_error(payload):
     known_codes = {'invalid_request_error', 'invalid_value', 'unsupported_parameter', 'rate_limit_exceeded',
                    'rate_limit_error', 'too_many_requests', 'FreeUsageLimitError', 'free_usage_limit',
                    'MissingSessionID', 'invalid_api_key', 'authentication_error', 'permission_denied'}
-    known_parameters = ('thinking', 'reasoning_effort', 'reasoning.effort', 'max_tokens',
+    known_parameters = ('thinking', 'reasoning_effort', 'reasoning.effort', 'output_config.effort', 'max_tokens',
                         'max_output_tokens', 'stream_options', 'x-opencode-session', 'model')
 
     def collect(value, depth=0):
@@ -266,184 +271,13 @@ def quota(m, key):
 
 
 def reasoning(m, budget, metadata):
-    if m['provider'] in ('opencodego', 'opencode'):
-        protocol = m.get('api_protocol', 'chat_completions')
-        if protocol == 'responses':
-            return {'reasoning': {'effort': 'low'}}
-        if protocol == 'messages':
-            return {'thinking': {'type': 'enabled', 'budget_tokens': budget // 5}}
-        if protocol == 'chat_completions':
-            return {'reasoning_effort': 'low'}
-        raise RuntimeError('Protocole API OpenCode non pris en charge')
-    if m['provider'] != 'openrouter':
-        return {'reasoning_effort': 'low', 'thinking': {'type': 'enabled'}}
-    options = metadata.get('reasoning') or {}
-    efforts = options.get('supported_efforts')
-    if ('supported_efforts' in options and efforts is None) or (isinstance(efforts, list) and 'low' in efforts):
-        return {'reasoning': {'effort': 'low'}}
-    if options.get('supports_max_tokens') is True:
-        return {'reasoning': {'max_tokens': budget // 5}}
-    raise RuntimeError('Low non pris en charge dans les métadonnées OpenRouter')
+    return performance.reasoning(m, budget, metadata)
 
 
 def benchmark(m, key, budget, metadata, session_id=None):
-    options = reasoning(m, budget, metadata)
-    protocol = m.get('api_protocol', 'chat_completions')
-    result = {'status': 'running', 'prompt': PROMPT, 'max_tokens': budget, 'reasoning_request': options,
-              'started_at': now(), 'ttft_target': 'content (hors raisonnement)', 'requests': 1,
-              'api_protocol': protocol, 'api_endpoint': m.get('api_endpoint')}
-    if m['provider'] in ('opencodego', 'opencode'):
-        result['session_header'] = 'x-opencode-session'
-    m['performance_test'] = result
-    url = m.get('api_endpoint') if m['provider'] in ('opencodego', 'opencode') else {'openrouter': 'https://openrouter.ai/api/v1/chat/completions', 'deepseek': 'https://api.deepseek.com/chat/completions'}[m['provider']]
-    if not url:
-        raise RuntimeError('Point d’accès API du modèle OpenCode Go absent du catalogue TFL')
-    model_id = m['model_id']
-    if protocol == 'responses':
-        body = {'model': model_id,
-                'input': [{'role': 'user', 'content': [{'type': 'input_text', 'text': PROMPT}]}],
-                'max_output_tokens': budget, 'stream': True, 'store': False, **options}
-    else:
-        body = {'model': model_id, 'messages': [{'role': 'user', 'content': PROMPT}], 'max_tokens': budget,
-                'stream': True, 'stream_options': {'include_usage': True}, **options}
-    extra_headers = None
-    if m['provider'] in ('opencodego', 'opencode'):
-        extra_headers = {'Accept': 'text/event-stream'}
-        if protocol == 'messages':
-            extra_headers['x-api-key'] = key
-        if session_id:
-            extra_headers['x-opencode-session'] = session_id
-    start = time.monotonic()
-    first = last = first_reason = first_generated = last_generated = None
-    usage = None
-    done = False
-    signal.alarm(120)
-    try:
-        with request(url, key, body, extra_headers=extra_headers) as response:
-            for line in response:
-                tick = time.monotonic()
-                if not line.startswith(b'data:'):
-                    continue
-                raw = line[5:].strip()
-                if raw == b'[DONE]':
-                    done = True
-                    break
-                event = json.loads(raw)
-                if event.get('error'):
-                    error = event['error']
-                    raise api_error(error.get('code') or error.get('type'), error) if isinstance(error, dict) else api_error(None)
-                if protocol == 'messages':
-                    event_type = event.get('type')
-                    delta = event.get('delta') or {}
-                    delta_type = delta.get('type')
-                    if delta_type in ('thinking_delta', 'signature_delta', 'text_delta'):
-                        text = delta.get('thinking') if delta_type == 'thinking_delta' else delta.get('text')
-                        if text:
-                            if first_generated is None:
-                                first_generated = tick
-                            last_generated = tick
-                            if delta_type == 'thinking_delta':
-                                if first_reason is None:
-                                    first_reason = tick
-                            elif first is None:
-                                first = tick
-                            if delta_type == 'text_delta':
-                                last = tick
-                    if event_type == 'message_start':
-                        usage = (event.get('message') or {}).get('usage') or usage
-                    if event_type == 'message_delta':
-                        usage = event.get('usage') or usage
-                        stop_reason = delta.get('stop_reason')
-                        if stop_reason:
-                            result['finish_reason'] = 'stop' if stop_reason in ('end_turn', 'stop') else stop_reason
-                    if event_type == 'message_stop':
-                        done = True
-                        break
-                    continue
-                if protocol == 'responses':
-                    event_type = event.get('type')
-                    if event_type in ('response.output_text.delta', 'response.reasoning_text.delta',
-                                      'response.reasoning_summary_text.delta'):
-                        delta = event.get('delta')
-                        if delta:
-                            if first_generated is None:
-                                first_generated = tick
-                            last_generated = tick
-                            if event_type == 'response.output_text.delta':
-                                if first is None:
-                                    first = tick
-                                last = tick
-                            elif first_reason is None:
-                                first_reason = tick
-                    if event_type == 'response.completed':
-                        response = event.get('response') or {}
-                        usage = response.get('usage')
-                        result['finish_reason'] = 'stop' if response.get('status') == 'completed' else 'length'
-                        done = True
-                        break
-                    if event_type == 'error':
-                        raise api_error(event.get('code'), event)
-                    continue
-                if event.get('provider'):
-                    result['upstream_provider'] = event['provider']
-                if event.get('usage'):
-                    usage = event['usage']
-                for choice in event.get('choices', []):
-                    delta = choice.get('delta', {})
-                    if delta.get('content') or delta.get('reasoning') or delta.get('reasoning_content'):
-                        if first_generated is None:
-                            first_generated = tick
-                        last_generated = tick
-                    if (delta.get('reasoning') or delta.get('reasoning_content') or delta.get('reasoning_details')) and first_reason is None:
-                        first_reason = tick
-                    if delta.get('content'):
-                        if first is None:
-                            first = tick
-                        last = tick
-                    if choice.get('finish_reason'):
-                        result['finish_reason'] = choice['finish_reason']
-    finally:
-        signal.alarm(0)
-        result['duration_seconds'] = round(time.monotonic() - start, 4)
-        result['ttft_reasoning_seconds'] = None if first_reason is None else round(first_reason - start, 4)
-        m['ttft_seconds'] = None if first is None else round(first - start, 4)
-    if usage:
-        if protocol in ('responses', 'messages'):
-            result['completion_tokens'] = usage.get('output_tokens')
-            result['reasoning_tokens'] = (usage.get('output_tokens_details') or {}).get('reasoning_tokens')
-        else:
-            result['completion_tokens'] = usage.get('completion_tokens')
-            result['reasoning_tokens'] = (usage.get('completion_tokens_details') or {}).get('reasoning_tokens')
-    if result.get('finish_reason') == 'length':
-        result['status'] = 'truncated'
-        return False
-    if protocol == 'messages' and result.get('finish_reason') is None and done:
-        result['finish_reason'] = 'stop'
-    if not done or result.get('finish_reason') != 'stop' or first is None:
-        raise RuntimeError('Réponse absente ou flux incomplet')
-    n = result.get('completion_tokens')
-    rn = result.get('reasoning_tokens')
-    if not isinstance(n, int) or n <= 1:
-        raise RuntimeError('Comptage des tokens indisponible')
-    if m['provider'] in ('opencodego', 'opencode'):
-        count = n
-        begin, end = first_generated, last_generated
-        m['throughput_scope'] = 'reasoning_and_response'
-        result['throughput_formula'] = '(completion_tokens - 1) / (last_generated_time - first_generated_time)'
-    else:
-        if first_reason is not None and not isinstance(rn, int):
-            raise RuntimeError('Comptage distinct des tokens indisponible')
-        count = n - (rn or 0)
-        begin, end = first, last
-        m['throughput_scope'] = 'response_only'
-        result['throughput_formula'] = '(completion_tokens - reasoning_tokens - 1) / (last_content_time - first_content_time)'
-    if count <= 1 or begin is None or end is None or end <= begin:
-        raise RuntimeError('Échantillon de génération insuffisant')
-    result['generation_seconds'] = round(end - begin, 4)
-    result['throughput_scope'] = m['throughput_scope']
-    m['tokens_per_second'] = round((count - 1) / (end - begin), 3)
-    result['status'] = 'completed'
-    return True
+    return performance.run_benchmark(m, key, budget, metadata, session_id,
+                                     reasoning=reasoning, request=request, now=now, api_error=api_error,
+                                     clock=time.monotonic, alarm=signal.alarm)
 
 
 def availability_color(remaining_percent):
@@ -562,8 +396,8 @@ def policy_table(models):
             model['mode'],
             model.get('model_id', model['model']),
             model['provider'],
-            performance_display('ttft', model.get('ttft_seconds'), mode=model['mode']),
-            performance_display('tokens', model.get('tokens_per_second'), model.get('throughput_scope'), model['mode']),
+            performance_display('ttft', model.get('ttft_seconds'), mode='mode3' if model.get('is_free') else model['mode']),
+            performance_display('tokens', model.get('tokens_per_second'), model.get('throughput_scope'), 'mode3' if model.get('is_free') else model['mode']),
             ('🟢 Valide' + (' — gratuit' if model['mode'] in FREE_MODES else
                            ' — repli gratuit' if model.get('selection_category') == 'free' else '')
              if model['state'] == 'Valide' else '🔴 Invalide — ' + (model.get('cause') or 'Non évalué')),
@@ -606,7 +440,7 @@ def publish(d, active=False, forced_mode=None):
         m['selected'] = m is chosen
         m['quota_display'] = quota_display(m, fx)
     d.update(published_at=now(), evaluated_at=now(), selected_mode=chosen['mode'] if chosen else None,
-             selection_status='selected' if chosen else 'no_valid_model', protocol_version=6)
+             selection_status='selected' if chosen else 'no_valid_model', protocol_version=7)
     d.pop('last_partial_evaluation_at', None)
     if forced_mode:
         models = [m for m in d['models'] if m.get('evaluated_this_run') and m['mode'] == forced_mode]
@@ -753,14 +587,14 @@ def remember_success(m, budget, memory):
 
 
 def performance_limits(model):
-    return (30, 20) if model['mode'] in FREE_MODES else (TTFT_LIMIT_SECONDS, 15)
+    return performance.limits(model)
 
 
 def initial_model(priority, provider):
     mode = f'mode{priority}'
     ttft, throughput = performance_limits({'mode': mode})
     return {'mode': mode, 'priority': priority, 'provider': provider,
-            'model': 'Non évalué', 'reasoning': 'low', 'state': 'Invalide',
+            'model': 'Non évalué', 'reasoning': 'high', 'state': 'Invalide',
             'condition': f'TTFT < {ttft} s ET tokens/s > {throughput} ET ' + (
                 'gratuité vérifiée ET contexte >= 1M' if mode in FREE_MODES else
                 '(solde > 0 pour un payant OU épuisement confirmé et gratuit accessible)' if mode == 'mode5' else
@@ -862,14 +696,11 @@ def catalog_candidate(row, section, rank, generated_at):
             raise RuntimeError('Origine du routage TFL non autorisée')
     if any(price < 0 for price in prices) or not math.isfinite(sum(prices)) or sum(prices) / 2 > 0.5:
         raise RuntimeError('Prix TFL hors critères ou non vérifiable')
-    free = all(price == 0 for price in prices)
-    for variant in row.get('pricing_variants') or []:
-        if free and any(finite(variant[k]) != 0 for k in ('input', 'output')):
-            free = False
+    free = performance.is_free(row, section)
     return {'model_id': row['id'], 'model': row.get('name') or row['id'], 'provider': provider,
             'api_endpoint': endpoint, 'api_protocol': protocol,
             'throughput_scope': 'reasoning_and_response' if section != 'openrouter' else 'response_only',
-            'is_free': free, 'model_source': {'selector': 'tfl_performance_ranking', 'section': section,
+            'is_free': free, 'reasoning_capabilities': performance.capabilities(row), 'model_source': {'selector': 'tfl_performance_ranking', 'section': section,
                                              'rank': rank, 'generated_at': generated_at}}
 
 
@@ -924,20 +755,38 @@ def evaluate_candidate(model, key, category, memory, session_id):
     attempts = []
     stage = 'configuration du test'
     try:
-        metadata = {}
+        metadata = {'reasoning_capabilities': model.get('reasoning_capabilities', {})}
         if model['provider'] == 'openrouter':
             metadata = next((item for item in get('https://openrouter.ai/api/v1/models', key)['data']
                              if item['id'] == model['model_id']), None)
             if metadata is None:
                 raise RuntimeError('Modèle absent des métadonnées OpenRouter actuelles')
-        for budget in budgets_for(model, memory):
+        performance.reasoning(model, BUDGETS[0], metadata)
+        ttft_limit, throughput_limit = performance_limits(model)
+        model['performance_criteria'] = {'ttft_lt_seconds': ttft_limit, 'tokens_per_second_gt': throughput_limit}
+        model['condition'] = f'TTFT < {ttft_limit} s ET tokens/s > {throughput_limit} ET contrôles applicables'
+        pending = list(budgets_for(model, memory))
+        while pending:
+            budget = pending.pop(0)
             stage = 'quotas avant performance'
             check_category(model, key, category)
             stage = 'performance'
             model.update(ttft_seconds=None, tokens_per_second=None,
-                         performance_test={'status': 'not_run', 'max_tokens': budget, 'requests': 0})
+                         performance_test={'status': 'not_run', 'max_tokens': budget, 'requests': 0, 'reasoning': model.get('reasoning', 'high')})
             try:
-                complete = benchmark(model, key, budget, metadata, session_id=session_id)
+                try:
+                    complete = benchmark(model, key, budget, metadata, session_id=session_id)
+                except (urllib.error.HTTPError, ApiFailure) as error:
+                    diagnostic = http_diagnostic(error)
+                    if not performance.can_retry_xhigh(model, metadata, diagnostic):
+                        raise
+                    attempts.append({**copy.deepcopy(model['performance_test']), 'status': 'failed',
+                                     'http_error': copy.deepcopy(diagnostic), 'reasoning': 'high'})
+                    model['reasoning'] = 'xhigh'
+                    pending = list(budgets_for(model, memory))
+                    budget = pending.pop(0)
+                    check_category(model, key, category)
+                    complete = benchmark(model, key, budget, metadata, session_id=session_id)
                 if not complete:
                     raise RuntimeError('Budget du test épuisé : mesure inconclusive')
                 ttft = finite(model['ttft_seconds'])
@@ -945,7 +794,9 @@ def evaluate_candidate(model, key, category, memory, session_id):
                 ttft_limit, throughput_limit = performance_limits(model)
                 if ttft < 0 or ttft >= ttft_limit or throughput <= throughput_limit:
                     raise RuntimeError('Seuil de performance non satisfait')
-                model.update(ttft_seconds=ttft, tokens_per_second=throughput)
+                model.update(ttft_seconds=ttft, tokens_per_second=throughput,
+                             performance_criteria={'ttft_lt_seconds': ttft_limit, 'tokens_per_second_gt': throughput_limit})
+                model['condition'] = f'TTFT < {ttft_limit} s ET tokens/s > {throughput_limit} ET contrôles applicables'
             except Exception as error:
                 model['performance_test'].update(status='failed', reason=error_message(error), model_id=model['model_id'])
                 if isinstance(error, (urllib.error.HTTPError, ApiFailure)):
@@ -999,7 +850,7 @@ def main(active=False, forced=None, tfl_catalog=None):
         if forced and model['mode'] != forced['mode']:
             continue
         model.update(evaluated_this_run=True, state='Invalide', cause='', selected=False,
-                     provider=provider, model='Non évalué', model_id='Non évalué', reasoning='low',
+                     provider=provider, model='Non évalué', model_id='Non évalué', reasoning='high',
                      ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
                      last_successful_max_tokens=None, selection_category=None,
                      candidate_results=[], candidate_exclusions=[],

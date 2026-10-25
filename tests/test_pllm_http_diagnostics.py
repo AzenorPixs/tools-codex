@@ -29,7 +29,7 @@ class PllmHttpDiagnosticsTests(unittest.TestCase):
         for script in PLLM:
             yield load_script(script)
 
-    def test_chat_open_code_body_keeps_low_without_thinking(self):
+    def test_chat_open_code_body_keeps_high_without_thinking(self):
         for module in self.modules():
             for provider in ('opencodego', 'opencode'):
                 model = {'model_id': 'unseen-fixture', 'provider': provider, 'api_protocol': 'chat_completions',
@@ -39,7 +39,7 @@ class PllmHttpDiagnosticsTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, 'Réponse absente'):
                         module.benchmark(model, 'offline-key', 1024, {}, session_id='private-session')
                 body = request.call_args.args[2]
-                self.assertEqual(body['reasoning_effort'], 'low')
+                self.assertEqual(body['reasoning_effort'], 'high')
                 self.assertNotIn('thinking', body)
                 self.assertEqual(body['max_tokens'], 1024)
                 self.assertEqual(request.call_args.kwargs['extra_headers']['x-opencode-session'], 'private-session')
@@ -48,15 +48,15 @@ class PllmHttpDiagnosticsTests(unittest.TestCase):
     def test_other_reasoning_contracts_are_preserved(self):
         for module in self.modules():
             self.assertEqual(module.reasoning({'provider': 'deepseek'}, 1024, {}),
-                             {'reasoning_effort': 'low', 'thinking': {'type': 'enabled'}})
+                             {'reasoning_effort': 'high', 'thinking': {'type': 'enabled'}})
             for provider in ('opencodego', 'opencode'):
                 self.assertEqual(module.reasoning({'provider': provider, 'api_protocol': 'responses'}, 1024, {}),
-                                 {'reasoning': {'effort': 'low'}})
+                                 {'reasoning': {'effort': 'high'}})
                 self.assertEqual(module.reasoning({'provider': provider, 'api_protocol': 'messages'}, 1024, {}),
-                                 {'thinking': {'type': 'enabled', 'budget_tokens': 204}})
+                                 {'thinking': {'type': 'adaptive'}, 'output_config': {'effort': 'high'}})
             self.assertEqual(module.reasoning({'provider': 'openrouter'}, 2048,
                                              {'reasoning': {'supports_max_tokens': True}}),
-                             {'reasoning': {'max_tokens': 409}})
+                             {'reasoning': {'max_tokens': 1638}})
 
     def test_retry_after_seconds_zero_and_whitespace(self):
         for module in self.modules():
@@ -174,7 +174,7 @@ class PllmHttpDiagnosticsTests(unittest.TestCase):
 
     def test_unknown_open_code_protocol_is_not_given_deepseek_parameters(self):
         for module in self.modules():
-            self.assertEqual(module.reasoning({'provider': 'opencodego'}, 1024, {}), {'reasoning_effort': 'low'})
+            self.assertEqual(module.reasoning({'provider': 'opencodego'}, 1024, {}), {'reasoning_effort': 'high'})
             with self.assertRaisesRegex(RuntimeError, 'Protocole API OpenCode'):
                 module.reasoning({'provider': 'opencode', 'api_protocol': 'unknown'}, 1024, {})
 

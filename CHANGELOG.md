@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Harmoniser les gratuits PLLM/TFL : prix nuls vérifiés, contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s, y compris le repli gratuit OpenRouter de PLLM 5.
+- Tester en HIGH avec le seul repli XHIGH pris en charge ; appliquer ce défaut aux six modes PLLM et aux gratuits TFL, avec moteur streaming commun embarqué et mémoire séparée par raisonnement effectif.
+- Exclure de TFL models les gratuits échoués ou non mesurables, conserver causes et tentatives dans les exclusions et ajouter le tableau de tous les essais gratuits ; aucun quota consulté par ces tests.
+- Aligner les sources, la documentation, VERSION, pyproject.toml et les cinq plugins sur 0.7.2. Cette livraison locale n'actualise pas les installations et ne qualifie pas les performances fournisseur actuelles.
+
 - Déclarer le nom d'affichage du skill PLLM en majuscules dans les distributions autonome et embarquée, sans changement de version ni d'identifiant technique.
 - Séparer les gratuits Go et OpenCode général en modes PLLM 3/4, avec les comptes de 1/2, sans contrôle de quota ni solde : contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s.
 - Réserver 1/2 aux payants Go : un quota épuisé les rend rouges et invalides sans repli ; déplacer OpenRouter vers 5 et DeepSeek direct vers 6, avec leurs contrôles et seuils conservés.

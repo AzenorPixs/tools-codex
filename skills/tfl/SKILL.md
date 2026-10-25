@@ -124,10 +124,11 @@ OpenCode, sans identifiants utilisateur, query ou fragment. Une URL non sûre
 bloque la publication. Le JSON conserve les sources et dates dans
 `modalities_metadata` et `routing_metadata`. Le statut de route `documented`
 indique une résolution de métadonnées ; `generation_tested=false` ne doit
-jamais être présenté comme un appel de génération réussi.
+jamais être présenté comme un appel de génération réussi. Un gratuit retenu
+après une génération complète reçoit generation_tested=true avec ses preuves.
 
 Pour `responses`, le corps utilise `input`, `max_output_tokens`, `stream=true`,
-`store=false` et `reasoning.effort=low`. Pour `chat_completions`, il utilise
+`store=false` et `reasoning.effort=high`. Pour `chat_completions`, il utilise
 `messages` et `max_tokens`. Toute requête OpenCode Go de complétion doit porter
 `x-opencode-session`. Une route absente ou inconnue doit être signalée et ne
 doit pas être remplacée silencieusement par une autre.
@@ -199,7 +200,47 @@ général OpenCode les moins onéreux` et `Rapports des LMM OpenRouter les moins
 onéreux`. Il restitue la date de récupération, les filtres appliqués,
 les chemins des fichiers et les exclusions dans le JSON.
 
-TFL ne mesure ni la qualité de code, ni la latence, ni le débit. Les tarifs sont
+TFL mesure désormais la latence et le débit des seuls gratuits structurellement
+admissibles. Les payants restent un catalogue tarifaire sans benchmark.
+TFL ne mesure pas la qualité fonctionnelle du code généré. Les tarifs sont
 des références fournisseur susceptibles d’évoluer. Le catalogue TFL est la
 source à utiliser par `/pllm` pour son modèle OpenRouter économique, via
 `~/.codex/skills/tfl/data/tfl.json`, section `openrouter.models`.
+
+
+## Qualification obligatoire des gratuits
+
+Pour les trois catalogues, vérifier les prix d'entrée/sortie nuls et les
+variantes compatibles, contexte ≥1M et les filtres existants. Tester chaque
+candidat gratuit avec scripts/performance.py, moteur local embarqué identique
+à PLLM. Exiger réponse complète, comptage fiable, TTFT <30 s ET débit >20
+ tokens/s. Le débit Go/général inclut raisonnement et réponse ; OpenRouter
+utilise la réponse seule. Aucune mesure commerciale ou historique ne valide
+la collecte courante.
+
+Tous les tests demandent HIGH ; XHIGH est le seul repli autorisé si HIGH est
+indisponible et XHIGH publié. Chat Completions utilise reasoning_effort,
+Responses reasoning.effort, Messages thinking adaptive et output_config.effort.
+OpenRouter utilise ses métadonnées, ou un budget HIGH de 80 % lorsque seul
+max_tokens est disponible. Aucun repli Low/Medium. Un refus 400 propre à l'effort
+permet au plus un passage XHIGH annoncé, avec recalcul des paliers ; 401/403/429
+arrêtent le candidat. Les paliers sont 1024, 2048, 4096, 8192, 120 s par requête,
+arrêt au premier succès. Le niveau effectif et les paramètres sont tracés.
+
+Les tests gratuits n'appellent jamais quota, crédit ou solde. Go et général
+utilisent la clé de la politique TFL sélectionnée. Pour les générations
+OpenRouter, utiliser la clé d'environnement existante, sinon le trousseau
+historique service=pllm/policy=mode3/provider=openrouter du compte OpenRouter,
+sans valeur transmise au modèle, en argument, dans les rapports ou journaux.
+Un accès manquant exclut le gratuit avec sa cause ; ne créer aucun secret.
+
+Retirer de models tous les gratuits échoués ou non mesurables. Conserver
+leurs critères, dates, niveaux, tentatives, mesures disponibles et causes
+filtrées dans excluded_models et free_performance_results. Une limitation
+HTTP est un échec d'accès, jamais une mesure de TTFT/débit inventée. Recalculer
+les rangs après exclusion, sans modifier le classement des payants.
+Ajouter après les trois tableaux fournisseurs un tableau commun des essais
+gratuits, avec fournisseur, modèle, TTFT, débit, raisonnement et état/cause.
+Si une section devient vide après qualification, arrêter avant publication et
+préserver les rapports existants. Ne pas confondre ce résultat daté et lié au
+compte utilisé avec une indisponibilité permanente du fournisseur.

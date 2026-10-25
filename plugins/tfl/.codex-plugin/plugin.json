@@ -1,7 +1,7 @@
 {
   "name": "tfl",
-  "version": "0.7.1",
-  "description": "Génère un rapport comparatif des modèles Go, OpenCode général et OpenRouter.",
+  "version": "0.7.2",
+  "description": "Compare les catalogues et qualifie les modèles gratuits en HIGH/XHIGH.",
   "author": {
     "name": "AzenorPixs"
   },
@@ -11,7 +11,7 @@
   "interface": {
     "displayName": "TFL",
     "shortDescription": "Compare Go, OpenCode général et OpenRouter.",
-    "longDescription": "TFL génère un rapport filtré des modèles disponibles, de leur contexte et de leurs tarifs.",
+    "longDescription": "TFL collecte Go, OpenCode général et OpenRouter, puis exclut les gratuits échoués aux seuils de contexte, TTFT et débit.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],

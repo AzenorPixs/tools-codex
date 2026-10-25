@@ -40,6 +40,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
         installed = base / 'pllm/scripts/evaluate.py'
         installed.parent.mkdir(parents=True)
         installed.write_bytes(script.read_bytes())
+        installed.with_name('performance.py').write_bytes(script.with_name('performance.py').read_bytes())
         module = load_script(installed)
         path = base / 'catalog.json'
         catalog = {'generated_at': 'fixture-date',
@@ -84,7 +85,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             model['performance_test']['status'] = 'completed' if complete else 'truncated'
             return complete
 
-        metadata = [{'id': item['id'], 'reasoning': {'supported_efforts': ['low']}}
+        metadata = [{'id': item['id'], 'reasoning': {'supported_efforts': ['high']}}
                     for item in json.loads(path.read_text())['openrouter']['models']]
         with ExitStack() as stack:
             stack.enter_context(patch.object(module.subprocess, 'run', side_effect=secret_lookup, return_value=SimpleNamespace(
@@ -362,7 +363,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 self.assertEqual(model['ttft_seconds'], 2)
                 self.assertEqual(model['tokens_per_second'], 50)
                 self.assertEqual(model['throughput_scope'], 'reasoning_and_response')
-                self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'low'})
+                self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'high'})
                 self.assertEqual(request.call_args.kwargs['extra_headers']['x-opencode-session'], 'stable-fixture')
                 self.assertNotIn('stable-fixture', json.dumps(model))
 
@@ -380,10 +381,10 @@ class PllmFreeFallbackTests(unittest.TestCase):
             with patch.object(module, 'request', return_value=stream) as request, \
                     patch.object(module.time, 'monotonic', side_effect=(0, 1, 2, 3, 4, 5)):
                 self.assertTrue(module.benchmark(model, 'offline-fixture', 1024,
-                                                {'reasoning': {'supported_efforts': ['low']}}))
+                                                {'reasoning': {'supported_efforts': ['high']}}))
             self.assertEqual(model['tokens_per_second'], 20)
             self.assertEqual(model['throughput_scope'], 'response_only')
-            self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'low'})
+            self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'high'})
             self.assertNotIn('provider', request.call_args.args[2])
 
     def test_quota_failure_after_first_winner_invalidates_without_more_generation(self):
@@ -413,12 +414,12 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark' and event[1] == 'mode1'], ['paid-a'])
             self.assertEqual(data['selected_mode'], 'mode3')
 
-    def test_low_incompatible_metadata_prevents_generation(self):
+    def test_high_incompatible_metadata_prevents_generation(self):
         for script in PLLM:
             module, _, _ = self.workspace(script)
             model = {'mode': 'mode5', 'provider': 'openrouter', 'model_id': 'fixture'}
-            with patch.object(module, 'request') as request, self.assertRaisesRegex(RuntimeError, 'Low non pris en charge'):
-                module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['high']}})
+            with patch.object(module, 'request') as request, self.assertRaisesRegex(RuntimeError, 'HIGH et XHIGH non pris en charge'):
+                module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['low']}})
             request.assert_not_called()
 
 

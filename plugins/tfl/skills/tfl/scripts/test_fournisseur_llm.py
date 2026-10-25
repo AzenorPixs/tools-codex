@@ -4,6 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
+import importlib.util
+import signal
+import uuid
 import hashlib
 import json
 import math
@@ -26,6 +30,10 @@ OPENCODE_SOURCE_URL = "https://opencode.ai/v2/docs/console/models/"
 SOURCE_URL = "https://opencode.ai/docs/go/"
 CONTEXT_METADATA_URL = "https://models.dev/api.json"
 ROOT = Path(__file__).resolve().parent.parent
+_PERFORMANCE_SPEC = importlib.util.spec_from_file_location('tfl_performance', Path(__file__).with_name('performance.py'))
+performance = importlib.util.module_from_spec(_PERFORMANCE_SPEC)
+_PERFORMANCE_SPEC.loader.exec_module(performance)
+
 MIN_CONTEXT_TOKENS = 1_000_000
 MAX_REFERENCE_AVERAGE_USD_PER_MILLION = 0.5
 BLACKLISTED_MODEL_IDS = {"muse-spark-1.2-contributor"}
@@ -673,7 +681,7 @@ def format_opencode_table(rows: list[dict], policy: str | None, generated_at: st
         lines.append("Les tarifs du catalogue général sont collectés indépendamment de Go. Le coût moyen maximal des variantes publiées est retenu ; les sources, dates et exclusions restent dans le JSON.")
     else:
         lines.append(f"Actualisé le {generated_at} avec la clé {policy}; classement par coût moyen hors pointe croissant, après filtres contexte ≥ 1M et coût moyen ≤ 0.5 $/M.")
-        lines.append("Les tarifs sont des références OpenCode Go et peuvent évoluer. Les modèles exclus ne sont pas affichés dans le rapport Markdown; leurs motifs restent disponibles dans le catalogue JSON.")
+        lines.append("Les tarifs sont des références OpenCode Go et peuvent évoluer. Les modèles exclus ne sont pas affichés dans les tableaux fournisseurs; leurs motifs restent disponibles dans le catalogue JSON.")
         lines.append("Tarifs collectés dans la documentation officielle; les variantes et la provenance restent dans le JSON. Pour plusieurs paliers de contexte, le coût moyen hors pointe maximal est retenu. Estimations de requêtes non collectées : N/A.")
     lines.append("Modalités et routage collectés sans liste de modèles; les sources et dates restent dans le JSON. Les routes documentées ne constituent pas un test de génération.")
     unrouted = [row["id"] for row in rows if row.get("routing_warning")]
@@ -880,6 +888,134 @@ def format_openrouter_table(rows: list[dict], generated_at: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def openrouter_secret() -> str:
+    result = subprocess.run(['secret-tool', 'lookup', 'service', 'pllm', 'policy', 'mode3',
+                             'provider', 'openrouter', 'account', 'az.openrouter@pixs.fr'],
+                            capture_output=True, timeout=15, check=False)
+    if result.returncode or not result.stdout.strip():
+        return ''
+    return result.stdout.decode().strip()
+
+
+def evaluate_free(model: dict, key: str, metadata: dict) -> dict:
+    model.update(state='Invalide', cause='', reasoning='high', requested_reasoning='high',
+                 evaluated_at=performance.now(), ttft_seconds=None, tokens_per_second=None,
+                 performance_criteria=dict(performance.FREE_CRITERIA), quota_status='not_applicable',
+                 performance_test={'status': 'not_run', 'requests': 0})
+    attempts = []
+    previous_handler = signal.signal(signal.SIGALRM, performance.expire)
+    try:
+        if positive_integer(model.get('context_length')) is None or model['context_length'] < MIN_CONTEXT_TOKENS:
+            raise RuntimeError('Contexte gratuit inférieur à 1M ou non vérifiable')
+        if not key:
+            raise RuntimeError('Clé API de génération inaccessible')
+        protocol = model.get('api_protocol')
+        endpoint = model.get('api_endpoint')
+        if protocol not in ('responses', 'chat_completions', 'messages') or not isinstance(endpoint, str):
+            raise RuntimeError('Routage absent ou protocole non benchmarké')
+        if model['provider'] != 'openrouter':
+            safe_go_url(endpoint)
+        performance.reasoning(model, performance.BUDGETS[0], metadata)
+        session_id = str(uuid.uuid4()) if model['provider'] != 'openrouter' else None
+        pending = list(performance.BUDGETS)
+        while pending:
+            budget = pending.pop(0)
+            try:
+                try:
+                    complete = performance.benchmark(model, key, budget, metadata, session_id=session_id)
+                except (HTTPError, performance.ApiFailure) as error:
+                    diagnostic = performance.http_diagnostic(error)
+                    if not performance.can_retry_xhigh(model, metadata, diagnostic):
+                        raise
+                    attempts.append({**copy.deepcopy(model['performance_test']), 'status': 'failed',
+                                     'max_tokens': budget, 'reasoning': 'high', 'http_error': copy.deepcopy(diagnostic)})
+                    model['reasoning'] = 'xhigh'
+                    pending = list(performance.BUDGETS)
+                    budget = pending.pop(0)
+                    complete = performance.benchmark(model, key, budget, metadata, session_id=session_id)
+                if not complete:
+                    raise RuntimeError('Budget du test épuisé : mesure inconclusive')
+                try:
+                    ttft, throughput = performance.finite(model['ttft_seconds']), performance.finite(model['tokens_per_second'])
+                except (TypeError, ValueError) as error:
+                    raise RuntimeError('Mesure de performance absente ou non finie') from error
+                if ttft < 0 or ttft >= 30 or throughput <= 20:
+                    raise RuntimeError('Seuil gratuit non satisfait : TTFT <30 s et débit >20 tokens/s requis')
+            except Exception as error:
+                diagnostic = performance.http_diagnostic(error) if isinstance(error, (HTTPError, performance.ApiFailure)) else None
+                model['performance_test'].update(status='failed', max_tokens=budget, reasoning=model['reasoning'],
+                                                 reason=performance.error_message(error))
+                if diagnostic is not None:
+                    model['performance_test']['http_error'] = copy.deepcopy(diagnostic)
+                attempts.append(copy.deepcopy(model['performance_test']))
+                if diagnostic is not None or isinstance(error, performance.AuthenticationFailure) or not pending:
+                    raise
+                continue
+            model.update(state='Valide', cause='Tous les critères gratuits satisfaits')
+            model['performance_test'].update(max_tokens=budget, reasoning=model['reasoning'])
+            attempts.append(copy.deepcopy(model['performance_test']))
+            break
+    except Exception as error:
+        model.update(state='Invalide', cause=performance.error_message(error))
+        model['performance_test'].update(reason=model['cause'])
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        model['performance_test']['attempts'] = attempts
+        for field in ('ttft_seconds', 'tokens_per_second'):
+            if model.get(field) is not None:
+                try:
+                    model[field] = performance.finite(model[field])
+                except (TypeError, ValueError):
+                    model[field] = None
+    return model
+
+
+def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
+                        key: str, audit: list[dict]) -> list[dict]:
+    retained = []
+    for row in rows:
+        row['is_free'] = performance.is_free(row, section)
+        if not row['is_free']:
+            retained.append(row)
+            continue
+        provider = {'opencode_go': 'opencodego', 'opencode': 'opencode', 'openrouter': 'openrouter'}[section]
+        model = {'model_id': row['id'], 'provider': provider,
+                 'api_protocol': row.get('api_protocol', 'chat_completions'),
+                 'api_endpoint': row.get('api_endpoint') if section != 'openrouter' else 'https://openrouter.ai/api/v1/chat/completions',
+                 'is_free': True, 'section': section, 'context_length': row.get('context_length')}
+        evaluate_free(model, key, {'reasoning_capabilities': row.get('reasoning_capabilities', {})})
+        audit.append(copy.deepcopy(model))
+        row.update({field: copy.deepcopy(model[field]) for field in (
+            'reasoning', 'requested_reasoning', 'evaluated_at', 'ttft_seconds', 'tokens_per_second',
+            'performance_criteria', 'quota_status', 'performance_test')})
+        if model['state'] == 'Valide':
+            if isinstance(row.get('routing_metadata'), dict):
+                row['routing_metadata']['generation_tested'] = True
+            retained.append(row)
+        else:
+            excluded.append({**row, 'reason': model['cause'], 'performance_state': 'Invalide'})
+    for rank, row in enumerate(retained, 1):
+        row['rank'] = rank
+    return retained
+
+
+def format_free_performance(audit: list[dict]) -> str:
+    lines = ['## Tests de performance des modèles gratuits', '',
+             'Critères : contexte ≥1M, gratuité vérifiée, réponse complète, TTFT <30 s et débit >20 tokens/s. HIGH puis XHIGH si pris en charge ; aucun contrôle de quota.', '',
+             '| Fournisseur | Modèle / ID | TTFT (s) | Tokens/s | Raisonnement | État / cause |',
+             '|---|---|---:|---:|---|---|']
+    for model in audit:
+        value = lambda field: '-' if model.get(field) is None else f'{model[field]:.4f}'
+        state = ('🟢 Valide' if model['state'] == 'Valide' else '🔴 Exclu') + ' — ' + model['cause']
+        lines.append('| ' + ' | '.join(escape(item) for item in (
+            model['provider'], model['model_id'], value('ttft_seconds'), value('tokens_per_second'),
+            model['reasoning'].upper(), state)) + ' |')
+    if not audit:
+        lines.append('Aucun candidat gratuit structurellement admissible.')
+    return '\n'.join(lines) + '\n'
+
+
 def main() -> int:
     args = parse_args()
     requested_policy = args.policy_option or args.policy or "auto"
@@ -901,6 +1037,25 @@ def main() -> int:
             raise RuntimeError("aucun modèle du catalogue général OpenCode ne satisfait les filtres TFL")
         openrouter_payload = fetch_openrouter_models(openrouter_key, args.timeout)
         openrouter_rows, openrouter_excluded = build_openrouter_rows(openrouter_payload)
+        audit = []
+        for rows, payload, metadata in ((opencode_rows, opencode_payload, go_metadata),
+                                        (general_rows, general_payload, general_metadata),
+                                        (openrouter_rows, openrouter_payload, {})):
+            raw_models = {row['id']: row for row in payload['data']}
+            for row in rows:
+                raw = raw_models.get(row['id'], {})
+                row['reasoning_capabilities'] = performance.capabilities(raw, go_model_metadata(raw, metadata), row)
+        if not openrouter_key and any(performance.is_free(row, 'openrouter') for row in openrouter_rows):
+            try:
+                openrouter_key = openrouter_secret()
+            except (OSError, subprocess.SubprocessError):
+                openrouter_key = ''
+        opencode_rows = qualify_free_models(opencode_rows, opencode_excluded, 'opencode_go', api_key, audit)
+        general_rows = qualify_free_models(general_rows, general_excluded, 'opencode', api_key, audit)
+        openrouter_rows = qualify_free_models(openrouter_rows, openrouter_excluded, 'openrouter', openrouter_key or '', audit)
+        if not all((opencode_rows, general_rows, openrouter_rows)):
+            raise RuntimeError('aucun modèle admissible après qualification gratuite dans un catalogue ; rapports préservés')
+
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"Erreur TFL: {exc}", file=sys.stderr)
         return 1
@@ -949,6 +1104,8 @@ def main() -> int:
     }
     catalog = {
         "schema_version": 1,
+        "free_performance_criteria": dict(performance.FREE_CRITERIA),
+        "free_performance_results": audit,
         "generated_at": generated_at,
         "order": ["opencode_go", "opencode", "openrouter"],
         "common_columns": ["rank", "model_id", "context", "output", "input_price", "output_price", "average_cost", "cost_color"],
@@ -964,7 +1121,8 @@ def main() -> int:
     markdown_path = output_dir / "tfl.md"
     markdown = ("# TFL — Test Fournisseur LLM\n\n" + format_opencode_table(opencode_rows, policy, generated_at)
                 + "\n" + format_opencode_table(general_rows, None, generated_at, general_catalog=True)
-                + "\n" + format_openrouter_table(openrouter_rows, generated_at))
+                + "\n" + format_openrouter_table(openrouter_rows, generated_at)
+                + "\n" + format_free_performance(audit))
     try:
         serialized = json.dumps(catalog, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     except ValueError:

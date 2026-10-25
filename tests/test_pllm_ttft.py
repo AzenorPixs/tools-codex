@@ -27,7 +27,7 @@ class PllmTtftTests(unittest.TestCase):
                     "mode": f"mode{priority}",
                     "priority": priority,
                     "provider": provider,
-                    "reasoning": "low",
+                    "reasoning": "high",
                     "condition": "TTFT < 60 s ET tokens/s > 15 ET quotas valides",
                     "state": "Invalide",
                 }

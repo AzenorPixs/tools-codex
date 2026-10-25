@@ -16,12 +16,12 @@ un quota épuisé les rend `🔴 Invalide — Quota épuisé`, sans génération
 Les modes 3/4 n'appellent jamais de quota ni de solde, y compris entre paliers.
 Ils restent gratuits indépendamment des ressources des comptes associés.
 
-Les seuils stricts sont TTFT <30 s et débit >20 tokens/s en 3/4, contre
-TTFT <90 s et débit >15 tokens/s en 1/2/5/6. Tous exigent réponse complète,
+Les seuils stricts sont TTFT <30 s et débit >20 tokens/s pour tous les gratuits, y compris le repli gratuit OpenRouter du mode 5. Les candidats payants
+gardent TTFT <90 s et débit >15 tokens/s. Tous exigent réponse complète,
 comptage fiable, filtres TFL et contexte ≥1M pour les candidats du catalogue.
 Un prix d'entrée ET de sortie vérifié nul et des variantes compatibles prouvent
 la gratuité ; le nom free ne suffit pas. Conserver modalités, blacklist,
-transport et Low. L'authentification, les refus et les limites HTTP s'appliquent
+transport et HIGH. L'authentification, les refus et les limites HTTP s'appliquent
 également aux gratuits, sans usurper une identité de client natif.
 
 Seul le mode 5 garde le repli gratuit OpenRouter après crédit épuisé confirmé,
@@ -45,7 +45,7 @@ Ne publier ni corps d'erreur brut, compte, clé ou identifiant de session.
 
 - Priorité : 1 (priorité la plus haute actuellement définie).
 - Modèle : meilleur candidat payant TFL OpenCode Go exclusivement.
-- Raisonnement : Low.
+- Raisonnement : HIGH.
 - Fournisseur : OpenCode Go (`opencodego`).
 - TTFT : évalué par le test, en secondes.
 - Tokens/s : évalué par le test.
@@ -100,15 +100,15 @@ silencieuse depuis le nom du modèle.
 
 Les modèles Muse Spark 1.3, Muse Spark 1.2, GPT 5.6 Luna et Grok 4.6 utilisent
 `POST /responses`, avec `input`, `max_output_tokens` et
-`reasoning.effort=low`. Les modèles déclarés `chat_completions` utilisent
+`reasoning.effort=high`. Les modèles déclarés `chat_completions` utilisent
 `POST /chat/completions` avec `messages` et `max_tokens`. Les modèles déclarés
 `messages` utilisent `POST /messages`; ce protocole est documenté par TFL mais
 est benchmarké par PLLM avec le parseur SSE Anthropic dédié.
-Pour `chat_completions` OpenCode Go et général, Low est envoyé uniquement via
-`reasoning_effort=low`, sans `thinking`. Ce paramètre reste réservé aux
-contrats qui le requièrent : budget thinking de Messages et activation
+Pour `chat_completions` OpenCode Go et général, HIGH est envoyé uniquement via
+`reasoning_effort=high`, sans `thinking`. Ce paramètre reste réservé aux
+contrats qui le requièrent : thinking adaptatif et output_config.effort de Messages et activation
 thinking pour DeepSeek direct. Responses et OpenRouter gardent leurs propres
-représentations Low ; ne pas déduire le corps du nom du modèle.
+représentations HIGH ; ne pas déduire le corps du nom du modèle.
 
 Pour Muse, ne jamais envoyer une requête vers `/chat/completions` : le contrôle
 réalisé renvoie HTTP 500, alors que `/responses` fonctionne. Une route absente
@@ -121,9 +121,9 @@ observées en 404 sont documentés dans
 [references/opencode-go-api.md](references/opencode-go-api.md). Cette référence
 reste indicative : les réponses en temps réel de l’API font autorité.
 
-Pour Muse, le corps correct est celui de Responses : `input` structuré, `max_output_tokens`, `stream=true`, `store=false` et `reasoning.effort=low`, avec le User-Agent `PLLM-coding-agent/1.0` et un identifiant stable `x-opencode-session`.
+Pour Muse, le corps correct est celui de Responses : `input` structuré, `max_output_tokens`, `stream=true`, `store=false` et `reasoning.effort=high`, avec le User-Agent `PLLM-coding-agent/1.0` et un identifiant stable `x-opencode-session`.
 
-Un HTTP 400 ou 429 arrête les paliers du candidat dans cette invocation.
+Hors l'unique repli d'effort XHIGH autorisé, un HTTP 400 ou 429 arrête les paliers du candidat dans cette invocation.
 Continuer les autres candidats de la catégorie autorisée après leurs contrôles.
 Un HTTP 429 ne déplace jamais un candidat payant 1/2 vers les gratuits 3/4.
 Conserver son Retry-After exploitable et afficher le réessai indiqué, sans
@@ -162,7 +162,7 @@ performance restent obligatoires partout.
 
 ### Mode 2 — priorité 2
 
-- Meilleur payant TFL Go uniquement, Low, fournisseur `opencodego`.
+- Meilleur payant TFL Go uniquement, HIGH, fournisseur `opencodego`.
 - Référence existante : `service=pllm`, `policy=mode2`, `provider=opencodego`,
   `account=az.github@pixs.fr`.
 - Contrôler les trois périodes Go avec ce compte avant chaque requête.
@@ -171,7 +171,7 @@ performance restent obligatoires partout.
 
 ### Mode 3 — priorité 3 — gratuits du compte 1
 
-- Tous les gratuits vérifiés TFL `opencode_go` puis `opencode`, Low.
+- Tous les gratuits vérifiés TFL `opencode_go` puis `opencode`, HIGH.
 - Utiliser exactement la référence de secret du mode 1, sans nouveau secret.
 - Aucun appel de quota ou de solde. Quotas JSON `null`,
   `quota_status=not_applicable` et affichage `Non applicable`.
@@ -194,13 +194,14 @@ performance restent obligatoires partout.
 - Contrôle : `GET https://openrouter.ai/api/v1/credits`, solde =
   `data.total_credits - data.total_usage`. Garder la devise de l'API.
 - Validité : ressources conformes à la catégorie, réponse complète,
-  TTFT <90 s ET débit réponse seule >15 tokens/s. Un contrôle refusé interdit le test.
-- Utiliser les métadonnées OpenRouter actuelles pour Low. Si le catalogue
+  TTFT <90 s ET débit réponse seule >15 tokens/s pour un payant ;
+  TTFT <30 s ET débit >20 tokens/s pour un gratuit. Un contrôle refusé interdit le test.
+- Utiliser les métadonnées OpenRouter actuelles pour HIGH. Si le catalogue
   doit être actualisé, appliquer TFL avec ses accès autorisés.
 
 ### Mode 6 — priorité 6 — ancien mode 4 DeepSeek direct
 
-- DeepSeek V4 Flash, `deepseek-v4-flash`, Low, fournisseur `deepseek`.
+- DeepSeek V4 Flash, `deepseek-v4-flash`, HIGH, fournisseur `deepseek`.
 - Référence inchangée : `service=pllm`, `policy=mode4`, `provider=deepseek`,
   `account=az.deepseek@pixs.fr` ; conserver ces attributs historiques.
 - Contrôle : `GET https://api.deepseek.com/user/balance`,
@@ -210,7 +211,7 @@ performance restent obligatoires partout.
 - Les crédits achetés et la consommation cumulée indisponibles ne remplacent
   jamais le contrôle du solde.
 
-Pour tous les modes, vérifier la prise en charge effective de `Low` et sa représentation API. Ne jamais remplacer silencieusement ce réglage par un niveau différent. Si le niveau demandé est incompatible, déclarer `Invalide` avec la cause. Ne pas reprendre les anciens soldes, quotas ou statuts comme résultats actuels.
+Pour tous les modes, demander HIGH et vérifier sa représentation API ; XHIGH est le seul repli autorisé lorsqu'il est pris en charge. Ne jamais remplacer silencieusement ce réglage par un niveau différent. Si le niveau demandé est incompatible, déclarer `Invalide` avec la cause. Ne pas reprendre les anciens soldes, quotas ou statuts comme résultats actuels.
 
 ## Évaluation et restitution
 
@@ -358,6 +359,11 @@ python3 scripts/evaluate.py 3 --tfl-catalog /chemin/vers/tfl.json
 ```
 
 Le chemin explicite est utilisé pour Go, les gratuits Go/général 3/4 et OpenRouter 5.
+TFL retire désormais de models les gratuits échoués à ses tests HIGH/XHIGH,
+avec leurs preuves dans excluded_models. Le catalogue dépend du compte TFL
+utilisé ; un échec avec ce compte peut rendre un candidat absent pour un autre
+compte jusqu'à une nouvelle collecte TFL. PLLM ne réintègre pas les exclus et
+reteste toujours ses candidats retenus avec la clé propre à son mode.
 Sans option, le chemin voisin `../tfl/data/tfl.json` est conservé. Un catalogue
 absent ou invalide produit un diagnostic ; ne pas chercher dans les
 configurations privées pour le remplacer.
@@ -377,19 +383,31 @@ Après un repli HTTP 429, recalculer les paliers pour la nouvelle configuration 
 sans réussite mémorisée correspondante, commencer à 1 024 tokens. Effectuer les contrôles applicables avant sa requête, sans quota en 3/4. Le dernier palier et l'épuisement des candidats
 ne permettent jamais de déclarer valide un modèle sans mesures concluantes.
 
-## Protocole de performance reproductible — version 6
+## Protocole de performance reproductible — version 7
 
 À chaque invocation, exécuter `python3 scripts/evaluate.py`, chemin relatif au dossier de ce skill. Le script contrôle les quotas applicables avant chaque test (jamais en 3/4), mesure les réponses en streaming et publie le JSON et le Markdown. Il compare les candidats de chaque catégorie ; une invocation forcée ne remplace jamais son candidat.
 
-Le test utilise le même prompt de tri fusion Python et de trois assertions pour tous les modes. Les paliers autorisés sont exactement **1 024 → 2 048 → 4 096 → 8 192 tokens**, raisonnement et réponse compris. Sans réussite mémorisée pour cette configuration, commencer à 1 024. Après une troncature ou un seuil mesuré non satisfait, passer au palier suivant après les contrôles applicables, sans quota en 3/4. HTTP 400 et 429 arrêtent ce candidat sans augmenter son budget ; les règles 401/403 restent applicables. Si un contrôle indispensable échoue, arrêter sans lancer ce test ; un épuisement interdit 1/2 et autorise seulement les gratuits OpenRouter de 5. Arrêter les paliers du candidat au premier succès, ou après l’échec à 8 192, puis continuer les autres candidats autorisés. Aucun palier à 8 912 ni tentative supplémentaire. Chaque requête est limitée à 120 secondes ; le TTFT requis reste <30 s en 3/4 et <90 s dans les autres modes.
+Le test utilise le même prompt de tri fusion Python et de trois assertions pour tous les modes. Les paliers autorisés sont exactement **1 024 → 2 048 → 4 096 → 8 192 tokens**, raisonnement et réponse compris. Sans réussite mémorisée pour cette configuration, commencer à 1 024. Après une troncature ou un seuil mesuré non satisfait, passer au palier suivant après les contrôles applicables, sans quota en 3/4. Hors l'unique repli d'effort XHIGH autorisé, HTTP 400 et 429 arrêtent ce candidat sans augmenter son budget ; les règles 401/403 restent applicables. Si un contrôle indispensable échoue, arrêter sans lancer ce test ; un épuisement interdit 1/2 et autorise seulement les gratuits OpenRouter de 5. Arrêter les paliers du candidat au premier succès, ou après l’échec à 8 192, puis continuer les autres candidats autorisés. Aucun palier à 8 912 ni tentative supplémentaire. Chaque requête est limitée à 120 secondes ; le TTFT requis reste <30 s pour les gratuits et <90 s pour les payants.
+
+Le parseur streaming et les seuils sont fournis par scripts/performance.py,
+embarqué et identique dans PLLM et TFL. Les imports n'effectuent aucun appel réseau.
 
 Mémoriser par politique dans `data/pllm-performance-memory.json` le dernier palier ayant satisfait **tous** les critères de performance après les contrôles applicables, avec date et identité modèle/fournisseur/raisonnement/type de débit. Lors de l’invocation suivante, commencer à ce palier puis augmenter en cas d’échec. Ne pas remplacer la dernière réussite par un échec. Si le modèle ou sa configuration change sans réussite correspondante mémorisée, repartir à 1 024 ; ne pas réutiliser un palier appris pour une autre configuration. Cette mémoire ne remplace jamais les nouveaux contrôles en temps réel. Afficher `last_successful_max_tokens` dans le catalogue et le tableau. Enregistrer atomiquement chaque réussite dès qu’elle est obtenue.
 
 La nouvelle mémoire est initialement vide : aucun ancien résultat n’est transformé artificiellement en apprentissage du nouveau protocole.
 
-Pour OpenRouter, consulter les métadonnées du modèle : utiliser `reasoning.effort=low` si ce niveau est exposé. Ne pas imposer `provider.require_parameters=true` : laisser OpenRouter choisir un fournisseur admissible et disponible, afin qu’un rate limit amont ne soit pas confondu avec une incapacité du modèle. Si seul `supports_max_tokens=true` est exposé, traduire Low par `reasoning.max_tokens=floor(max_tokens/5)` (204 pour 1 024 ; 409 pour 2 048 ; 819 pour 4 096 ; 1 638 pour 8 192), selon la correspondance d’environ 20 % documentée par OpenRouter. Ne pas envoyer simultanément effort et budget. Publier les paramètres réellement envoyés. Source : https://openrouter.ai/docs/guides/best-practices/reasoning-tokens . Cette traduction est un budget demandé, pas la preuve d’un nombre exact de tokens de réflexion produit.
+Pour OpenRouter, suivre les supported_efforts publiés : HIGH en priorité,
+XHIGH si HIGH est absent et XHIGH annoncé. Si seul supports_max_tokens=true
+est exposé, HIGH utilise floor(0,80 × max_tokens), XHIGH floor(0,95 × max_tokens)
+lorsque ce contrat l'autorise. Ne jamais envoyer effort et budget ensemble.
+Un HTTP 400 précisément lié à l'effort permet au plus un passage à XHIGH
+annoncé ; aucun repli sur 401/403/429, seuil, troncature ou autre paramètre.
+Le palier est recalculé pour la configuration XHIGH, sans mémoire Low/HIGH
+empruntée. Aucun niveau inférieur n'est autorisé. Les paramètres demandés et
+le niveau effectif sont tracés, sans promettre une profondeur interne mesurée.
+Source : https://openrouter.ai/docs/guides/best-practices/reasoning-tokens .
 
-La TTFT porte sur le premier contenu visible de réponse ; le premier événement de raisonnement est chronométré séparément. Conserver le comptage de sortie et de raisonnement fourni par l’API même en cas de troncature. Pour OpenCode Go et OpenCode général (modes 1 à 4), utiliser le débit global : `(completion_tokens - 1) / (instant_dernier_token_généré - instant_premier_token_généré)`, raisonnement et réponse compris. Les instants doivent correspondre à du texte généré, pas à des événements vides ou à des métadonnées. Le compteur séparé de raisonnement n’est pas requis. Conserver `throughput_scope=reasoning_and_response` dans le JSON. Pour OpenRouter et DeepSeek direct, conserver le débit de réponse seul, hors raisonnement, avec `throughput_scope=response_only` dans le JSON. Le tableau n’ajoute aucune étiquette de type de débit. Les seuils sont >20 tokens/s en 3/4 et >15 tokens/s dans les autres modes pour le type de débit ainsi défini ; ne pas comparer directement les deux types de débit comme une mesure identique. La sélection entre modes suit la priorité ; dans un même mode, retenir le débit maximal puis le TTFT minimal. Une absence de comptage fiable rend le résultat non mesurable ; ne pas remplacer des tokens par des fragments de flux.
+La TTFT porte sur le premier contenu visible de réponse ; le premier événement de raisonnement est chronométré séparément. Conserver le comptage de sortie et de raisonnement fourni par l’API même en cas de troncature. Pour OpenCode Go et OpenCode général (modes 1 à 4), utiliser le débit global : `(completion_tokens - 1) / (instant_dernier_token_généré - instant_premier_token_généré)`, raisonnement et réponse compris. Les instants doivent correspondre à du texte généré, pas à des événements vides ou à des métadonnées. Le compteur séparé de raisonnement n’est pas requis. Conserver `throughput_scope=reasoning_and_response` dans le JSON. Pour OpenRouter et DeepSeek direct, conserver le débit de réponse seul, hors raisonnement, avec `throughput_scope=response_only` dans le JSON. Le tableau n’ajoute aucune étiquette de type de débit. Les seuils sont >20 tokens/s pour tous les gratuits et >15 tokens/s pour les payants pour le type de débit ainsi défini ; ne pas comparer directement les deux types de débit comme une mesure identique. La sélection entre modes suit la priorité ; dans un même mode, retenir le débit maximal puis le TTFT minimal. Une absence de comptage fiable rend le résultat non mesurable ; ne pas remplacer des tokens par des fragments de flux.
 
 Après le dernier palier, une réponse encore tronquée reste `Invalide` faute de mesure concluante, avec la cause `Budget du test épuisé`, sans présenter cela comme une panne du modèle. Distinguer cette cause des erreurs HTTP et des seuils de performance réellement non satisfaits.
 
@@ -400,7 +418,7 @@ Présenter quatre couleurs selon la disponibilité restante : 🟢 vert à parti
 
 Pour les soldes, la référence interne est 20 EUR : 🟢 à partir de 15 EUR (y compris 20 EUR et plus), 🟡 de 10 EUR inclus à 15 EUR exclu, 🟠 de 5 EUR inclus à 10 EUR exclu, 🔴 sous 5 EUR. Un solde nul est rouge. L’affichage utilisateur ne montre que le montant restant en `$` ; il ne montre ni la devise native ni la référence `/ 20 EUR`. Pour les devises autres que USD, appliquer un taux de conversion EUR vérifié et horodaté avant de déterminer la couleur. Ne jamais appliquer un seuil EUR à un montant USD sans conversion. Si la conversion est indisponible, afficher le montant avec ⚪ et signaler que la couleur EUR ne peut pas être calculée.
 
-Pour 3/4, un TTFT ≥30 s ou un débit ≤20 tokens/s est rouge ; les autres couleurs restent informatives. Pour les autres modes et les valeurs gratuites admissibles, appliquer pour la TTFT : 🟢 < 30 s, 🟡 de 30 s inclus à 45 s exclu, 🟠 de 45 s inclus à 90 s exclu, 🔴 ≥ 90 s. Pour tokens/s, appliquer : 🟢 > 30, 🟡 de 20 inclus à 30 inclus, 🟠 de 15 exclu à 20 exclu, 🔴 ≤ 15. Conserver le type de débit dans le JSON, mais ne pas ajouter d’étiquette `(global)` ou `(réponse)` dans le tableau. Une mesure indisponible ou non exécutée s’affiche `-` sans symbole de remplacement.
+Pour tous les gratuits, un TTFT ≥30 s ou un débit ≤20 tokens/s est rouge ; les autres couleurs restent informatives. Pour les autres modes et les valeurs gratuites admissibles, appliquer pour la TTFT : 🟢 < 30 s, 🟡 de 30 s inclus à 45 s exclu, 🟠 de 45 s inclus à 90 s exclu, 🔴 ≥ 90 s. Pour tokens/s, appliquer : 🟢 > 30, 🟡 de 20 inclus à 30 inclus, 🟠 de 15 exclu à 20 exclu, 🔴 ≤ 15. Conserver le type de débit dans le JSON, mais ne pas ajouter d’étiquette `(global)` ou `(réponse)` dans le tableau. Une mesure indisponible ou non exécutée s’affiche `-` sans symbole de remplacement.
 
 Les couleurs sont informatives, indépendantes de la validité : un solde rouge mais positif peut satisfaire le contrôle de solde. L’état doit toujours porter 🟢 `Valide` ou 🔴 `Invalide`, avec gratuit en 3/4, repli gratuit en 5 ou le diagnostic dans cette même cellule. Enregistrer les informations d’affichage dans `quota_display` sans écraser les quotas bruts.
 

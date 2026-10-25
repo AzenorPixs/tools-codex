@@ -39,12 +39,12 @@ Un historique invalide SHALL produire un diagnostic et SHALL NOT être écrasé.
 - **THEN** le fichier reste préservé et la publication est arrêtée
 
 ### Requirement: Politiques et sélection explicites
-PLLM SHALL évaluer six modes de priorités 1 à 6 : Go payant compte 1,
-Go payant compte 2, gratuits Go/général compte 1, mêmes gratuits compte 2,
-OpenRouter, DeepSeek direct. Les modèles des modes 1 à 5 SHALL provenir de TFL
-avec fournisseur, route et date propres. Low SHALL rester le défaut. Les
-références d'authentification historiques SHALL être conservées. La première
-politique valide après classement SHALL être sélectionnée.
+PLLM SHALL garder six priorités : payants Go 1/2, gratuits Go/général 3/4,
+OpenRouter 5 et DeepSeek 6. Les comptes et références historiques SHALL être
+conservés. Les modèles 1 à 5 SHALL provenir de TFL avec route, fournisseur et
+date. HIGH SHALL être le défaut, avec repli XHIGH pris en charge lorsque HIGH
+est indisponible. La première politique valide après classement SHALL être
+sélectionnée.
 
 #### Scenario: Sélection selon la priorité
 - **WHEN** plusieurs politiques sont valides
@@ -108,8 +108,8 @@ devises. Un statut inconnu SHALL NOT prouver un épuisement.
 
 ### Requirement: Mesures concluantes du modèle sélectionné
 Tous les modes SHALL exiger réponse complète, comptage fiable et mesures
-actuelles du modèle retenu. Les modes gratuits 3/4 SHALL exiger contexte ≥1M,
-TTFT <30 s et débit >20 tokens/s. Les modes 1/2/5/6 SHALL conserver TTFT <90 s
+actuelles du modèle retenu. Tous les candidats gratuits, y compris le repli OpenRouter de 5, SHALL exiger contexte ≥1M,
+TTFT <30 s et débit >20 tokens/s. Les candidats payants des modes 1/2/5/6 SHALL conserver TTFT <90 s
 et débit >15 tokens/s. Une troncature, erreur ou mesure absente SHALL NOT
 être remplacée par un résultat historique. Tous les candidats admissibles
 SHALL être comparés hors forçage.
@@ -123,7 +123,7 @@ SHALL être comparés hors forçage.
 - **THEN** ses seuils sont satisfaits sans contrôle de quota
 
 #### Scenario: Limites des autres modes
-- **WHEN** un mode 1/2/5/6 mesure TTFT ≥90 s ou débit ≤15 tokens/s
+- **WHEN** un candidat payant de mode 1/2/5/6 mesure TTFT ≥90 s ou débit ≤15 tokens/s
 - **THEN** son candidat reste invalide
 
 #### Scenario: Mesure non concluante
@@ -137,7 +137,7 @@ SHALL être comparés hors forçage.
 - **AND** le remplaçant exige ses propres contrôles et mesures
 
 #### Scenario: Limites strictes
-- **WHEN** un candidat atteint TTFT 30 s ou débit 20 tokens/s en 3/4, ou TTFT 90 s ou débit 15 tokens/s dans les autres modes
+- **WHEN** un candidat atteint TTFT 30 s ou débit 20 tokens/s pour un candidat gratuit, ou TTFT 90 s ou débit 15 tokens/s pour les candidats payants
 - **THEN** ce candidat est invalide
 
 #### Scenario: Repli après limitation fournisseur
@@ -146,11 +146,11 @@ SHALL être comparés hors forçage.
 - **AND** l'épuisement du dernier palier ne transforme pas le repli en réussite
 
 #### Scenario: TTFT sous la nouvelle limite
-- **WHEN** un candidat de mode1/2/5/6 mesure 70,4 s et satisfait les autres critères
-- **THEN** son seuil TTFT est satisfait ; ce même TTFT échoue en 3/4
+- **WHEN** un candidat payant de mode1/2/5/6 mesure 70,4 s et satisfait les autres critères
+- **THEN** son seuil TTFT est satisfait ; ce même TTFT échoue pour un candidat gratuit
 
 #### Scenario: Limite stricte de TTFT atteinte
-- **WHEN** le TTFT atteint 30 s en 3/4 ou 90 s dans les autres modes
+- **WHEN** le TTFT atteint 30 s pour un candidat gratuit ou 90 s pour les candidats payants
 - **THEN** le candidat reste invalide même avec un débit suffisant
 
 ### Requirement: Protocole des mesures traçable
@@ -170,12 +170,12 @@ comparer uniquement des débits de même portée.
 - **THEN** le JSON conserve leur portée sans les présenter comme une mesure identique
 
 ### Requirement: Paliers et mémoire de performance bornés
-PLLM SHALL garder les paliers 1024, 2048, 4096 et 8192 tokens, 120 s par
-requête, et arrêter un candidat sur HTTP 400/429. Les contrôles applicables
-SHALL précéder chaque requête, sans quota en 3/4. La mémoire SHALL garder les
-seuls succès complets par configuration et adapter le schéma 1 en 2 sans
-apprentissage initial en 3/4. Une mémoire invalide SHALL NOT être écrasée.
-Un palier mémorisé SHALL NOT valider une invocation.
+PLLM SHALL garder les paliers 1024, 2048, 4096, 8192 et 120 s par requête.
+Les contrôles applicables SHALL précéder chaque requête, sans quota en 3/4.
+Un HTTP 400/429 SHALL arrêter le candidat, hors unique repli d'effort XHIGH
+autorisé. La mémoire SHALL garder les succès complets par configuration,
+distinguer Low/HIGH/XHIGH et adapter le schéma 1 en 2. Une mémoire invalide
+SHALL NOT être écrasée ; un palier mémorisé SHALL NOT valider l'invocation.
 
 #### Scenario: Nouvelle politique gratuite
 - **WHEN** mode3 ou mode4 est évalué pour la première fois après migration
@@ -187,7 +187,7 @@ Un palier mémorisé SHALL NOT valider une invocation.
 - **THEN** son palier peut être repris avec des mesures actuelles et les contrôles applicables
 
 #### Scenario: HTTP 400 ou 429
-- **WHEN** un candidat reçoit ce refus
+- **WHEN** un candidat reçoit ce refus sans repli d'effort XHIGH autorisé
 - **THEN** aucun budget supérieur n'est tenté pour ce candidat
 - **AND** les autres candidats admissibles gardent leurs propres tests
 
@@ -213,13 +213,19 @@ Un palier mémorisé SHALL NOT valider une invocation.
 - **AND** l'épuisement des candidats reste un échec sans sélection valide
 
 #### Scenario: HTTP 400 ou 429 au premier palier
-- **WHEN** une requête reçoit HTTP 400 ou HTTP 429
+- **WHEN** une requête reçoit HTTP 400 ou HTTP 429 sans repli d'effort XHIGH autorisé
 - **THEN** aucun budget supérieur n'est testé pour ce candidat dans cette invocation
 - **AND** les autres candidats autorisés gardent leurs propres contrôles et tests
 
 #### Scenario: Troncature ou seuil mesuré non satisfait
 - **WHEN** le candidat reçoit une réponse tronquée ou échoue sur un seuil mesuré
 - **THEN** les paliers suivants restent disponibles après les contrôles applicables
+
+#### Scenario: Repli d'effort après refus ciblé
+- **WHEN** HIGH reçoit HTTP 400 sur son paramètre d'effort et XHIGH est annoncé
+- **THEN** un seul repli XHIGH est autorisé avec ses propres paliers
+- **AND** HTTP 401/403/429, troncature ou seuil ne déclenchent aucun repli d'effort
+
 
 ### Requirement: Publication traçable
 PLLM SHALL publier `pllm-current.json` et `pllm-current.md` par remplacement
@@ -325,7 +331,7 @@ conserver DeepSeek direct. Aucun candidat payant SHALL être appelé en 3/4.
 ### Requirement: Gratuité vérifiable et retour au payant
 La gratuité SHALL exiger prix publiés d'entrée et de sortie nuls avec
 variantes compatibles, jamais un nom seul. Contexte ≥1M, filtres TFL, accès,
-transport et Low SHALL être préservés. Le retour au payant et les transitions
+transport et le raisonnement HIGH/XHIGH autorisé SHALL être préservés. Le retour au payant et les transitions
 de catégorie bornées SHALL concerner uniquement le mode5. Les modes 3/4
 SHALL rester gratuits sans transition de quota.
 
@@ -394,20 +400,30 @@ exclusions, tentatives, seuils par politique et mesures null si absentes.
 - **AND** aucune donnée privée ni message brut n'est conservé
 
 ### Requirement: Contrat Low propre au transport
-Chat Completions OpenCode Go et général SHALL envoyer reasoning_effort=low
-sans thinking. Responses SHALL garder reasoning.effort=low et Messages son
-budget thinking défini. DeepSeek direct SHALL conserver thinking activé et
-reasoning_effort=low. OpenRouter SHALL garder sa résolution documentée.
-PLLM SHALL NOT réduire Low ni déduire le contrat d'un nom de modèle.
+Le contrat historique Low SHALL être remplacé par HIGH, puis XHIGH seulement
+si HIGH est indisponible et XHIGH pris en charge. Chat Completions SHALL
+utiliser reasoning_effort ; Responses reasoning.effort ; Messages
+output_config.effort avec thinking adaptive ; DeepSeek thinking activé et
+reasoning_effort. OpenRouter SHALL suivre ses métadonnées ou le budget HIGH
+80 % documenté. Aucun repli vers un niveau inférieur SHALL être effectué.
 
 #### Scenario: Gratuit OpenCode en Chat Completions
 - **WHEN** un candidat OpenCode utilise chat_completions
-- **THEN** la requête contient reasoning_effort=low sans thinking
+- **THEN** la requête contient reasoning_effort=high sans thinking
 - **AND** le modèle doit réussir ses mesures actuelles avant de devenir valide
 
 #### Scenario: Autres transports et DeepSeek
 - **WHEN** Responses, Messages ou DeepSeek direct sont évalués
-- **THEN** leurs paramètres Low propres restent préservés
+- **THEN** leurs paramètres HIGH ou XHIGH effectif propres restent préservés
+
+
+#### Scenario: HIGH absent et XHIGH annoncé
+- **WHEN** les métadonnées excluent HIGH et annoncent XHIGH
+- **THEN** seul XHIGH est demandé et le niveau effectif est tracé
+
+#### Scenario: Aucun niveau autorisé
+- **WHEN** ni HIGH ni XHIGH ne sont pris en charge
+- **THEN** le candidat est invalide sans requête de performance ni repli inférieur
 
 ### Requirement: Retry-After filtré et sans attente indéfinie
 PLLM SHALL lire au plus 64 Kio d'erreur HTTP et conserver uniquement des

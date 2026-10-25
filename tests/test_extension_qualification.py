@@ -51,6 +51,7 @@ class ExtensionQualificationTests(unittest.TestCase):
         installed = base / 'pllm' / 'version-a' / 'skills' / 'pllm' / 'scripts' / script.name
         installed.parent.mkdir(parents=True)
         installed.write_bytes(script.read_bytes())
+        installed.with_name('performance.py').write_bytes(script.with_name('performance.py').read_bytes())
         module = load_script(installed)
         module.MEMORY_PATH = module.ROOT / 'data/pllm-performance-memory.json'
         catalog = base / 'tfl' / 'version-b' / 'skills' / 'tfl' / 'data' / 'tfl.json'
@@ -85,7 +86,7 @@ class ExtensionQualificationTests(unittest.TestCase):
             stack.enter_context(patch.object(module, 'quota', side_effect=quota))
             stack.enter_context(patch.object(module, 'benchmark', side_effect=benchmark))
             stack.enter_context(patch.object(module, 'get', return_value={'data': [
-                {'id': 'router-fixture', 'reasoning': {'supported_efforts': ['low']}}]}))
+                {'id': 'router-fixture', 'reasoning': {'supported_efforts': ['high']}}]}))
             stack.enter_context(patch.object(module, 'exchange_rates', return_value={'rates': {'USD': 1}}))
             stack.enter_context(patch.object(module.urllib.request, 'urlopen', side_effect=AssertionError('Réseau interdit pendant le test')))
             stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
@@ -303,7 +304,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                     stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     mock_general_collection(module, stack)
-                    stack.enter_context(patch.object(module, 'build_rows', return_value=([{'fixture': float('nan')}], [])))
+                    stack.enter_context(patch.object(module, 'build_rows', return_value=([{'id': 'nan-fixture', 'fixture': float('nan')}], [])))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=self.tfl_payload(module)))
                     stack.enter_context(patch.object(module, 'format_opencode_table', return_value='fixture'))
                     write = stack.enter_context(patch.object(module, 'atomic_write'))

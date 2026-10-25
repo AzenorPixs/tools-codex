@@ -130,8 +130,8 @@ général pour 3/4, et OpenRouter pour 5 ; 6 conserve DeepSeek direct.
 Les modes 1/2 épuisés deviennent rouges et invalides sans essai gratuit.
 Les modes 3/4 utilisent les comptes de 1/2 respectivement sans consulter de
 quota ou solde. Ils exigent prix nuls vérifiés, contexte ≥1M, réponse complète,
-TTFT <30 s et débit >20 tokens/s. Les autres modes gardent leurs seuils
-<90 s et >15 tokens/s et leurs contrôles de ressources ; seul 5 conserve le
+TTFT <30 s et débit >20 tokens/s. Tous les gratuits, y compris le repli OpenRouter de 5, utilisent ces seuils.
+Les payants gardent leurs seuils <90 s et >15 tokens/s et leurs contrôles de ressources ; seul 5 conserve le
 repli gratuit OpenRouter après crédit épuisé. Les références de trousseau
 restent celles des anciens comptes, sans nouveau secret ni migration de clé.
 Les historiques à quatre modes sont adaptés au schéma 2 (ancien 3→5, ancien
@@ -140,10 +140,11 @@ La mémoire suit ce déplacement sans apprentissage pour les nouveaux 3/4.
 Un ancien évaluateur ne lit pas le schéma 2 : sauvegarder ses données avant
 un retour de version. Aucun historique invalide n'est écrasé.
 Le gagnant de chaque mode résulte du débit maximal puis du TTFT minimal,
-avec priorités 1 à 6. Les restrictions fournisseur restent applicables aux
-gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
+avec priorités 1 à 6. Tous les benchmarks demandent HIGH, puis XHIGH seulement si HIGH est
+indisponible et XHIGH pris en charge ; aucun repli inférieur. Les restrictions
+fournisseur restent applicables aux gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
 Les diagnostics HTTP 400/429 et le Retry-After disponible figurent dans les
-rapports PLLM sans corps d'erreur brut. Ils n'entraînent plus d'essais aux
+rapports PLLM sans corps d'erreur brut. Hors le repli d'effort XHIGH autorisé, ils n'entraînent plus d'essais aux
 budgets supérieurs ; une limitation conserve ses contraintes fournisseur.
 Les champs JSON de diagnostic restent conservés ; l'adaptation des historiques
 PLLM est automatique et ne nécessite aucun nouveau secret.
@@ -344,3 +345,26 @@ Avant de publier ou de mettre à jour la marketplace :
 Les commandes de gestion de marketplace et le redémarrage d'une session après
 l'installation sont conformes à la [documentation officielle OpenAI sur la
 distribution des plugins](https://developers.openai.com/plugins/build/plugins).
+
+
+## Qualification gratuite TFL et moteur commun
+
+Chaque paquet PLLM/TFL contient son scripts/performance.py ; les quatre copies
+sont identiques et ne dépendent pas d'un autre plugin installé. Conserver ce
+fichier lors de la distribution autonome ou d'un paquet isolé.
+TFL génère désormais des réponses pour ses seuls gratuits admissibles en
+HIGH, avec XHIGH comme seul repli autorisé lorsque pris en charge. Exiger
+contexte ≥1M, prix nuls vérifiés, réponse complète, TTFT <30 s et débit >20.
+Les paliers sont 1024→2048→4096→8192 et 120 s par requête. Une invocation TFL
+peut donc durer plus longtemps et rencontrer les limites gratuites fournisseur.
+Aucun quota ou solde n'est consulté pour ces tests ; les clés existantes sont
+injectées en mémoire. OpenRouter utilise l'environnement existant, sinon la
+référence historique PLLM de ce compte dans le trousseau.
+Les gratuits échoués sortent de models ; leurs preuves restent dans les
+exclusions et le tableau commun des tests. Une section devenue vide bloque
+la publication et préserve les anciens rapports. La qualification est datée
+et dépend du compte choisi par TFL, même si un autre compte pourrait réussir.
+Les payants TFL ne sont pas benchmarkés. Une nouvelle invocation PLLM reteste
+ses candidats retenus avec ses propres comptes et le raisonnement HIGH/XHIGH.
+Les anciens résultats Low ne sont pas des réussites HIGH. Cette livraison
+locale est qualifiée hors ligne et n'exécute aucun benchmark fournisseur réel.
