@@ -125,6 +125,14 @@ python3 scripts/evaluate.py --tfl-catalog /chemin/vers/le/catalogue/tfl.json
 
 Cette option accepte le fichier produit par TFL, y compris avec `--output-dir`.
 Sans option, PLLM conserve le chemin voisin `../tfl/data/tfl.json`.
+Ce catalogue fournit les candidats payants et les replis gratuits : Go et
+OpenCode général pour modes 1/2, OpenRouter pour mode 3. Les gratuits sont
+utilisés uniquement après épuisement confirmé ; le retour des ressources
+rétablit les payants. Le gagnant d'un mode résulte de la comparaison de toutes
+ses réussites par débit maximal puis TTFT minimal. Le tableau rend explicites
+authentification refusée et repli gratuit. Les restrictions d'accès des
+fournisseurs restent applicables, y compris celles de certains gratuits au
+client natif OpenCode. Les tests hors ligne ne prouvent pas cet accès réel.
 Les tests hors ligne couvrent des emplacements isolés ; un test réel
 d'installation dans une nouvelle session Codex reste à effectuer avant
 publication, conformément à `TECHNICAL.md`.
@@ -159,7 +167,8 @@ et à ses tarifs Console officiels, sans secret Go ni nouvelle dépendance.
 Les métadonnées proviennent de `opencode` dans models.dev. Les trois tableaux
 s'affichent dans l'ordre Go, OpenCode général, OpenRouter, avec mêmes colonnes
 et seuils 1M/0,50 USD/M. Une source indispensable en échec empêche la publication.
-La section JSON `opencode` est additive ; la politique PLLM reste inchangée.
+La section JSON `opencode` est additive ; PLLM l'utilise pour le seul repli
+gratuit des modes 1/2, sans changer le classement tarifaire de TFL.
 
 Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.

@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.5.6`.
+Version de release : `0.6.0`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -24,6 +24,14 @@ PLLM accepte `--tfl-catalog CHEMIN` pour utiliser le catalogue TFL lorsque les
 plugins sont installés séparément. Sans fichier courant initial, les quatre
 politiques sont créées sans résultats historiques ; un fichier corrompu est
 préservé. Les replis exigent les mesures du modèle effectivement sélectionné.
+Avec ressources disponibles, PLLM compare uniquement les payants TFL. Après
+épuisement confirmé, les modes 1/2 comparent les gratuits Go et OpenCode général,
+le mode 3 les gratuits OpenRouter. Le retour des ressources rétablit les
+payants. Tous les candidats de la catégorie autorisée sont testés ; le débit
+maximal puis le TTFT minimal désignent le gagnant du mode, sans changer les
+priorités 1 à 4. Le tableau signale le repli gratuit et les erreurs
+d'authentification dans État. Un gratuit doit réussir les mêmes tests ; ses
+limites et restrictions d'accès restent celles du fournisseur.
 TFL exclut les prix non finis et publie un catalogue JSON strict.
 À chaque génération, TFL récupère les tarifs OpenCode Go dans sa documentation
 officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,
@@ -43,7 +51,7 @@ puis OpenRouter. Le catalogue général est collecté publiquement et conserve
 ses propres tarifs et métadonnées `opencode`, indépendants de `opencode-go`.
 Les trois catalogues exigent contexte ≥ 1M et coût moyen ≤ 0,50 USD/M ; une
 variante gratuite à 200K reste exclue. La section JSON supplémentaire
-`opencode` ne change pas les politiques PLLM existantes.
+`opencode` fournit également le repli gratuit PLLM des modes 1/2 décrit plus haut.
 
 Les prérequis et limites de qualification sont décrits dans
 [`BUILD.md`](BUILD.md) et [`TECHNICAL.md`](TECHNICAL.md).

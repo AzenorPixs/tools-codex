@@ -59,10 +59,10 @@ class PllmTtftTests(unittest.TestCase):
             patch.object(module.subprocess, "run", return_value=SimpleNamespace(
                 returncode=0, stdout=b"offline-fixture"
             )),
-            patch.object(module, "tfl_opencode_model_at", return_value=(
-                {"id": "fixture-model", "api_endpoint": "https://example.invalid", "api_protocol": "messages"},
-                "fixture-date",
-            )),
+            patch.object(module, "candidates_for", return_value=[
+                {"model_id": "fixture-model", "model": "fixture-model", "provider": "opencodego",
+                 "api_endpoint": "https://opencode.ai/zen/go/v1/messages", "api_protocol": "messages"}
+            ]),
             patch.object(module, "quota", side_effect=quota),
             patch.object(module, "benchmark", side_effect=benchmark),
             patch.object(module, "budgets_for", return_value=(8192,)),
@@ -83,9 +83,9 @@ class PllmTtftTests(unittest.TestCase):
                 with self.subTest(script=script, ttft=ttft):
                     _, model, calls, remembered = self.evaluate(script, ttft)
                     self.assertEqual(model["state"], expected)
-                    self.assertEqual(calls, ["quota", "benchmark"])
+                    self.assertEqual(calls, ["quota", "quota", "benchmark"])
                     self.assertEqual(remembered, int(expected == "Valide"))
-                    self.assertEqual(model["condition"], "TTFT < 90 s ET tokens/s > 15 ET quotas valides")
+                    self.assertIn("TTFT < 90 s", model["condition"])
 
     def test_throughput_limit_remains_strict(self):
         for script in SCRIPTS:

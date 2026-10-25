@@ -7,18 +7,54 @@ description: Évaluer en temps réel les modèles à chaque invocation de /pllm 
 
 Présenter les entrées dans un tableau unique multi-colonnes avec cet ordre : Politique, Identifiant API, Fournisseur, TTFT, Tokens/s, État, Dernier palier réussi, Évalué le. Afficher ensuite les quotas et soldes sur une ligne dédiée par PLLM. L’état est `Valide` ou `Invalide` et dépend de la condition du mode.
 
+## Sélection payante et repli gratuit
+
+À chaque invocation, contrôler les ressources actuelles du compte du mode.
+Modes 1/2 : avec quotas disponibles, comparer seulement les payants TFL
+`opencode_go`. Après épuisement confirmé, comparer seulement les gratuits
+`opencode_go` puis `opencode`, avec leurs routes et fournisseurs distincts.
+Mode 3 : avec crédit, comparer les payants TFL `openrouter` ; après épuisement
+confirmé, comparer ses gratuits. Les gratuits sont exclusivement un repli.
+Quand les ressources reviennent, revenir aux payants dès la nouvelle évaluation,
+ou pendant celle-ci si un contrôle avant tentative observe ce rétablissement.
+Les changements de catégorie sont bornés ; une oscillation invalide le test.
+
+Un tarif d'entrée ET de sortie vérifié nul prouve la gratuité ; un nom ou un
+suffixe free ne suffit pas. Préserver les filtres TFL (contexte ≥1M, coût
+≤0,50 USD/M, modalités, blacklist), le transport et Low. Une source manquante,
+un refus d'authentification ou une panne ne prouve jamais l'épuisement.
+Les gratuits du catalogue général sont inclus pour le client natif OpenCode ;
+leur accessibilité doit être observée, sans usurpation de client par le testeur.
+
+Tester tous les candidats de la catégorie autorisée. Retenir, parmi les
+réussites complètes, le débit maximal puis le TTFT minimal, puis l'ordre stable
+TFL en cas d'égalité. Pour les modes 1/2, comparer le débit global pour Go ET
+OpenCode général ; pour le mode 3, comparer le débit de réponse seule.
+Les priorités entre modes restent 1, 2, 3, 4 et priment sur les performances.
+Le JSON conserve `selection_category`, `candidate_results`, `candidate_exclusions`,
+les routes, les contrôles et les tentatives ; aucune mesure historique ne valide
+un candidat courant. La mémoire garde les réussites par configuration.
+
+Le tableau garde huit colonnes. Dans État, afficher notamment
+`🔴 Invalide — Authentification refusée (HTTP 401)`,
+`🔴 Invalide — Accès refusé (HTTP 403)` ou la clé inaccessible.
+Ne pas publier le corps brut d'une erreur ou un compte. Une réussite gratuite
+s'affiche `🟢 Valide — repli gratuit`, avec les quotas épuisés réels sous le tableau.
+Un refus d'authentification pendant la génération invalide aussi le mode,
+sans conserver une réussite précédente comme sélection de cette invocation.
+
 ## Mode 1
 
 - Priorité : 1 (priorité la plus haute actuellement définie).
-- Modèle : premier modèle du catalogue TFL OpenCode Go, classé par coût moyen croissant après application des filtres TFL.
+- Modèle : meilleur candidat payant TFL OpenCode Go ; après épuisement confirmé, meilleur candidat gratuit TFL OpenCode Go ou OpenCode général.
 - Raisonnement : Low.
-- Fournisseur : OpenCode Go (`opencodego`).
+- Fournisseur : OpenCode Go (`opencodego`), ou OpenCode général (`opencode`) pour son repli gratuit.
 - TTFT : évalué par le test, en secondes.
 - Tokens/s : évalué par le test.
-- Condition : `TTFT < 90 s ET Tokens/s > 15 ET utilisation_5h < 100 % ET utilisation_hebdomadaire < 100 % ET utilisation_mensuelle < 100 %`.
+- Condition : `TTFT < 90 s ET Tokens/s > 15 ET (quotas disponibles pour un payant OU épuisement confirmé et gratuit accessible)`.
 - État : `Valide` si tous les critères sont satisfaits ; `Invalide` si au moins un critère échoue.
 
-Les seuils sont stricts : TTFT égal à 90 s, débit égal à 15 tokens/s ou utilisation égale à 100 % rendent le mode invalide.
+Les seuils de performance sont stricts. Une utilisation à 100 % interdit les payants et ouvre uniquement le repli gratuit après confirmation des trois périodes.
 
 ### Référence du secret de l’hôte
 
@@ -73,10 +109,10 @@ est benchmarké par PLLM avec le parseur SSE Anthropic dédié.
 
 Pour Muse, ne jamais envoyer une requête vers `/chat/completions` : le contrôle
 réalisé renvoie HTTP 500, alors que `/responses` fonctionne. Une route absente
-ou inconnue invalide le test avec une cause explicite. Le modèle est résolu
-avant le contrôle de quota depuis le premier élément de
-`../tfl/data/tfl.json` relatif au dossier de ce skill, section
-`opencode_go.models`, sauf chemin fourni par `--tfl-catalog CHEMIN`.
+ou inconnue invalide le test avec une cause explicite. Les candidats sont résolus depuis
+`../tfl/data/tfl.json` relatif au dossier de ce skill, sections
+`opencode_go.models` et, pour le repli gratuit, `opencode.models`, sauf chemin
+fourni par `--tfl-catalog CHEMIN`. Les quotas déterminent la catégorie autorisée.
 Les détails du contrat, les champs récupérables et les routes de lecture
 observées en 404 sont documentés dans
 [references/opencode-go-api.md](references/opencode-go-api.md). Cette référence
@@ -84,12 +120,22 @@ reste indicative : les réponses en temps réel de l’API font autorité.
 
 Pour Muse, le corps correct est celui de Responses : `input` structuré, `max_output_tokens`, `stream=true`, `store=false` et `reasoning.effort=low`, avec le User-Agent `PLLM-coding-agent/1.0` et un identifiant stable `x-opencode-session`.
 
-Un `HTTP 429` portant `rate_limit_exceeded` est une limitation de service OpenCode Go avant génération. Ce résultat ne prouve ni une panne ni une mauvaise qualité de Muse ; il interdit toutefois de déclarer la politique valide, car TTFT et débit n’ont pas été mesurés. Pour les Modes 1 et 2, PLLM ne bascule pas immédiatement vers une politique de priorité inférieure : elle parcourt le catalogue TFL OpenCode Go par coût croissant et teste le premier modèle disponible dont le protocole est benchmarké (`responses` ou `chat_completions`). Les modèles `messages` sont benchmarkés avec le schéma Anthropic : en-tête `x-api-key`, corps `messages` et `max_tokens`, flux SSE `content_block_delta`/`message_delta`. Ce repli utilise l’identifiant, le point d’accès et le protocole publiés par TFL.
+Un HTTP 429 est une limitation fournisseur, sans mesure concluante. Appliquer
+les paliers puis continuer les autres candidats de la catégorie autorisée ;
+il ne déclenche pas un repli gratuit tant que les ressources sont disponibles.
+Chaque candidat utilise le protocole et l'endpoint TFL. Les modèles `messages`
+sont benchmarkés avec `x-api-key` et le parseur SSE Anthropic dédié.
+Les deux catalogues OpenCode conservent `x-opencode-session`, une session stable
+par évaluation de politique et le User-Agent propre à PLLM. Le compte du mode
+reste la source du contrôle Go même si le gagnant précédent était `opencode`.
+La même clé du compte est utilisée seulement sur l'origine HTTPS OpenCode
+validée. Un refus de cette clé ne crée ni nouveau secret ni configuration privée.
+
 
 ## Sous-commandes de forçage
 
 Les commandes `PLLM Mode 1`, `PLLM Mode 2`, `PLLM Mode 3` et `PLLM Mode 4`
-forcent l’évaluation de la politique correspondante avec son modèle par défaut.
+forcent l’évaluation du premier candidat admissible de la catégorie courante de cette politique.
 
 Les suffixes `1`, `2` et `3` forcent le rang correspondant du tableau TFL :
 `Mode 11`, `12`, `13` ciblent les rangs 1 à 3 OpenCode Go pour le Mode 1 ;
@@ -98,7 +144,8 @@ Les suffixes `1`, `2` et `3` forcent le rang correspondant du tableau TFL :
 `Mode 4` conserve DeepSeek V4 Flash. Une commande forcée n’évalue que la
 politique demandée et ne déclenche pas le repli automatique vers un autre
 moteur ; les contrôles de quotas et les paliers de performance restent
-obligatoires. Les moteurs et leur protocole sont résolus dans le catalogue TFL
+obligatoires. Un rang gratuit avec ressources disponibles, ou payant après
+épuisement, reste invalide sans substitution. Les moteurs et leur protocole sont résolus dans le catalogue TFL
 au moment de l’exécution.
 
 ## Modes 2, 3 et 4
@@ -107,22 +154,22 @@ Ces modes reprennent les politiques validées dans les conversations du 2 septem
 
 ### Mode 2 — priorité 2
 
-- Modèle : premier modèle du catalogue TFL OpenCode Go ; utiliser son identifiant exact et le coût minimal retenu par TFL.
+- Modèle : meilleur candidat payant TFL OpenCode Go ; après épuisement confirmé, meilleur gratuit TFL Go ou OpenCode général.
 - Raisonnement : `Low`.
-- Fournisseur : OpenCode Go (`opencodego`).
+- Fournisseur : OpenCode Go (`opencodego`) ou OpenCode général (`opencode`) dans le repli gratuit.
 - Attributs exacts du trousseau : `service=pllm`, `policy=mode2`, `provider=opencodego`, `account=az.github@pixs.fr`.
 - Quotas : même endpoint et même contrôle des trois périodes que le Mode 1, avec la clé propre au Mode 2.
-- Condition : TTFT < 90 s ET tokens/s > 15 ET utilisations 5 h, semaine et mois toutes < 100 %.
+- Condition : TTFT < 90 s ET tokens/s > 15 ET ressources disponibles pour un payant, ou épuisement confirmé pour un gratuit accessible.
 
 ### Mode 3 — priorité 3
 
-- Modèle : premier modèle de la section OpenRouter du catalogue TFL, résolu à chaque évaluation depuis `~/.codex/skills/tfl/data/tfl.json`, section `openrouter.models` ; conserver son identifiant exact et la date du catalogue dans le résultat.
+- Modèle : meilleur candidat payant de `openrouter.models` du catalogue TFL ; après épuisement confirmé, meilleur candidat gratuit. Conserver son identifiant exact et la date du catalogue.
 - Raisonnement : `Low`.
 - Fournisseur : OpenRouter (`openrouter`).
 - Attributs exacts du trousseau : `service=pllm`, `policy=mode3`, `provider=openrouter`, `account=az.openrouter@pixs.fr`. Le libellé historique mentionnant Mode 2 était une coquille ; les attributs font autorité.
-- Contrôle du solde : `GET https://openrouter.ai/api/v1/credits`, solde = `data.total_credits - data.total_usage`. Vérifier le contrat officiel lors de l’exécution. Respecter la devise de l’API : ne pas étiqueter arbitrairement les crédits en euros comme dans les anciens comptes rendus. Le critère est un solde strictement positif.
-- Condition : solde > 0 ET TTFT < 90 s ET tokens/s > 15. Un accès au solde refusé rend le mode `Invalide` et interdit le test de performance.
-- Si le catalogue est absent, invalide ou doit être actualisé, appliquer le skill TFL en exécutant obligatoirement le générateur hors sandbox pour permettre l’accès réseau. Ne pas substituer le deuxième modèle si le premier échoue : ce mode exige le premier modèle OpenRouter du catalogue TFL.
+- Contrôle du solde : `GET https://openrouter.ai/api/v1/credits`, solde = `data.total_credits - data.total_usage`. Vérifier le contrat officiel lors de l’exécution. Respecter la devise de l’API : ne pas étiqueter arbitrairement les crédits en euros comme dans les anciens comptes rendus. Le critère payant est un solde strictement positif ; un solde nul ou négatif confirmé ouvre exclusivement le repli gratuit.
+- Condition : TTFT < 90 s ET tokens/s > 15 ET (solde > 0 pour un payant OU solde épuisé confirmé pour un gratuit accessible). Un accès au solde refusé rend le mode `Invalide` et interdit tout test.
+- Si le catalogue est absent, invalide ou doit être actualisé, appliquer le skill TFL en exécutant obligatoirement le générateur hors sandbox pour permettre l’accès réseau. Comparer tous les candidats de la catégorie autorisée ; un forçage conserve son seul rang exact.
 
 ### Mode 4 — priorité 4
 
@@ -154,19 +201,19 @@ corriger l’en-tête ou le transmettre avant de conclure sur la validité du
 modèle. Conserver dans `performance_test` le nom de l’en-tête et le motif d’un
 échec, sans conserver sa valeur.
 
-Le test de génération ne suffit pas à établir les utilisations sur 5 heures, une semaine et un mois : obtenir ces valeurs auprès d’une source de quotas du fournisseur avant de conclure à la validité du mode. Pour les Modes 1 et 2, le test utilise le premier modèle OpenCode Go du catalogue TFL fraîchement actualisé.
+Le test de génération ne suffit pas à établir les utilisations sur 5 heures, une semaine et un mois : obtenir ces valeurs auprès d’une source de quotas du fournisseur avant de conclure à la validité du mode. Pour les Modes 1 et 2, les candidats proviennent des sections Go et, pour le repli gratuit, OpenCode général du catalogue TFL actualisé.
 
 Chaque invocation de `/pllm` déclenche une nouvelle évaluation réelle des modèles définis, authentifiée auprès de leur fournisseur. Ne pas se limiter à afficher la politique, proposer un test ultérieur ou réutiliser des résultats précédents comme mesures actuelles. L’invocation autorise les requêtes de test nécessaires ; ne pas redemander une confirmation de principe pour lancer le test.
 
 Ordre obligatoire pour chaque modèle à chaque invocation :
 
 1. Vérifier les accès nécessaires et consulter en temps réel tous les quotas applicables au mode, qu’il s’agisse de quotas temporels ou de solde/crédit. Appliquer les conditions définies pour ce mode, sans inventer de seuil de solde.
-2. Si le contrôle des quotas rend le modèle `Invalide`, arrêter son évaluation avant toute requête de performance. Cela inclut un quota épuisé, un solde ne satisfaisant pas la condition du mode, ou un accès/une donnée de quota indispensable indisponible. Conserver l’état `Invalide` et indiquer la cause précise.
-3. Seulement si tous les contrôles de quotas sont satisfaits, exécuter le test de performance en streaming, mesurer TTFT et tokens/s, puis appliquer les seuils du mode pour déterminer l’état final.
+2. Si le contrôle des quotas rend le modèle `Invalide`, arrêter son évaluation avant toute requête de performance. Cela inclut un accès ou une donnée indispensable indisponible. Seul un épuisement confirmé autorise les candidats gratuits de repli ; les payants restent interdits. Conserver l’état `Invalide` et indiquer la cause précise.
+3. Seulement si les contrôles établissent la catégorie autorisée (payante disponible ou gratuite après épuisement confirmé), exécuter le test de performance en streaming, mesurer TTFT et tokens/s, puis appliquer les seuils du mode pour déterminer l’état final.
 
-Ne jamais exécuter le contrôle des quotas et le test de performance en parallèle pour un même modèle. Si le test de performance est omis à cause des quotas, afficher `Non exécuté — contrôle des quotas Invalide` pour TTFT et tokens/s, sans reprendre des mesures antérieures.
+Ne jamais exécuter le contrôle des quotas et le test de performance en parallèle pour un même modèle. Si le test est omis, afficher uniquement `-` pour TTFT et tokens/s, avec sa cause dans État et dans le JSON, sans mesure antérieure.
 
-Pour le Mode 1, consulter `GET https://opencode.ai/zen/go/v1/usage` avec l’authentification Bearer injectée en mémoire. Les champs `usage.rolling.percent`, `usage.weekly.percent` et `usage.monthly.percent` donnent les utilisations ; `status` et `resetsAt` donnent le statut et la réinitialisation de chaque période. Cet endpoint a été vérifié dans le code officiel et utilisé avec succès. Toute utilisation à 100 % ou plus invalide le Mode 1 avant le test de performance.
+Pour le Mode 1, consulter `GET https://opencode.ai/zen/go/v1/usage` avec l’authentification Bearer injectée en mémoire. Les champs `usage.rolling.percent`, `usage.weekly.percent` et `usage.monthly.percent` donnent les utilisations ; `status` et `resetsAt` donnent le statut et la réinitialisation de chaque période. Cet endpoint a été vérifié dans le code officiel et utilisé avec succès. Toute utilisation à 100 % ou plus interdit les payants et autorise seulement les gratuits après confirmation des trois périodes.
 
 Présenter les résultats horodatés dans le tableau multi-colonnes unique. Si un prérequis empêche l’exécution (accès sécurisé au secret, endpoint vérifié, prise en charge du modèle ou de son raisonnement), attribuer `Invalide`, signaler précisément le blocage et distinguer un test non exécuté d’un test exécuté en échec. Ne jamais inventer de mesure, de quota ou d’état validé. Pour chaque évaluation réelle, indiquer la date, les mesures et les critères en échec.
 
@@ -176,7 +223,7 @@ Si un accès nécessaire manque (secret, authentification, API de test ou source
 
 TTFT (Time To First Token) désigne le temps écoulé entre l’envoi de la requête et la réception du premier token de réponse. Mesurer côté client avec une horloge monotone et une réponse en streaming ; un événement vide ou contenant uniquement des métadonnées ne constitue pas un premier token. Cette mesure inclut la latence réseau et l’attente du fournisseur. Distinguer un éventuel flux de raisonnement du contenu de réponse et expliciter lequel est mesuré. En l’absence de protocole explicitement fourni, choisir un test de génération de code court et borné, indiquer le prompt, le budget de sortie et le nombre de requêtes utilisés, et garder ce protocole identique entre les modèles comparés. Ne pas bloquer une invocation uniquement pour demander ces paramètres. Mesurer le débit avec un comptage de tokens fiable, jamais avec le nombre de fragments de streaming ; signaler si le fournisseur ne permet pas de le déterminer. Les points d’accès, identifiants API et sources de quotas doivent être vérifiés avant toute exécution ; ne pas les déduire du nom commercial.
 
-Les Modes 1 à 4 sont définis, dans cet ordre de priorité. Ne pas inventer d’autres modes ni leurs priorités. La sélection suit l’ordre de priorité explicite décrit ci-dessous. Ne pas modifier la configuration des agents lors d’une simple présentation ou évaluation de PLLM.
+Les Modes 1 à 4 sont définis, dans cet ordre de priorité. Ne pas inventer d’autres modes ni leurs priorités. La sélection entre politiques suit l’ordre de priorité explicite décrit ci-dessous ; le classement de performance départage les candidats d’un même mode. Ne pas modifier la configuration des agents lors d’une simple présentation ou évaluation de PLLM.
 
 
 ## Publication de la politique en vigueur
@@ -188,7 +235,7 @@ Après chaque invocation, publier systématiquement les résultats, y compris si
 
 Les deux fichiers décrivent la même évaluation. Le JSON contient `schema_version`, `published_at`, `evaluated_at`, `selection_status`, `selected_mode` et `models`. Chaque entrée contient `priority`, `selected`, `mode`, `model`, `reasoning`, `provider`, `ttft_seconds`, `tokens_per_second`, `condition`, `state`, `cause`, `quotas`, `performance_test` et `evaluated_at`. Utiliser `null` pour une mesure indisponible, jamais zéro. Horodater en ISO 8601 avec fuseau. Conserver le protocole et le motif d’un test omis ou échoué dans `performance_test`.
 
-Le rapport utilisateur contient un seul tableau Markdown multi-colonnes, avec une ligne par politique et les colonnes Politique, Identifiant API, Fournisseur, TTFT (s), Tokens/s, État, Dernier palier réussi et Évalué le. Les quotas et soldes sont affichés sous le tableau, sur une ligne par PLLM. Sous ces quatre lignes, afficher en grand et en gras la PLLM active, son fournisseur et son modèle. Les lignes ou colonnes Modèle, Raisonnement, Priorité, Mode, Cause, Sélectionné, Quotas / solde et Condition ne sont pas affichées. Ces champs restent disponibles dans le JSON pour la sélection et la traçabilité. Ne jamais y inclure de clé, d’en-tête d’authentification ou de compte personnel.
+Le rapport utilisateur contient un seul tableau Markdown multi-colonnes, avec une ligne par politique et les colonnes Politique, Identifiant API, Fournisseur, TTFT (s), Tokens/s, État, Dernier palier réussi et Évalué le. Les quotas et soldes sont affichés sous le tableau, sur une ligne par PLLM. Sous ces quatre lignes, afficher en grand et en gras la PLLM active, son fournisseur et son modèle. Les colonnes Modèle, Raisonnement, Priorité, Mode, Cause, Sélectionné, Quotas / solde et Condition ne sont pas ajoutées. Le diagnostic figure dans État. Ces champs restent disponibles dans le JSON pour la sélection et la traçabilité. Ne jamais y inclure de clé, d’en-tête d’authentification ou de compte personnel.
 
 Écrire chaque fichier via un fichier temporaire dans le même dossier puis remplacement atomique. Le JSON fait autorité ; le Markdown est sa représentation. Signaler toute erreur de publication et ne pas annoncer une actualisation réussie si l’écriture a échoué.
 
@@ -227,7 +274,9 @@ l’agent doit appliquer cette séquence avant de changer les agents `plan` et
 `build` :
 
 1. Résoudre le secret du mode sélectionné depuis le trousseau avec ses
-   attributs PLLM, puis l’envoyer directement à `PUT /auth/<provider-id>` de
+   attributs PLLM : pour les modes 1/2, rechercher provider=opencodego même
+   si la destination sélectionnée est opencode. Utiliser son identifiant
+   fournisseur effectif pour la destination, puis l’envoyer directement à `PUT /auth/<provider-id>` de
    l’API locale OpenCode, avec le schéma d’authentification API. La valeur ne
    doit jamais être affichée, journalisée, passée dans
    un argument de commande ni transmise au modèle.
@@ -287,17 +336,17 @@ ne permettent jamais de déclarer valide un modèle sans mesures concluantes.
 
 ## Protocole de performance reproductible — version 5
 
-À chaque invocation, exécuter `python3 scripts/evaluate.py`, chemin relatif au dossier de ce skill. Le script contrôle les quotas avant chaque test, mesure les réponses en streaming et publie le JSON et le Markdown. Il ne remplace pas le modèle du Mode 3.
+À chaque invocation, exécuter `python3 scripts/evaluate.py`, chemin relatif au dossier de ce skill. Le script contrôle les quotas avant chaque test, mesure les réponses en streaming et publie le JSON et le Markdown. Il compare les candidats de chaque catégorie ; une invocation forcée ne remplace jamais son candidat.
 
-Le test utilise le même prompt de tri fusion Python et de trois assertions pour tous les modes. Les paliers autorisés sont exactement **1 024 → 2 048 → 4 096 → 8 192 tokens**, raisonnement et réponse compris. Sans réussite mémorisée pour cette configuration, commencer à 1 024. Après tout échec du test de performance, passer au palier suivant, uniquement après un nouveau contrôle des quotas. Si les quotas sont invalides, arrêter sans lancer ce test. Arrêter au premier succès, ou après l’échec à 8 192. Aucun palier à 8 912 ni tentative supplémentaire. Chaque requête est limitée à 120 secondes ; le TTFT requis reste strictement inférieur à 90 secondes.
+Le test utilise le même prompt de tri fusion Python et de trois assertions pour tous les modes. Les paliers autorisés sont exactement **1 024 → 2 048 → 4 096 → 8 192 tokens**, raisonnement et réponse compris. Sans réussite mémorisée pour cette configuration, commencer à 1 024. Après tout échec du test de performance, passer au palier suivant, uniquement après un nouveau contrôle des quotas. Si un contrôle indispensable échoue, arrêter sans lancer ce test ; un épuisement confirmé autorise seulement les gratuits. Arrêter les paliers du candidat au premier succès, ou après l’échec à 8 192, puis continuer les autres candidats autorisés. Aucun palier à 8 912 ni tentative supplémentaire. Chaque requête est limitée à 120 secondes ; le TTFT requis reste strictement inférieur à 90 secondes.
 
-Mémoriser par politique dans `data/pllm-performance-memory.json` le dernier palier ayant satisfait **tous** les critères de performance après contrôle des quotas, avec date et identité modèle/fournisseur/raisonnement/type de débit. Lors de l’invocation suivante, commencer à ce palier puis augmenter en cas d’échec. Ne pas remplacer la dernière réussite par un échec. Si le modèle ou sa configuration change (notamment le premier modèle OpenRouter du catalogue TFL), repartir à 1 024 ; ne pas réutiliser un palier appris pour une autre configuration. Cette mémoire ne remplace jamais les nouveaux contrôles en temps réel. Afficher `last_successful_max_tokens` dans le catalogue et le tableau. Enregistrer atomiquement chaque réussite dès qu’elle est obtenue.
+Mémoriser par politique dans `data/pllm-performance-memory.json` le dernier palier ayant satisfait **tous** les critères de performance après contrôle des quotas, avec date et identité modèle/fournisseur/raisonnement/type de débit. Lors de l’invocation suivante, commencer à ce palier puis augmenter en cas d’échec. Ne pas remplacer la dernière réussite par un échec. Si le modèle ou sa configuration change sans réussite correspondante mémorisée, repartir à 1 024 ; ne pas réutiliser un palier appris pour une autre configuration. Cette mémoire ne remplace jamais les nouveaux contrôles en temps réel. Afficher `last_successful_max_tokens` dans le catalogue et le tableau. Enregistrer atomiquement chaque réussite dès qu’elle est obtenue.
 
 La nouvelle mémoire est initialement vide : aucun ancien résultat n’est transformé artificiellement en apprentissage du nouveau protocole.
 
 Pour OpenRouter, consulter les métadonnées du modèle : utiliser `reasoning.effort=low` si ce niveau est exposé. Ne pas imposer `provider.require_parameters=true` : laisser OpenRouter choisir un fournisseur admissible et disponible, afin qu’un rate limit amont ne soit pas confondu avec une incapacité du modèle. Si seul `supports_max_tokens=true` est exposé, traduire Low par `reasoning.max_tokens=floor(max_tokens/5)` (204 pour 1 024 ; 409 pour 2 048 ; 819 pour 4 096 ; 1 638 pour 8 192), selon la correspondance d’environ 20 % documentée par OpenRouter. Ne pas envoyer simultanément effort et budget. Publier les paramètres réellement envoyés. Source : https://openrouter.ai/docs/guides/best-practices/reasoning-tokens . Cette traduction est un budget demandé, pas la preuve d’un nombre exact de tokens de réflexion produit.
 
-La TTFT porte sur le premier contenu visible de réponse ; le premier événement de raisonnement est chronométré séparément. Conserver le comptage de sortie et de raisonnement fourni par l’API même en cas de troncature. Pour OpenCode Go (Modes 1 et 2), utiliser le débit global : `(completion_tokens - 1) / (instant_dernier_token_généré - instant_premier_token_généré)`, raisonnement et réponse compris. Les instants doivent correspondre à du texte généré, pas à des événements vides ou à des métadonnées. Le compteur séparé de raisonnement n’est pas requis. Conserver `throughput_scope=reasoning_and_response` dans le JSON. Pour OpenRouter et DeepSeek direct, conserver le débit de réponse seul, hors raisonnement, avec `throughput_scope=response_only` dans le JSON. Le tableau n’ajoute aucune étiquette de type de débit. Les seuils restent > 15 tokens/s pour le type de débit ainsi défini ; ne pas comparer directement les deux types de débit comme une mesure identique. La sélection suit la priorité, pas le débit le plus élevé. Une absence de comptage fiable rend le résultat non mesurable ; ne pas remplacer des tokens par des fragments de flux.
+La TTFT porte sur le premier contenu visible de réponse ; le premier événement de raisonnement est chronométré séparément. Conserver le comptage de sortie et de raisonnement fourni par l’API même en cas de troncature. Pour OpenCode Go et OpenCode général (Modes 1 et 2), utiliser le débit global : `(completion_tokens - 1) / (instant_dernier_token_généré - instant_premier_token_généré)`, raisonnement et réponse compris. Les instants doivent correspondre à du texte généré, pas à des événements vides ou à des métadonnées. Le compteur séparé de raisonnement n’est pas requis. Conserver `throughput_scope=reasoning_and_response` dans le JSON. Pour OpenRouter et DeepSeek direct, conserver le débit de réponse seul, hors raisonnement, avec `throughput_scope=response_only` dans le JSON. Le tableau n’ajoute aucune étiquette de type de débit. Les seuils restent > 15 tokens/s pour le type de débit ainsi défini ; ne pas comparer directement les deux types de débit comme une mesure identique. La sélection entre modes suit la priorité ; dans un même mode, retenir le débit maximal puis le TTFT minimal. Une absence de comptage fiable rend le résultat non mesurable ; ne pas remplacer des tokens par des fragments de flux.
 
 Après le dernier palier, une réponse encore tronquée reste `Invalide` faute de mesure concluante, avec la cause `Budget du test épuisé`, sans présenter cela comme une panne du modèle. Distinguer cette cause des erreurs HTTP et des seuils de performance réellement non satisfaits.
 
@@ -310,21 +359,21 @@ Pour les soldes, la référence interne est 20 EUR : 🟢 à partir de 15 EUR (y
 
 Pour la TTFT, appliquer : 🟢 < 30 s, 🟡 de 30 s inclus à 45 s exclu, 🟠 de 45 s inclus à 90 s exclu, 🔴 ≥ 90 s. Pour tokens/s, appliquer : 🟢 > 30, 🟡 de 20 inclus à 30 inclus, 🟠 de 15 exclu à 20 exclu, 🔴 ≤ 15. Conserver le type de débit dans le JSON, mais ne pas ajouter d’étiquette `(global)` ou `(réponse)` dans le tableau. Une mesure indisponible ou non exécutée s’affiche `-` sans symbole de remplacement.
 
-Les couleurs sont informatives, indépendantes de la validité : un solde rouge mais positif peut satisfaire le contrôle de solde. L’état doit toujours être affiché en 🟢 `Valide` ou 🔴 `Invalide`. Enregistrer les informations d’affichage dans `quota_display` sans écraser les quotas bruts.
+Les couleurs sont informatives, indépendantes de la validité : un solde rouge mais positif peut satisfaire le contrôle de solde. L’état doit toujours porter 🟢 `Valide` ou 🔴 `Invalide`, avec le repli gratuit ou le diagnostic dans cette même cellule. Enregistrer les informations d’affichage dans `quota_display` sans écraser les quotas bruts.
 
 
 ## Sortie utilisateur limitée à un tableau multi-colonnes
 
 Lors d’une invocation normale de `/pllm`, restituer un seul tableau Markdown multi-colonnes avec une ligne par politique dans l’ordre de priorité 1 à 4. Le Markdown est obligatoire car l’interface échappe le HTML brut. Les colonnes sont `Politique`, `Identifiant API`, `Fournisseur`, `TTFT (s)`, `Tokens/s`, `État`, `Dernier palier réussi` et `Évalué le`. Afficher ensuite quatre lignes de quotas / soldes, une pour chaque PLLM.
 
-Les lignes ou colonnes `Modèle`, `Raisonnement`, `Priorité`, `Mode`, `Cause`, `Sélectionné`, `Quotas / solde` et `Condition` sont supprimées de l’affichage. La condition reste disponible dans le JSON et peut être fournie sur demande. Les cellules TTFT et tokens/s valent `-` si le test n’a pas été exécuté ou si la mesure est indisponible. Afficher TTFT et tokens/s avec une seule décimale. Afficher l’horodatage sous la forme `DD-MM-YY HH:mm`. L’état est toujours coloré par 🟢 `Valide` ou 🔴 `Invalide`.
+Les colonnes `Modèle`, `Raisonnement`, `Priorité`, `Mode`, `Cause`, `Sélectionné`, `Quotas / solde` et `Condition` ne sont pas ajoutées ; le diagnostic figure dans `État`. La condition reste disponible dans le JSON et peut être fournie sur demande. Les cellules TTFT et tokens/s valent `-` si le test n’a pas été exécuté ou si la mesure est indisponible. Afficher TTFT et tokens/s avec une seule décimale. Afficher l’horodatage sous la forme `DD-MM-YY HH:mm`. L’état reste coloré par 🟢 `Valide` ou 🔴 `Invalide`, complété dans la même cellule par le repli gratuit ou le diagnostic sûr.
 
 Pour `/pllm active`, le fichier Markdown contient uniquement la ligne de la première politique valide, sa ligne de quotas / solde et l’encart actif, ou `Aucune politique valide` si aucune politique n’est valide. Cette publication reste silencieuse : aucun tableau n’est restitué dans la conversation. Le JSON conserve `selected_mode`, `selection_status`, `selected` et `condition` pour les commandes consommatrices et les demandes détaillées.
 
 
 ## Argument `active` — sélection silencieuse
 
-`/pllm active` exécute `python3 scripts/evaluate.py active`. Évaluer les politiques par priorité croissante avec les contrôles et paliers mémorisés habituels. Arrêter immédiatement dès la première politique `Valide` : ne consulter ni quotas ni performances des politiques suivantes.
+`/pllm active` exécute `python3 scripts/evaluate.py active`. Évaluer les politiques par priorité croissante avec les contrôles et paliers mémorisés habituels. Après classement complet des candidats du mode, arrêter dès la première politique `Valide` : ne consulter ni quotas ni performances des politiques suivantes.
 
 Actualiser `pllm-current.json` et `pllm-current.md` sans sortie console ni tableau dans la conversation. En mode active, le Markdown contient uniquement la ligne de la politique sélectionnée, sa ligne de quotas / solde et l’encart actif pour les autres commandes. Si aucune politique ne satisfait les conditions, publier « Aucune politique valide » et `selected_mode=null` ; ne pas conserver une ancienne sélection.
 

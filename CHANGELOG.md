@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Comparer les payants PLLM quand les ressources sont disponibles ; après épuisement confirmé, limiter les modes 1/2 aux gratuits TFL Go et OpenCode général, et le mode 3 aux gratuits OpenRouter. Revenir aux payants au rétablissement des ressources.
+- Retenir le débit maximal puis le TTFT minimal parmi toutes les réussites d'un mode, avec ordre TFL pour dernier départage ; préserver priorités, Low, seuils stricts, forçages et silence de active.
+- Afficher authentification refusée, accès refusé et repli gratuit dans État ; conserver quotas réels, candidats et tentatives dans le JSON, avec mémoire par configuration et sans secret dans les erreurs.
+- Aligner VERSION, pyproject.toml, README et les cinq plugins sur 0.6.0 ; synchroniser les deux distributions PLLM. Cette livraison locale n'installe pas les sources dans les profils utilisateur et ne qualifie pas les accès fournisseurs réels.
+
 - Ajouter le catalogue général OpenCode à TFL par collecte publique indépendante de Go, avec tarifs Console et métadonnées `opencode` ; conserver contexte ≥ 1M, coût moyen maximal 0,50 USD/M, modalités, blacklist et exclusions motivées, y compris variantes gratuites 200K.
 - Restituer Go, OpenCode général puis OpenRouter avec trois tableaux aux colonnes identiques ; ajouter la section JSON `opencode` sans changer les sections ni politiques PLLM existantes, et préserver les rapports si une collecte indispensable échoue.
 - Aligner la release commune, pyproject.toml, README et les cinq plugins sur 0.5.6 ; synchroniser distributions, wrapper et descriptions CM/TFL, sans installation de profil ni publication distante.

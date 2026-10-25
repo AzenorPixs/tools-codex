@@ -165,7 +165,7 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 | Composant | Prérequis locaux | Services externes nécessaires |
 |---|---|---|
 | `tfl` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS, exécution hors sandbox et répertoire de données inscriptible. Les accès aux fournisseurs sont configurés localement hors des sources. | OpenCode Go, catalogue général OpenCode, models.dev et OpenRouter. |
-| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les quatre politiques sont initialisées si le fichier courant manque. | OpenCode Go, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
+| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les quatre politiques sont initialisées si le fichier courant manque. | OpenCode Go, OpenCode général pour le repli gratuit, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
 | `$cm` | Skill découvert dans le projet ou installé dans un emplacement reconnu. | Aucun. |
@@ -179,6 +179,33 @@ inscriptible. PLLM charge `data/pllm-current.json` avant l'évaluation ; si ce
 fichier manque, les quatre politiques sont initialisées sans mesures ni
 sélection historique. Un fichier courant invalide provoque un diagnostic et
 reste préservé. Les contrôles de quotas et de performance restent obligatoires.
+
+PLLM contrôle le compte Go des modes 1/2 même si le gagnant précédent utilise
+le fournisseur `opencode` du catalogue général. Avec ressources disponibles,
+seuls les payants Go (modes 1/2) ou OpenRouter (mode 3) sont comparés. Après
+épuisement confirmé sur des données complètes, le repli est limité aux gratuits
+Go puis OpenCode général, ou OpenRouter pour mode 3. Gratuit signifie tarifs
+d'entrée/sortie vérifiés nuls, avec variantes publiées compatibles ; le nom
+ne suffit pas. Les filtres TFL restent applicables et aucun candidat payant
+n'est appelé pendant le repli. Le retour des ressources rétablit les payants ;
+les transitions pendant l'évaluation sont bornées.
+
+Les routes et fournisseurs de chaque section sont conservés. Les deux
+catalogues OpenCode utilisent la clé du compte du mode uniquement sur l'origine
+HTTPS OpenCode validée, un User-Agent PLLM et une session stable. Une restriction
+de client natif ou un refus de clé reste explicite ; le testeur ne fabrique pas
+une identité native et ne crée pas de secret. La configuration OpenCode reste
+inchangée. L'état historique accepte `opencode` pour les seuls modes 1/2.
+
+Les réussites de même mode sont classées par débit maximal, TTFT minimal puis
+ordre TFL stable ; l'arrêt au premier succès concerne seulement ses paliers.
+Go et OpenCode général utilisent le débit raisonnement+réponse ; OpenRouter
+et DeepSeek le débit réponse seule. Les priorités entre modes restent fixes.
+Le JSON additif conserve catégorie, exclusions, candidats et tentatives, ainsi
+que les quotas réels. La mémoire garde les succès par configuration ; un
+palier d'un autre candidat n'est pas affiché. Les erreurs HTTP/SSE sont filtrées
+et rendues dans État sans corps brut. active termine le classement du mode
+avant de s'arrêter silencieusement ; les forçages gardent un seul candidat.
 
 La résolution du catalogue par PLLM accepte `--tfl-catalog CHEMIN` pour
 OpenCode Go, OpenRouter et les replis. Sans option, elle conserve
@@ -232,6 +259,7 @@ dans ces répertoires, dans les scripts des skills ou dans `pyproject.toml`.
 La lecture des sources, les contrôles documentaires et la validation OpenSpec
 ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
 La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py`,
+`tests/test_pllm_free_fallback.py`,
 `tests/test_extension_qualification.py`, `tests/test_tcu_update.py` et
 `tests/test_prompt_dispatch.py`, exécutables avec
 `python3 -B -m unittest discover -s tests -v`. Elle couvre les deux
@@ -276,8 +304,8 @@ Les champs consommés par PLLM restent présents ; `routing_metadata` conserve
 source, date, SDK, portée des surcharges et référence du contrat de protocole.
 `routing_status=documented` et `generation_tested=false` distinguent la preuve
 documentaire d'un appel réel. `tests/test_tfl_go_metadata.py` couvre ces cas
-sur les deux distributions et vérifie la lecture par les consommateurs PLLM
-inchangés, sans quota ni benchmark.
+sur les deux distributions et vérifie la lecture des métadonnées par PLLM,
+sans quota ni benchmark.
 
 Le catalogue général est collecté séparément par GET public sur
 `https://opencode.ai/zen/v1/models`, sans Authorization ni clé Go. Ses tarifs
@@ -293,7 +321,8 @@ référence ; Go garde le hors pointe. Les prix généraux portent les champs
 `input`, `output`, `average` dans `reference_pricing_usd_per_million_tokens`.
 Les sources, dates, variantes et exclusions restent auditables. L'échec d'une
 collecte indispensable bloque toute publication partielle. Les consommateurs
-PLLM continuent de lire leurs sections existantes sans utiliser `opencode`.
+PLLM lisent leurs sections Go/OpenRouter et utilisent `opencode` pour le repli
+gratuit des seuls modes 1/2, sans emprunt de tarif ni de route entre sections.
 `tests/test_tfl_opencode_catalog.py` vérifie séparation, bornes, trois tableaux,
 exclusions des variantes gratuites 200K, erreurs et compatibilité.
 

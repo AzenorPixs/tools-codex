@@ -1,6 +1,6 @@
 {
   "name": "prompt",
-  "version": "0.5.6",
+  "version": "0.6.0",
   "description": "Liste et lance les prompts du projet courant depuis son référentiel DEVOPS.md.",
   "author": {"name": "AzenorPixs"},
   "homepage": "https://github.com/AzenorPixs/tools-codex",

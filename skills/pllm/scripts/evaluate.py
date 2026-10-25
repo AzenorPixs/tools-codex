@@ -2,12 +2,14 @@
 """Evaluate PLLM quotas before bounded streaming benchmarks; publish no secrets."""
 import json
 import argparse
+import copy
 import math
 import signal
 import subprocess
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
 import uuid
 from datetime import datetime
@@ -27,6 +29,48 @@ OPENCODE_GO_ROUTE_BY_MODEL = {
 }
 
 ACCOUNTS = ['anthony.demard44@gmail.com', 'az.github@pixs.fr', 'az.openrouter@pixs.fr', 'az.deepseek@pixs.fr']
+
+
+class QuotaExhausted(RuntimeError):
+    """Resource exhaustion established from a complete authenticated response."""
+
+
+class AuthenticationFailure(RuntimeError):
+    """Authentication failed; do not hide it behind another candidate."""
+
+
+class ResourceFailure(RuntimeError):
+    """An indispensable resource control failed during candidate evaluation."""
+
+
+class CategoryChanged(RuntimeError):
+    def __init__(self, category):
+        super().__init__('Ressources modifiées : nouvelle catégorie ' + category)
+        self.category = category
+
+
+def api_error(code):
+    if code in (401, '401', 'invalid_api_key', 'authentication_error', 'unauthorized'):
+        return AuthenticationFailure('Authentification refusée (HTTP 401)')
+    if code in (403, '403', 'permission_denied', 'forbidden'):
+        return RuntimeError('Accès refusé (HTTP 403)')
+    if code in (429, '429', 'rate_limit_exceeded'):
+        return RuntimeError('HTTP 429 — limitation fournisseur')
+    return RuntimeError('Erreur dans le flux API')
+
+
+def error_message(error):
+    if isinstance(error, urllib.error.HTTPError):
+        error.close()
+        if error.code in (401, 403, 429):
+            return str(api_error(error.code))
+        return 'HTTP ' + str(error.code)
+    return str(error) if isinstance(error, RuntimeError) else type(error).__name__
+
+
+def is_authentication_error(error):
+    return isinstance(error, AuthenticationFailure) or (
+        isinstance(error, urllib.error.HTTPError) and error.code == 401)
 
 
 def now():
@@ -63,18 +107,28 @@ def get(url, key):
 
 
 def quota(m, key):
-    if m['provider'] == 'opencodego':
+    provider = 'opencodego' if m['mode'] in ('mode1', 'mode2') else m['provider']
+    m['quota_provider'] = provider
+    if provider == 'opencodego':
         q = get('https://opencode.ai/zen/go/v1/usage', key)['usage']
         m['quotas'] = q
-        failed = [p for p in ['rolling', 'weekly', 'monthly'] if finite(q[p]['percent']) >= 100 or q[p]['status'] != 'ok']
+        periods = ('rolling', 'weekly', 'monthly')
+        values = {p: finite(q[p]['percent']) for p in periods}
+        if any(values[p] < 0 or q[p]['status'] not in ('ok', 'rate-limited') for p in periods):
+            raise RuntimeError('Données de quota indisponibles ou incohérentes')
+        m['quotas_evaluated_at'] = now()
+        failed = [p for p in periods if values[p] >= 100]
         if failed:
-            raise RuntimeError('Quota indisponible : ' + ', '.join(failed))
-    elif m['provider'] == 'openrouter':
+            raise QuotaExhausted('Quota épuisé : ' + ', '.join(failed))
+        if any(q[p]['status'] != 'ok' for p in periods):
+            raise RuntimeError('Quota indisponible sans épuisement confirmé')
+    elif provider == 'openrouter':
         q = get('https://openrouter.ai/api/v1/credits', key)['data']
         balance = finite(q['total_credits']) - finite(q['total_usage'])
         m['quotas'] = {'balance': balance, 'currency': 'USD'}
+        m['quotas_evaluated_at'] = now()
         if balance <= 0:
-            raise RuntimeError('Solde épuisé')
+            raise QuotaExhausted('Crédit épuisé')
     else:
         q = get('https://api.deepseek.com/user/balance', key)
         m['quotas'] = q
@@ -84,7 +138,7 @@ def quota(m, key):
 
 
 def reasoning(m, budget, metadata):
-    if m['provider'] == 'opencodego':
+    if m['provider'] in ('opencodego', 'opencode'):
         if m.get('api_protocol') == 'responses':
             return {'reasoning': {'effort': 'low'}}
         if m.get('api_protocol') == 'messages':
@@ -106,10 +160,10 @@ def benchmark(m, key, budget, metadata, session_id=None):
     result = {'status': 'running', 'prompt': PROMPT, 'max_tokens': budget, 'reasoning_request': options,
               'started_at': now(), 'ttft_target': 'content (hors raisonnement)', 'requests': 1,
               'api_protocol': protocol, 'api_endpoint': m.get('api_endpoint')}
-    if m['provider'] == 'opencodego':
+    if m['provider'] in ('opencodego', 'opencode'):
         result['session_header'] = 'x-opencode-session'
     m['performance_test'] = result
-    url = m.get('api_endpoint') if m['provider'] == 'opencodego' else {'openrouter': 'https://openrouter.ai/api/v1/chat/completions', 'deepseek': 'https://api.deepseek.com/chat/completions'}[m['provider']]
+    url = m.get('api_endpoint') if m['provider'] in ('opencodego', 'opencode') else {'openrouter': 'https://openrouter.ai/api/v1/chat/completions', 'deepseek': 'https://api.deepseek.com/chat/completions'}[m['provider']]
     if not url:
         raise RuntimeError('Point d’accès API du modèle OpenCode Go absent du catalogue TFL')
     model_id = m['model_id']
@@ -121,7 +175,7 @@ def benchmark(m, key, budget, metadata, session_id=None):
         body = {'model': model_id, 'messages': [{'role': 'user', 'content': PROMPT}], 'max_tokens': budget,
                 'stream': True, 'stream_options': {'include_usage': True}, **options}
     extra_headers = None
-    if m['provider'] == 'opencodego':
+    if m['provider'] in ('opencodego', 'opencode'):
         extra_headers = {'Accept': 'text/event-stream'}
         if protocol == 'messages':
             extra_headers['x-api-key'] = key
@@ -144,7 +198,8 @@ def benchmark(m, key, budget, metadata, session_id=None):
                     break
                 event = json.loads(raw)
                 if event.get('error'):
-                    raise RuntimeError('Erreur dans le flux API')
+                    error = event['error']
+                    raise api_error(error.get('code') or error.get('type')) if isinstance(error, dict) else api_error(None)
                 if protocol == 'messages':
                     event_type = event.get('type')
                     delta = event.get('delta') or {}
@@ -195,7 +250,7 @@ def benchmark(m, key, budget, metadata, session_id=None):
                         done = True
                         break
                     if event_type == 'error':
-                        raise RuntimeError('Erreur dans le flux API')
+                        raise api_error(event.get('code'))
                     continue
                 if event.get('provider'):
                     result['upstream_provider'] = event['provider']
@@ -238,7 +293,7 @@ def benchmark(m, key, budget, metadata, session_id=None):
     rn = result.get('reasoning_tokens')
     if not isinstance(n, int) or n <= 1:
         raise RuntimeError('Comptage des tokens indisponible')
-    if m['provider'] == 'opencodego':
+    if m['provider'] in ('opencodego', 'opencode'):
         count = n
         begin, end = first_generated, last_generated
         m['throughput_scope'] = 'reasoning_and_response'
@@ -282,7 +337,7 @@ def quota_display(m, fx=None):
     if not q:
         return {'text': '⚪ Non disponible', 'items': []}
     items = []
-    if m['provider'] == 'opencodego':
+    if m.get('quota_provider', m['provider']) == 'opencodego':
         for period, label in [('rolling', '5 h'), ('weekly', 'Semaine'), ('monthly', 'Mois')]:
             value = q.get(period, {}).get('percent')
             if value is None:
@@ -373,7 +428,8 @@ def policy_table(models):
             model['provider'],
             performance_display('ttft', model.get('ttft_seconds')),
             performance_display('tokens', model.get('tokens_per_second'), model.get('throughput_scope')),
-            '🟢 Valide' if model['state'] == 'Valide' else '🔴 Invalide',
+            ('🟢 Valide' + (' — repli gratuit' if model.get('selection_category') == 'free' else '')
+             if model['state'] == 'Valide' else '🔴 Invalide — ' + (model.get('cause') or 'Non évalué')),
             model.get('last_successful_max_tokens') or '-',
             display_timestamp(model.get('evaluated_at')),
         ]
@@ -518,6 +574,7 @@ def identity(m):
 
 def budgets_for(m, memory):
     previous = memory['policies'].get(m['mode'], {})
+    previous = previous.get('configurations', {}).get(json.dumps(identity(m), sort_keys=True), previous)
     budget = previous.get('last_successful_max_tokens')
     if previous.get('identity') == identity(m) and budget in BUDGETS:
         m['last_successful_max_tokens'] = budget
@@ -527,11 +584,18 @@ def budgets_for(m, memory):
 
 
 def remember_success(m, budget, memory):
-    memory['policies'][m['mode']] = {
+    previous = memory['policies'].get(m['mode'], {})
+    configurations = dict(previous.get('configurations', {}))
+    if 'identity' in previous:
+        configurations[json.dumps(previous['identity'], sort_keys=True)] = {
+            k: v for k, v in previous.items() if k != 'configurations'}
+    success = {
         'identity': identity(m), 'last_successful_max_tokens': budget,
         'succeeded_at': now(), 'ttft_seconds': m['ttft_seconds'],
         'tokens_per_second': m['tokens_per_second'],
     }
+    configurations[json.dumps(identity(m), sort_keys=True)] = dict(success)
+    memory['policies'][m['mode']] = {**success, 'configurations': configurations}
     MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
     temp = MEMORY_PATH.with_name(MEMORY_PATH.name + '.tmp')
     temp.write_text(json.dumps(memory, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
@@ -564,7 +628,7 @@ def load_current():
     for priority, provider in enumerate(providers, 1):
         matches = [m for m in models if isinstance(m, dict) and m.get('mode') == f'mode{priority}']
         if (len(matches) != 1 or matches[0].get('priority') != priority
-                or matches[0].get('provider') != provider
+                or matches[0].get('provider') not in ((provider, 'opencode') if priority <= 2 else (provider,))
                 or not isinstance(matches[0].get('condition'), str)
                 or not isinstance(matches[0].get('reasoning'), str)
                 or matches[0].get('state') not in ('Valide', 'Invalide')
@@ -574,135 +638,243 @@ def load_current():
     return data
 
 
+def resource_category(model, key):
+    try:
+        quota(model, key)
+    except QuotaExhausted:
+        if model['mode'] == 'mode4':
+            raise
+        return 'free'
+    return 'paid'
+
+
+def check_category(model, key, category):
+    current = resource_category(model, key)
+    if current != category:
+        raise CategoryChanged(current)
+
+
+def catalog_candidate(row, section, rank, generated_at):
+    if not isinstance(row, dict) or not isinstance(row.get('id'), str) or not row['id']:
+        raise RuntimeError('Candidat TFL sans identifiant vérifiable')
+    if row.get('context_length', 0) < 1_000_000:
+        raise RuntimeError('Contexte TFL inférieur à 1M ou non vérifiable')
+    if set(row.get('output_modalities') or []) & {'audio', 'video', 'speech', 'sound'}:
+        raise RuntimeError('Sortie TFL non admissible')
+    if row['id'] in ('muse-spark-1.2-contributor', 'meta/muse-spark-1.2-contributor'):
+        raise RuntimeError('Blacklist TFL permanente')
+    if section == 'openrouter':
+        prices = (finite(row['input_price']), finite(row['output_price']))
+        provider = 'openrouter'
+        endpoint, protocol = 'https://openrouter.ai/api/v1/chat/completions', 'chat_completions'
+    else:
+        if row.get('available') is not True:
+            raise RuntimeError('Candidat TFL indisponible')
+        reference = row['reference_pricing_usd_per_million_tokens']
+        keys = ('input_off_peak', 'output_off_peak') if section == 'opencode_go' else ('input', 'output')
+        prices = tuple(finite(reference[k]) for k in keys)
+        provider = 'opencodego' if section == 'opencode_go' else 'opencode'
+        endpoint, protocol = row.get('api_endpoint'), row.get('api_protocol')
+        if protocol not in ('responses', 'chat_completions', 'messages') or not isinstance(endpoint, str):
+            raise RuntimeError('Routage TFL absent ou protocole non benchmarké')
+        url = urlsplit(endpoint)
+        if (url.scheme != 'https' or url.hostname != 'opencode.ai' or url.port not in (None, 443)
+                or url.username or url.password or url.query or url.fragment):
+            raise RuntimeError('Origine du routage TFL non autorisée')
+    if any(price < 0 for price in prices) or not math.isfinite(sum(prices)) or sum(prices) / 2 > 0.5:
+        raise RuntimeError('Prix TFL hors critères ou non vérifiable')
+    free = all(price == 0 for price in prices)
+    for variant in row.get('pricing_variants') or []:
+        if free and any(finite(variant[k]) != 0 for k in ('input', 'output')):
+            free = False
+    return {'model_id': row['id'], 'model': row.get('name') or row['id'], 'provider': provider,
+            'api_endpoint': endpoint, 'api_protocol': protocol,
+            'throughput_scope': 'reasoning_and_response' if section != 'openrouter' else 'response_only',
+            'is_free': free, 'model_source': {'selector': 'tfl_performance_ranking', 'section': section,
+                                             'rank': rank, 'generated_at': generated_at}}
+
+
+def candidates_for(model, category, catalog_path, forced=None):
+    if model['mode'] == 'mode4':
+        return [{'model_id': 'deepseek-v4-flash', 'model': 'deepseek-v4-flash',
+                 'provider': 'deepseek', 'throughput_scope': 'response_only',
+                 'api_protocol': 'chat_completions', 'api_endpoint': 'https://api.deepseek.com/chat/completions',
+                 'is_free': False}]
+    catalog = load_tfl_catalog(catalog_path)
+    go = model['mode'] in ('mode1', 'mode2')
+    sections = ('opencode_go', 'opencode') if go and category == 'free' and not forced else (
+        ('opencode_go',) if go else ('openrouter',))
+    candidates = []
+    for section in sections:
+        source = catalog.get(section)
+        if section == 'opencode' and source is None:
+            continue
+        rows = source.get('models') if isinstance(source, dict) else None
+        if not isinstance(rows, list):
+            raise RuntimeError('Section TFL absente ou invalide : ' + section)
+        requested = forced.get('rank') if forced else None
+        if requested is not None and (requested < 1 or requested > len(rows)):
+            raise RuntimeError('Rang TFL indisponible : ' + str(requested))
+        for rank, row in enumerate(rows, 1):
+            if requested is not None and rank != requested:
+                continue
+            try:
+                candidate = catalog_candidate(row, section, rank, catalog.get('generated_at'))
+            except (KeyError, TypeError, ValueError, RuntimeError) as error:
+                if forced and requested is not None:
+                    raise RuntimeError('Candidat forcé non admissible : ' + error_message(error)) from error
+                model['candidate_exclusions'].append({'section': section, 'rank': rank, 'cause': error_message(error)})
+                continue
+            if candidate['is_free'] != (category == 'free'):
+                if forced and requested is not None:
+                    raise RuntimeError('Candidat forcé incompatible avec les ressources : catégorie ' + category)
+                continue
+            candidates.append(candidate)
+    return candidates[:1] if forced else candidates
+
+
+def evaluate_candidate(model, key, category, memory, session_id):
+    attempts = []
+    stage = 'configuration du test'
+    try:
+        metadata = {}
+        if model['provider'] == 'openrouter':
+            metadata = next((item for item in get('https://openrouter.ai/api/v1/models', key)['data']
+                             if item['id'] == model['model_id']), None)
+            if metadata is None:
+                raise RuntimeError('Modèle absent des métadonnées OpenRouter actuelles')
+        for budget in budgets_for(model, memory):
+            stage = 'quotas avant performance'
+            check_category(model, key, category)
+            stage = 'performance'
+            model.update(ttft_seconds=None, tokens_per_second=None,
+                         performance_test={'status': 'not_run', 'max_tokens': budget, 'requests': 0})
+            try:
+                complete = benchmark(model, key, budget, metadata, session_id=session_id)
+                if not complete:
+                    raise RuntimeError('Budget du test épuisé : mesure inconclusive')
+                ttft = finite(model['ttft_seconds'])
+                throughput = finite(model['tokens_per_second'])
+                if ttft < 0 or ttft >= TTFT_LIMIT_SECONDS or throughput <= 15:
+                    raise RuntimeError('Seuil de performance non satisfait')
+                model.update(ttft_seconds=ttft, tokens_per_second=throughput)
+            except Exception as error:
+                model['performance_test'].update(status='failed', reason=error_message(error), model_id=model['model_id'])
+                attempts.append(copy.deepcopy(model['performance_test']))
+                if is_authentication_error(error):
+                    raise AuthenticationFailure(error_message(error)) from error
+                if isinstance(error, urllib.error.HTTPError) and error.code == 403:
+                    raise
+                if budget == BUDGETS[-1]:
+                    raise
+                continue
+            model['performance_test']['model_id'] = model['model_id']
+            attempts.append(copy.deepcopy(model['performance_test']))
+            remember_success(model, budget, memory)
+            model.update(state='Valide', cause='Tous les critères satisfaits')
+            break
+        else:
+            raise RuntimeError('Aucune mesure concluante après épuisement des paliers')
+    except CategoryChanged:
+        raise
+    except Exception as error:
+        model.update(state='Invalide', cause=stage + ' : ' + error_message(error))
+        if is_authentication_error(error):
+            raise AuthenticationFailure(error_message(error)) from error
+        if stage == 'quotas avant performance':
+            raise ResourceFailure(model['cause']) from error
+        model['performance_test'].update(reason=model['cause'])
+    finally:
+        model['performance_test']['attempts'] = attempts
+    return model
+
+
 def main(active=False, forced=None, tfl_catalog=None):
     signal.signal(signal.SIGALRM, expire)
-    d = load_current()
+    data = load_current()
     memory = load_memory()
-    d['models'].sort(key=lambda m: m['priority'])
-    if [m['mode'] for m in d['models']] != ['mode1', 'mode2', 'mode3', 'mode4']:
+    data['models'].sort(key=lambda model: model['priority'])
+    if [model['mode'] for model in data['models']] != ['mode1', 'mode2', 'mode3', 'mode4']:
         raise RuntimeError('Ce protocole attend les quatre modes définis')
-    d['evaluation_mode'] = 'active' if active else ('forced' if forced else 'all')
+    data['evaluation_mode'] = 'active' if active else ('forced' if forced else 'all')
     if forced:
-        d['forced_policy'] = {'mode': forced['mode'], 'rank': forced.get('rank')}
+        data['forced_policy'] = {'mode': forced['mode'], 'rank': forced.get('rank')}
     else:
-        d.pop('forced_policy', None)
-    for m in d['models']:
-        m['evaluated_this_run'] = False
-        m['selected'] = False
-    for m, account in zip(d['models'], ACCOUNTS):
-        if forced and m['mode'] != forced['mode']:
+        data.pop('forced_policy', None)
+    for model in data['models']:
+        model.update(evaluated_this_run=False, selected=False)
+    for model, provider, account in zip(data['models'], ('opencodego', 'opencodego', 'openrouter', 'deepseek'), ACCOUNTS):
+        if forced and model['mode'] != forced['mode']:
             continue
-        m['evaluated_this_run'] = True
-        m['condition'] = m['condition'].replace('TTFT < 60 s', f'TTFT < {TTFT_LIMIT_SECONDS} s')
-        m.update(state='Invalide', cause='', selected=False, ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
-                 performance_test={'status': 'not_run', 'reason': 'Non exécuté — contrôle des quotas Invalide'})
-        m['throughput_scope'] = 'reasoning_and_response' if m['provider'] == 'opencodego' else 'response_only'
-        m.pop('quotas_evaluated_at', None)
+        model.update(evaluated_this_run=True, state='Invalide', cause='', selected=False,
+                     provider=provider, model='Non évalué', model_id='Non évalué', reasoning='low',
+                     ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
+                     last_successful_max_tokens=None, selection_category=None,
+                     candidate_results=[], candidate_exclusions=[],
+                     condition=f'TTFT < {TTFT_LIMIT_SECONDS} s ET tokens/s > 15 ET ' + (
+                         'is_available=true ET au moins un solde utilisable > 0' if model['mode'] == 'mode4'
+                         else '(ressources disponibles pour un payant OU épuisement confirmé et gratuit accessible)'),
+                     performance_test={'status': 'not_run', 'reason': 'Contrôle des ressources requis'})
+        for field in ('quotas_evaluated_at', 'api_endpoint', 'api_protocol', 'model_source', 'is_free'):
+            model.pop(field, None)
         key = ''
-        stage = 'quotas'
         try:
-            r = subprocess.run(['secret-tool', 'lookup', 'service', 'pllm', 'policy', m['mode'], 'provider', m['provider'], 'account', account], capture_output=True, timeout=15)
-            if r.returncode or not r.stdout.strip():
-                raise RuntimeError('Secret inaccessible')
-            key = r.stdout.decode().strip()
-            stage = 'configuration du modèle'
-            metadata = {}
-            if m['provider'] == 'opencodego':
-                rank = (forced.get('rank') or 1) if forced and forced['mode'] == m['mode'] else 1
-                tfl_model, generated_at = tfl_opencode_model_at(rank, tfl_catalog)
-                m['model_id'] = tfl_model['id']
-                m['model'] = tfl_model.get('name') or m['model_id']
-                m['api_endpoint'] = tfl_model['api_endpoint']
-                m['api_protocol'] = tfl_model['api_protocol']
-                m['model_source'] = {'selector': 'tfl_opencode_go_rank', 'rank': rank, 'generated_at': generated_at}
-            elif m['provider'] == 'openrouter':
-                catalog = load_tfl_catalog(tfl_catalog)
-                rank = (forced.get('rank') or 1) if forced and forced['mode'] == m['mode'] else 1
-                section = catalog.get('openrouter')
-                openrouter_models = section.get('models') if isinstance(section, dict) else None
-                if not isinstance(openrouter_models, list):
-                    raise RuntimeError('Catalogue TFL OpenRouter absent ou invalide')
-                if not isinstance(rank, int) or rank < 1 or rank > len(openrouter_models):
-                    raise RuntimeError(f'Rang OpenRouter TFL indisponible : {rank}')
-                candidate = openrouter_models[rank - 1]
-                if not isinstance(candidate, dict) or not isinstance(candidate.get('id'), str) or not candidate['id']:
-                    raise RuntimeError('Modèle TFL OpenRouter invalide')
-                m['model_id'] = candidate['id']
-                m['model'] = m['model_id']
-                m['model_source'] = {'selector': 'tfl_openrouter_rank', 'rank': rank, 'generated_at': catalog.get('generated_at')}
-            else:
-                m['model_id'] = 'deepseek-v4-flash'
-                m['model'] = m['model_id']
-            stage = 'quotas'
-            quota(m, key)
-            stage = 'configuration du test'
-            if m['provider'] == 'openrouter':
-                metadata = next(x for x in get('https://openrouter.ai/api/v1/models', key)['data'] if x['id'] == m['model_id'])
-            attempts = []
-            session_id = str(uuid.uuid4()) if m['provider'] == 'opencodego' else None
-            visited = {m['model_id']}
-            while True:
-                replacement = None
-                for budget in budgets_for(m, memory):
-                    if attempts:
-                        stage = 'quotas avant nouvelle tentative'
-                        quota(m, key)
-                    stage = 'performance'
-                    m['ttft_seconds'] = None
-                    m['tokens_per_second'] = None
-                    try:
-                        complete = benchmark(m, key, budget, metadata, session_id=session_id)
-                        if not complete:
-                            raise RuntimeError('Budget du test épuisé : mesure inconclusive, pas une preuve de panne du modèle')
-                        if m['ttft_seconds'] >= TTFT_LIMIT_SECONDS or m['tokens_per_second'] <= 15:
-                            raise RuntimeError('Seuil de performance non satisfait')
-                    except Exception as error:
-                        message = ('HTTP 429 — rate_limit_exceeded (limitation fournisseur, test non concluant)' if isinstance(error, urllib.error.HTTPError) and error.code == 429 else 'HTTP ' + str(error.code) if isinstance(error, urllib.error.HTTPError) else str(error) if isinstance(error, RuntimeError) else type(error).__name__)
-                        m['performance_test'].update(status='failed', reason=message, model_id=m['model_id'])
-                        attempts.append({k: v for k, v in m['performance_test'].items() if k != 'attempts'})
-                        m['performance_test']['attempts'] = list(attempts)
-                        if (not forced and m['provider'] == 'opencodego' and m['mode'] in ('mode1', 'mode2')
-                                and isinstance(error, urllib.error.HTTPError) and error.code == 429):
-                            replacement = next_tfl_opencode_model(m['model_id'], tfl_catalog)
-                            if replacement:
-                                if replacement['id'] in visited:
-                                    raise RuntimeError('Catalogue TFL cyclique : candidats de repli épuisés')
-                                break
-                        if budget == BUDGETS[-1]:
+            secret = subprocess.run(['secret-tool', 'lookup', 'service', 'pllm', 'policy', model['mode'],
+                                     'provider', provider, 'account', account], capture_output=True, timeout=15)
+            if secret.returncode or not secret.stdout.strip():
+                raise AuthenticationFailure('Clé API inaccessible dans le trousseau')
+            key = secret.stdout.decode().strip()
+            category = resource_category(model, key)
+            session_id = str(uuid.uuid4()) if provider == 'opencodego' else None
+            for transition in range(3):
+                model['selection_category'] = category
+                candidates = candidates_for(model, category, tfl_catalog, forced=forced)
+                if not candidates:
+                    raise RuntimeError('Aucun candidat TFL admissible ' + ('gratuit après épuisement' if category == 'free' else 'payant'))
+                results = []
+                try:
+                    for candidate in candidates:
+                        current = {k: copy.deepcopy(v) for k, v in model.items()
+                                   if k not in ('candidate_results', 'candidate_exclusions')}
+                        current.update(candidate)
+                        current.update(state='Invalide', cause='', last_successful_max_tokens=None,
+                                       evaluated_at=now(), ttft_seconds=None, tokens_per_second=None,
+                                       performance_test={'status': 'not_run', 'reason': 'Test non exécuté'})
+                        try:
+                            evaluate_candidate(current, key, category, memory, session_id)
+                        except (CategoryChanged, AuthenticationFailure, ResourceFailure):
+                            records = model['candidate_results']
+                            records.append(copy.deepcopy(current))
+                            model.update(current)
+                            model['candidate_results'] = records
                             raise
-                        continue
-                    m['performance_test']['model_id'] = m['model_id']
-                    attempts.append({k: v for k, v in m['performance_test'].items() if k != 'attempts'})
-                    m['performance_test']['attempts'] = list(attempts)
-                    remember_success(m, budget, memory)
-                    break
-                else:
-                    raise RuntimeError('Aucune mesure concluante après épuisement des paliers')
-                if replacement is None:
-                    break
-                previous_model = m['model_id']
-                visited.add(replacement['id'])
-                m['model_id'] = replacement['id']
-                m['model'] = replacement.get('name') or replacement['id']
-                m['api_endpoint'] = replacement['api_endpoint']
-                m['api_protocol'] = replacement['api_protocol']
-                m['model_source'] = {'selector': 'tfl_opencode_go_fallback_after_rate_limit',
-                                     'from_model': previous_model,
-                                     'generated_at': m.get('model_source', {}).get('generated_at')}
-                metadata = {}
-                m['performance_test']['fallback_model'] = replacement['id']
-            m.update(state='Valide', cause='Tous les critères satisfaits')
-        except Exception as e:
-            message = ('HTTP 429 — rate_limit_exceeded (limitation fournisseur, test non concluant)' if isinstance(e, urllib.error.HTTPError) and e.code == 429 else 'HTTP ' + str(e.code) if isinstance(e, urllib.error.HTTPError) else str(e) if isinstance(e, RuntimeError) else type(e).__name__)
-            m['cause'] = stage + ' : ' + message
-            if m['performance_test']['status'] != 'not_run':
-                m['performance_test'].update(status='failed', reason=message)
+                        results.append(current)
+                        model['candidate_results'].append(copy.deepcopy(current))
+                        model['quotas'] = current['quotas']
+                        model['quotas_evaluated_at'] = current.get('quotas_evaluated_at')
+                except CategoryChanged as error:
+                    if forced or transition == 2:
+                        raise RuntimeError('Ressources modifiées pendant les tests ; nouvelle évaluation requise') from error
+                    category = error.category
+                    continue
+                valid = [result for result in results if result['state'] == 'Valide']
+                winner = min(valid, key=lambda result: (-result['tokens_per_second'], result['ttft_seconds'])) if valid else results[-1]
+                records, exclusions = model['candidate_results'], model['candidate_exclusions']
+                quotas, quota_time = model['quotas'], model.get('quotas_evaluated_at')
+                model.update(winner)
+                model.update(candidate_results=records, candidate_exclusions=exclusions,
+                             quotas=quotas, quotas_evaluated_at=quota_time)
+                break
+        except Exception as error:
+            model.update(state='Invalide', cause=error_message(error), ttft_seconds=None, tokens_per_second=None)
+            status = 'not_run' if model['performance_test']['status'] == 'not_run' else 'failed'
+            model['performance_test'].update(status=status, reason=model['cause'])
         finally:
             signal.alarm(0)
             key = ''
-        if active and m['state'] == 'Valide':
+        if active and model['state'] == 'Valide':
             break
-    publish(d, active=active, forced_mode=forced['mode'] if forced else None)
+    publish(data, active=active, forced_mode=forced['mode'] if forced else None)
 
 
 FORCED_COMMANDS = {

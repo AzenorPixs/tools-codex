@@ -31,8 +31,9 @@ def load_script(path):
 
 
 def candidate(name):
-    return {'id': name, 'available': True, 'api_endpoint': 'https://example.invalid',
-            'api_protocol': 'responses'}
+    return {'id': name, 'available': True, 'api_endpoint': 'https://opencode.ai/zen/go/v1/responses',
+            'api_protocol': 'responses', 'context_length': 1_000_000,
+            'reference_pricing_usd_per_million_tokens': {'input_off_peak': 0.1, 'output_off_peak': 0.2}}
 
 
 def rate_limit():
@@ -56,7 +57,8 @@ class ExtensionQualificationTests(unittest.TestCase):
         catalog.parent.mkdir(parents=True)
         catalog.write_text(json.dumps({'generated_at': 'fixture-date',
                                       'opencode_go': {'models': [candidate('first'), candidate('second')]},
-                                      'openrouter': {'models': [{'id': 'router-fixture'}]}}), encoding='utf-8')
+                                      'openrouter': {'models': [{'id': 'router-fixture', 'context_length': 1_000_000,
+                                                                 'input_price': 0.1, 'output_price': 0.2}]}}), encoding='utf-8')
         return module, catalog
 
     def run_evaluation(self, module, catalog, behavior=None, quota_failure=None, **kwargs):
@@ -126,7 +128,8 @@ class ExtensionQualificationTests(unittest.TestCase):
                 self.assertFalse((module.ROOT / 'data').exists())
                 result, calls = self.run_evaluation(module, catalog, active=True)
                 self.assertEqual(result['selected_mode'], 'mode1')
-                self.assertEqual(calls, [('quota', 'first'), ('benchmark', 'first', 1024)])
+                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'first'), ('benchmark', 'first', 1024),
+                                         ('quota', 'second'), ('benchmark', 'second', 1024)])
                 self.assertTrue(all(not m['evaluated_this_run'] for m in result['models'][1:]))
                 self.assertTrue((module.ROOT / 'data/pllm-performance-memory.json').exists())
 
@@ -166,7 +169,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 module, catalog = self.workspace(script)
                 result, calls = self.run_evaluation(module, catalog, forced={'mode': 'mode3'})
                 self.assertEqual(result['selected_mode'], 'mode3')
-                self.assertEqual(calls, [('quota', 'router-fixture'), ('benchmark', 'router-fixture', 1024)])
+                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'router-fixture'), ('benchmark', 'router-fixture', 1024)])
 
     def test_all_modes_can_start_without_a_current_file(self):
         for script in PLLM:
@@ -174,7 +177,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 module, catalog = self.workspace(script)
                 result, calls = self.run_evaluation(module, catalog)
                 self.assertTrue(all(m['evaluated_this_run'] and m['state'] == 'Valide' for m in result['models']))
-                self.assertEqual(len(calls), 8)
+                self.assertEqual(len(calls), 16)
                 self.assertEqual(result['models'][3]['model'], 'deepseek-v4-flash')
 
     def test_last_tier_fallback_requires_its_own_measurements(self):
@@ -182,7 +185,7 @@ class ExtensionQualificationTests(unittest.TestCase):
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
                 first = module.load_current()['models'][0]
-                first.update(model_id='first', api_endpoint='https://example.invalid', api_protocol='responses', throughput_scope='reasoning_and_response')
+                first.update(model_id='first', api_endpoint='https://opencode.ai/zen/go/v1/responses', api_protocol='responses', throughput_scope='reasoning_and_response')
                 memory = {'schema_version': 1, 'policies': {'mode1': {
                     'identity': module.identity(first), 'last_successful_max_tokens': 8192}}}
                 module.MEMORY_PATH.parent.mkdir()
@@ -193,11 +196,11 @@ class ExtensionQualificationTests(unittest.TestCase):
                         raise rate_limit()
 
                 result, calls = self.run_evaluation(module, catalog, behavior, active=True)
-                self.assertEqual(calls, [('quota', 'first'), ('benchmark', 'first', 8192),
+                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'first'), ('benchmark', 'first', 8192),
                                          ('quota', 'second'), ('benchmark', 'second', 1024)])
                 selected = result['models'][0]
                 self.assertEqual((selected['model_id'], selected['state'], selected['last_successful_max_tokens']), ('second', 'Valide', 1024))
-                self.assertEqual([a['model_id'] for a in selected['performance_test']['attempts']], ['first', 'second'])
+                self.assertEqual([a['model_id'] for a in selected['candidate_results']], ['first', 'second'])
 
     def test_fallback_quota_failure_does_not_benchmark_or_select(self):
         for script in PLLM:
@@ -225,7 +228,8 @@ class ExtensionQualificationTests(unittest.TestCase):
                     self.assertIsNone(result['selected_mode'])
                     self.assertFalse(module.MEMORY_PATH.exists())
                     if forced:
-                        self.assertTrue(all(c[1] == 'first' for c in calls))
+                        self.assertEqual(calls[0], ('quota', 'Non évalué'))
+                        self.assertTrue(all(c[1] == 'first' for c in calls[1:]))
 
     def test_active_publication_remains_silent(self):
         for script in PLLM:
