@@ -10,6 +10,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+from test_tfl_pricing import mock_general_collection
 from unittest.mock import patch
 from urllib.error import HTTPError
 
@@ -292,6 +293,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={'data': []}))
                     stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
+                    mock_general_collection(module, stack)
                     stack.enter_context(patch.object(module, 'build_rows', return_value=([{'fixture': float('nan')}], [])))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=self.tfl_payload(module)))
                     stack.enter_context(patch.object(module, 'format_opencode_table', return_value='fixture'))
@@ -322,6 +324,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                         'data': [{'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
                     stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
+                    mock_general_collection(module, stack)
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=payload))
                     stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
                     self.assertEqual(module.main(), 0)

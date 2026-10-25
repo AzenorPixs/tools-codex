@@ -36,6 +36,26 @@ def document(rows):
     return '<p>Token prices are per 1M tokens.</p>' + table(rows)
 
 
+def general_fixture(module):
+    return (
+        {'retrieved_at': '2026-10-25T01:00:00+02:00',
+         'data': [{'id': 'general-model', 'context_length': 1_000_000}]},
+        {'source': module.CONTEXT_METADATA_URL, 'provider_id': 'opencode',
+         'models_api': module.OPENCODE_API_URL, 'retrieved_at': '2026-10-25T01:00:00+02:00',
+         'provider': {'api': 'https://opencode.ai/general-fixture/v1', 'npm': '@ai-sdk/openai-compatible'},
+         'models': {'general-model': {'modalities': {'input': ['text'], 'output': ['text']}}}},
+        {'source': module.OPENCODE_SOURCE_URL, 'retrieved_at': '2026-10-25T01:00:00+02:00',
+         'models': module.parse_go_pricing(document([('General Model', '$0.1', '$0.2', '-', '-')]))},
+    )
+
+
+def mock_general_collection(module, stack):
+    payload, metadata, pricing = general_fixture(module)
+    stack.enter_context(patch.object(module, 'fetch_opencode_models', return_value=payload))
+    stack.enter_context(patch.object(module, 'fetch_opencode_metadata', return_value=metadata))
+    stack.enter_context(patch.object(module, 'fetch_opencode_pricing', return_value=pricing))
+
+
 class PricingTests(unittest.TestCase):
     def modules(self):
         return [(path, load_script(path)) for path in SCRIPTS]
@@ -59,6 +79,7 @@ class PricingTests(unittest.TestCase):
                          for model_id in OPENROUTER_FIXTURE_IDS]}
 
     def setup_main(self, module, output, stack):
+        mock_general_collection(module, stack)
         stack.enter_context(patch.dict(module.os.environ, {}, clear=True))
         stack.enter_context(patch.object(module, 'urlopen', side_effect=AssertionError('réseau interdit')))
         stack.enter_context(patch.object(module, 'parse_args', return_value=SimpleNamespace(

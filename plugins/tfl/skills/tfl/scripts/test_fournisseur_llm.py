@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Générer le rapport unifié TFL des modèles OpenCode Go puis OpenRouter."""
+"""Générer le rapport TFL : OpenCode Go, catalogue général OpenCode, OpenRouter."""
 
 from __future__ import annotations
 
@@ -21,6 +21,8 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlsplit
 
 API_URL = "https://opencode.ai/zen/go/v1/models"
+OPENCODE_API_URL = "https://opencode.ai/zen/v1/models"
+OPENCODE_SOURCE_URL = "https://opencode.ai/v2/docs/console/models/"
 SOURCE_URL = "https://opencode.ai/docs/go/"
 CONTEXT_METADATA_URL = "https://models.dev/api.json"
 ROOT = Path(__file__).resolve().parent.parent
@@ -55,16 +57,16 @@ class PricingTables(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list) -> None:
         if tag == "table":
             if self.table is not None:
-                raise RuntimeError("tableaux tarifaires Go imbriqués non reconnus")
+                raise RuntimeError("tableaux tarifaires OpenCode imbriqués non reconnus")
             self.table = []
         elif self.table is not None:
             if tag == "tr":
                 if self.row is not None:
-                    raise RuntimeError("lignes tarifaires Go mal formées")
+                    raise RuntimeError("lignes tarifaires OpenCode mal formées")
                 self.row = []
             elif tag in ("td", "th"):
                 if self.cell is not None or self.row is None:
-                    raise RuntimeError("cellules tarifaires Go mal formées")
+                    raise RuntimeError("cellules tarifaires OpenCode mal formées")
                 self.cell = []
             elif tag in ("del", "s", "strike"):
                 self.struck += 1
@@ -84,7 +86,7 @@ class PricingTables(HTMLParser):
             self.struck = max(0, self.struck - 1)
         elif tag in ("td", "th") and self.cell is not None:
             if self.row is None:
-                raise RuntimeError("cellule tarifaire Go hors ligne")
+                raise RuntimeError("cellule tarifaire OpenCode hors ligne")
             self.row.append(" ".join("".join(self.cell).split()))
             self.cell = None
         elif tag == "tr" and self.row is not None:
@@ -106,20 +108,20 @@ def go_price(value: str, *, optional: bool = False) -> float | None:
     if value.casefold() == "free":
         return 0.0
     if not re.fullmatch(r"\$(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?", value):
-        raise RuntimeError("montant tarifaire OpenCode Go non reconnu")
+        raise RuntimeError("montant tarifaire OpenCode non reconnu")
     try:
         number = float(Decimal(value[1:].replace(",", "")))
     except (InvalidOperation, ValueError, OverflowError) as exc:
-        raise RuntimeError("montant tarifaire OpenCode Go invalide") from exc
+        raise RuntimeError("montant tarifaire OpenCode invalide") from exc
     if not math.isfinite(number) or number < 0:
-        raise RuntimeError("montant tarifaire OpenCode Go non fini ou négatif")
+        raise RuntimeError("montant tarifaire OpenCode non fini ou négatif")
     return number
 
 
 def go_variant(label: str) -> tuple[str, str, str | None]:
     match = re.fullmatch(r"([^()]+?)(?:\s*\(([^()]*)\))?", label)
     if match is None:
-        raise RuntimeError("libellé tarifaire OpenCode Go non reconnu")
+        raise RuntimeError("libellé tarifaire OpenCode non reconnu")
     name, qualifier = match.groups()
     qualifier = qualifier.strip() if qualifier else None
     period = "standard"
@@ -131,7 +133,7 @@ def go_variant(label: str) -> tuple[str, str, str | None]:
         r"(?:[<>]=?|[≤≥])\s*\d+(?:\.\d+)?[KM]?\s+tokens|\d+(?:\.\d+)?%\s+off",
         qualifier, re.I,
     ):
-        raise RuntimeError("variante tarifaire OpenCode Go non reconnue")
+        raise RuntimeError("variante tarifaire OpenCode non reconnue")
     return name.strip(), period, qualifier
 
 
@@ -140,10 +142,10 @@ def parse_go_pricing(document: str) -> dict:
     parser.feed(document)
     parser.close()
     if parser.table is not None or parser.row is not None or parser.cell is not None:
-        raise RuntimeError("tableau tarifaire OpenCode Go incomplet")
+        raise RuntimeError("tableau tarifaire OpenCode incomplet")
     if not re.search(r"\bprices?\s+(?:are\s+)?per\s+(?:1\s*m|1,?000,?000)\s+tokens\b",
                      " ".join(parser.text), re.I):
-        raise RuntimeError("unité tarifaire OpenCode Go non vérifiable : 1M tokens requis")
+        raise RuntimeError("unité tarifaire OpenCode non vérifiable : 1M tokens requis")
     references: dict[str, dict] = {}
     table_count = 0
     for table in parser.tables:
@@ -153,16 +155,16 @@ def parse_go_pricing(document: str) -> dict:
         if not {"model", "input", "output"}.issubset(headers):
             continue
         if len(headers) != len(set(headers)):
-            raise RuntimeError("colonnes tarifaires OpenCode Go ambiguës")
+            raise RuntimeError("colonnes tarifaires OpenCode ambiguës")
         table_count += 1
         for cells in table[1:]:
             if len(cells) != len(headers):
-                raise RuntimeError("ligne tarifaire OpenCode Go incomplète")
+                raise RuntimeError("ligne tarifaire OpenCode incomplète")
             values = dict(zip(headers, cells))
             name, period, qualifier = go_variant(values["model"])
             key = pricing_name(name)
             if not key:
-                raise RuntimeError("nom tarifaire OpenCode Go vide")
+                raise RuntimeError("nom tarifaire OpenCode vide")
             variant = {
                 "label": values["model"], "period": period, "qualifier": qualifier,
                 "input": go_price(values["input"]),
@@ -171,39 +173,49 @@ def parse_go_pricing(document: str) -> dict:
                 "cache_write": go_price(values.get("cachedwrite", ""), optional=True),
             }
             if not math.isfinite((variant["input"] + variant["output"]) / 2):
-                raise RuntimeError("coût moyen OpenCode Go non fini")
+                raise RuntimeError("coût moyen OpenCode non fini")
             entry = references.setdefault(key, {"name": name, "variants": []})
             if entry["name"].casefold() != name.casefold():
-                raise RuntimeError("correspondance tarifaire OpenCode Go ambiguë")
+                raise RuntimeError("correspondance tarifaire OpenCode ambiguë")
             previous = next((v for v in entry["variants"]
                              if v["period"] == period and v["qualifier"] == qualifier), None)
             if previous is not None and previous != variant:
-                raise RuntimeError("tarifs OpenCode Go contradictoires pour " + name)
+                raise RuntimeError("tarifs OpenCode contradictoires pour " + name)
             if previous is None:
                 entry["variants"].append(variant)
     if not table_count or not references:
-        raise RuntimeError("aucun tableau tarifaire OpenCode Go reconnu")
+        raise RuntimeError("aucun tableau tarifaire OpenCode reconnu")
     return references
 
 
-def fetch_go_pricing(timeout: float) -> dict:
-    request = Request(SOURCE_URL, headers={"Accept": "text/html", "User-Agent": "TFL/1.0"})
+def fetch_catalog_pricing(source_url: str, timeout: float) -> dict:
+    request = Request(source_url, headers={"Accept": "text/html", "User-Agent": "TFL/1.0"})
     maximum_bytes = 2 * 1024 * 1024
     with urlopen(request, timeout=timeout) as response:
         raw = response.read(maximum_bytes + 1)
         source = response.geturl()
     if len(raw) > maximum_bytes:
-        raise RuntimeError("documentation tarifaire OpenCode Go trop volumineuse")
+        raise RuntimeError("documentation tarifaire OpenCode trop volumineuse")
     try:
         document = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise RuntimeError("documentation tarifaire OpenCode Go non UTF-8") from exc
+        raise RuntimeError("documentation tarifaire OpenCode non UTF-8") from exc
     return {
         "source": source, "retrieved_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "currency": "USD", "unit": "per_million_tokens",
         "selection_rule": "maximum_average_off_peak_context_tier",
         "sha256": hashlib.sha256(raw).hexdigest(), "models": parse_go_pricing(document),
     }
+
+
+def fetch_go_pricing(timeout: float) -> dict:
+    return fetch_catalog_pricing(SOURCE_URL, timeout)
+
+
+def fetch_opencode_pricing(timeout: float) -> dict:
+    result = fetch_catalog_pricing(OPENCODE_SOURCE_URL, timeout)
+    result["selection_rule"] = "maximum_average_published_context_tier"
+    return result
 
 
 def go_reference(model: dict, pricing: dict) -> dict | None:
@@ -239,6 +251,14 @@ def go_reference_prices(reference: dict) -> dict | None:
             "cache_write_peak": selected_peak["cache_write"],
         })
     return prices
+
+
+def opencode_reference_prices(reference: dict) -> dict:
+    selected = max(reference["variants"], key=lambda v: (v["input"] + v["output"]) / 2)
+    return {"input": selected["input"], "output": selected["output"],
+            "average": (selected["input"] + selected["output"]) / 2,
+            "cache_read": selected["cache_read"], "cache_write": selected["cache_write"],
+            "selected_variant": selected["label"]}
 
 
 def money(value: float | None) -> str:
@@ -325,24 +345,43 @@ def fetch_models(api_key: str, timeout: float) -> dict:
     return payload
 
 
-def fetch_go_metadata(timeout: float) -> dict:
-    '''Récupérer contexte, modalités et transport du fournisseur OpenCode Go.'''
+def fetch_opencode_models(timeout: float) -> dict:
+    headers = {"Accept": "application/json", "User-Agent": "TFL/1.0"}
+    with urlopen(Request(OPENCODE_API_URL, headers=headers), timeout=timeout) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+        raise RuntimeError("réponse du catalogue général OpenCode invalide")
+    payload["retrieved_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
+    return payload
+
+
+def fetch_catalog_metadata(provider_id: str, models_api: str, timeout: float) -> dict:
+    '''Récupérer contexte, modalités et transport du catalogue OpenCode demandé.'''
     headers = {
         "Accept": "application/json",
         "User-Agent": "TOCG/1.0",
     }
     with urlopen(Request(CONTEXT_METADATA_URL, headers=headers), timeout=timeout) as response:
         payload = json.load(response)
-    provider = payload.get("opencode-go") if isinstance(payload, dict) else None
+    provider = payload.get(provider_id) if isinstance(payload, dict) else None
     models = provider.get("models") if isinstance(provider, dict) else None
     if not isinstance(models, dict):
-        raise RuntimeError("métadonnées de contexte OpenCode Go invalides")
+        raise RuntimeError("métadonnées de catalogue OpenCode invalides")
     return {
         "source": CONTEXT_METADATA_URL,
+        "provider_id": provider_id, "models_api": models_api,
         "retrieved_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "provider": {key: provider[key] for key in ("api", "npm", "api_protocol") if key in provider},
         "models": models,
     }
+
+
+def fetch_go_metadata(timeout: float) -> dict:
+    return fetch_catalog_metadata("opencode-go", API_URL, timeout)
+
+
+def fetch_opencode_metadata(timeout: float) -> dict:
+    return fetch_catalog_metadata("opencode", OPENCODE_API_URL, timeout)
 
 
 
@@ -350,10 +389,10 @@ def fetch_go_metadata(timeout: float) -> dict:
 def go_model_metadata(model: dict, metadata: dict) -> dict:
     models = metadata.get("models", {})
     if not isinstance(models, dict):
-        raise RuntimeError("catalogue de métadonnées Go invalide")
+        raise RuntimeError("catalogue de métadonnées OpenCode invalide")
     record = models.get(model.get("id"), {})
     if not isinstance(record, dict):
-        raise RuntimeError("métadonnées du modèle Go invalides")
+        raise RuntimeError("métadonnées du modèle OpenCode invalides")
     return record
 
 
@@ -363,34 +402,35 @@ def declared_modalities(record: dict, direction: str) -> list[str] | None:
         value = record.get(container)
         if value is not None:
             if not isinstance(value, dict):
-                raise RuntimeError("déclaration de modalités Go invalide")
+                raise RuntimeError("déclaration de modalités OpenCode invalide")
             declarations.append(value.get(key))
     known = []
     for values in declarations:
         if values is None:
             continue
         if not isinstance(values, list) or any(not isinstance(v, str) or not v.strip() for v in values):
-            raise RuntimeError("liste de modalités Go invalide")
+            raise RuntimeError("liste de modalités OpenCode invalide")
         if values:
             known.append(sorted({value.strip().lower() for value in values}))
     if known and any(value != known[0] for value in known[1:]):
-        raise RuntimeError("modalités Go contradictoires")
+        raise RuntimeError("modalités OpenCode contradictoires")
     return known[0] if known else None
 
 
 def go_modalities(model: dict, metadata: dict, api_retrieved_at: str | None) -> dict:
     reference = go_model_metadata(model, metadata)
     result = {"modalities_metadata": {}}
+    api_source = "opencode-api" if metadata.get("provider_id") == "opencode" else "opencode-go-api"
     for direction in ("input", "output"):
         api_values = declared_modalities(model, direction)
         metadata_values = declared_modalities(reference, direction)
         if api_values is not None and metadata_values is not None and api_values != metadata_values:
-            raise RuntimeError("modalités Go contradictoires entre API et models.dev")
+            raise RuntimeError("modalités OpenCode contradictoires entre API et models.dev")
         values = api_values if api_values is not None else metadata_values
         result[direction + "_modalities"] = values
         result["modalities_metadata"][direction] = {
-            "source": "opencode-go-api" if api_values is not None else "models.dev" if values is not None else None,
-            "source_api": API_URL if api_values is not None else CONTEXT_METADATA_URL if values is not None else None,
+            "source": api_source if api_values is not None else "models.dev" if values is not None else None,
+            "source_api": metadata.get("models_api", API_URL) if api_values is not None else CONTEXT_METADATA_URL if values is not None else None,
             "retrieved_at": api_retrieved_at if api_values is not None else metadata.get("retrieved_at") if values is not None else None,
         }
     return result
@@ -398,25 +438,26 @@ def go_modalities(model: dict, metadata: dict, api_retrieved_at: str | None) -> 
 
 def safe_go_url(value: object) -> str:
     if not isinstance(value, str) or not value or any(c.isspace() for c in value) or any(c in value for c in ("\\", "?", "#")):
-        raise RuntimeError("URL de routage Go non sûre")
+        raise RuntimeError("URL de routage OpenCode non sûre")
     try:
         parsed = urlsplit(value)
         safe = (parsed.scheme == "https" and parsed.hostname == urlsplit(API_URL).hostname
                 and parsed.port in (None, 443) and parsed.username is None and parsed.password is None
                 and not parsed.query and not parsed.fragment)
     except ValueError as exc:
-        raise RuntimeError("URL de routage Go invalide") from exc
+        raise RuntimeError("URL de routage OpenCode invalide") from exc
     if not safe:
-        raise RuntimeError("origine de routage Go non sûre")
+        raise RuntimeError("origine de routage OpenCode non sûre")
     return value.rstrip("/")
 
 
 def go_transport(model: dict, metadata: dict, api_retrieved_at: str | None) -> dict:
     endpoint, protocol = model.get("api_endpoint"), model.get("api_protocol")
     explicit_api = endpoint is not None or protocol is not None
-    source = "opencode-go-api" if explicit_api else "models.dev"
+    api_source = "opencode-api" if metadata.get("provider_id") == "opencode" else "opencode-go-api"
+    source = api_source if explicit_api else "models.dev"
     details = {
-        "source_api": API_URL if explicit_api else CONTEXT_METADATA_URL,
+        "source_api": metadata.get("models_api", API_URL) if explicit_api else CONTEXT_METADATA_URL,
         "retrieved_at": api_retrieved_at if explicit_api else metadata.get("retrieved_at"),
         "generation_tested": False,
     }
@@ -425,28 +466,28 @@ def go_transport(model: dict, metadata: dict, api_retrieved_at: str | None) -> d
     if explicit_api:
         endpoint = safe_go_url(endpoint) if endpoint is not None else None
         if endpoint is None or protocol is None:
-            result["routing_warning"] = "route explicite Go incomplète"
+            result["routing_warning"] = "route explicite OpenCode incomplète"
             return result
         if not isinstance(protocol, str) or protocol not in GO_PROTOCOL_PATHS:
-            result["routing_warning"] = "protocole explicite Go non reconnu"
+            result["routing_warning"] = "protocole explicite OpenCode non reconnu"
             return result
         if not urlsplit(endpoint).path.endswith("/" + GO_PROTOCOL_PATHS[protocol]):
-            raise RuntimeError("endpoint Go incompatible avec le protocole déclaré")
+            raise RuntimeError("endpoint OpenCode incompatible avec le protocole déclaré")
     else:
         provider = metadata.get("provider", {})
         if model.get("id") not in metadata.get("models", {}):
-            result["routing_warning"] = "modèle absent des métadonnées de transport Go"
+            result["routing_warning"] = "modèle absent des métadonnées de transport OpenCode"
             return result
         override = go_model_metadata(model, metadata).get("provider")
         if not isinstance(provider, dict) or (override is not None and not isinstance(override, dict)):
-            raise RuntimeError("métadonnées de transport Go invalides")
+            raise RuntimeError("métadonnées de transport OpenCode invalides")
         override = override or {}
         effective = {**provider, **override}
         base = effective.get("api")
         base = safe_go_url(base) if base is not None else None
         sdk = effective.get("npm")
         if sdk is not None and not isinstance(sdk, str):
-            raise RuntimeError("SDK de transport Go invalide")
+            raise RuntimeError("SDK de transport OpenCode invalide")
         details.update({"sdk": sdk, "api_base": base,
                         "sdk_scope": "model" if "npm" in override else "provider",
                         "api_scope": "model" if "api" in override else "provider"})
@@ -459,10 +500,10 @@ def go_transport(model: dict, metadata: dict, api_retrieved_at: str | None) -> d
         else:
             details["protocol_reference"] = "declared_api_protocol"
         if not isinstance(protocol, str) or protocol not in GO_PROTOCOL_PATHS:
-            result["routing_warning"] = "protocole ou SDK Go absent ou non reconnu"
+            result["routing_warning"] = "protocole ou SDK OpenCode absent ou non reconnu"
             return result
         if base is None:
-            result["routing_warning"] = "base API Go absente"
+            result["routing_warning"] = "base API OpenCode absente"
             return result
         endpoint = base + "/" + GO_PROTOCOL_PATHS[protocol]
     result.update({"api_endpoint": endpoint, "api_protocol": protocol,
@@ -508,7 +549,9 @@ def context_label(tokens: int | None) -> str:
     return str(tokens)
 
 
-def build_rows(payload: dict, metadata: dict, pricing: dict) -> tuple[list[dict], list[dict]]:
+def build_rows(payload: dict, metadata: dict, pricing: dict, *, general_catalog: bool = False) -> tuple[list[dict], list[dict]]:
+    if general_catalog and metadata.get("provider_id") != "opencode":
+        raise RuntimeError("métadonnées du catalogue général OpenCode : fournisseur incorrect")
     known = []
     excluded = []
     matched_names: dict[str, str] = {}
@@ -549,21 +592,21 @@ def build_rows(payload: dict, metadata: dict, pricing: dict) -> tuple[list[dict]
             })
             continue
         reference = go_reference(model, pricing)
-        prices = go_reference_prices(reference) if reference else None
+        prices = (opencode_reference_prices(reference) if general_catalog else go_reference_prices(reference)) if reference else None
         if prices is None:
             excluded.append({
                 "id": model_id,
                 "name": model.get("name") or model_id,
                 "context_length": context,
                 "reference_average_usd_per_million_tokens": None,
-                "reason": "coût moyen hors pointe non vérifiable : aucun tarif correspondant; seuil maximal de 0.5 $/M",
+                "reason": "coût moyen non vérifiable : aucun tarif correspondant; seuil maximal de 0.5 $/M" if general_catalog else "coût moyen hors pointe non vérifiable : aucun tarif correspondant; seuil maximal de 0.5 $/M",
             })
             continue
         key = pricing_name(reference["name"])
         if key in matched_names and matched_names[key] != model_id:
             raise RuntimeError("plusieurs identifiants Go pour le même tarif : " + reference["name"])
         matched_names[key] = model_id
-        average = prices["average_off_peak"]
+        average = prices["average"] if general_catalog else prices["average_off_peak"]
         if average > MAX_REFERENCE_AVERAGE_USD_PER_MILLION:
             excluded.append({
                 "id": model_id,
@@ -602,9 +645,9 @@ def build_rows(payload: dict, metadata: dict, pricing: dict) -> tuple[list[dict]
     return known, excluded
 
 
-def format_opencode_table(rows: list[dict], policy: str, generated_at: str) -> str:
+def format_opencode_table(rows: list[dict], policy: str | None, generated_at: str, *, general_catalog: bool = False) -> str:
     lines = [
-        "## Rapport des LMM OpenCode Go les moins onéreux",
+        "## Rapport des LMM du catalogue général OpenCode les moins onéreux" if general_catalog else "## Rapport des LMM OpenCode Go les moins onéreux",
         "",
         "Code couleur : 🟢 ≤ 0.20 $/M · 🟡 > 0.20 à 0.40 $/M · 🟠 > 0.40 à 0.50 $/M.",
         "",
@@ -613,20 +656,25 @@ def format_opencode_table(rows: list[dict], policy: str, generated_at: str) -> s
     ]
     for row in rows:
         prices = row["reference_pricing_usd_per_million_tokens"] or {}
+        input_key, output_key, average_key = ("input", "output", "average") if general_catalog else ("input_off_peak", "output_off_peak", "average_off_peak")
         lines.append("| " + " | ".join(escape(value) for value in (
             row["rank"] if row["rank"] is not None else "—",
             f"{row['name']} ({row['id']})",
             context_label(row["context_length"]),
             "Texte" if row["output_modalities"] == ["text"] else ", ".join(row["output_modalities"]) if row["output_modalities"] else "Non vérifié",
-            money(prices.get("input_off_peak")),
-            money(prices.get("output_off_peak")),
-            money(prices.get("average_off_peak")),
-            cost_color(prices.get("average_off_peak")),
+            money(prices.get(input_key)),
+            money(prices.get(output_key)),
+            money(prices.get(average_key)),
+            cost_color(prices.get(average_key)),
         )) + " |")
     lines.append("")
-    lines.append(f"Actualisé le {generated_at} avec la clé {policy}; classement par coût moyen hors pointe croissant, après filtres contexte ≥ 1M et coût moyen ≤ 0.5 $/M.")
-    lines.append("Les tarifs sont des références OpenCode Go et peuvent évoluer. Les modèles exclus ne sont pas affichés dans le rapport Markdown; leurs motifs restent disponibles dans le catalogue JSON.")
-    lines.append("Tarifs collectés dans la documentation officielle; les variantes et la provenance restent dans le JSON. Pour plusieurs paliers de contexte, le coût moyen hors pointe maximal est retenu. Estimations de requêtes non collectées : N/A.")
+    if general_catalog:
+        lines.append(f"Actualisé le {generated_at}; catalogue général OpenCode public, contexte ≥ 1M et coût moyen publié ≤ 0.5 $/M. Classement par coût moyen croissant.")
+        lines.append("Les tarifs du catalogue général sont collectés indépendamment de Go. Le coût moyen maximal des variantes publiées est retenu ; les sources, dates et exclusions restent dans le JSON.")
+    else:
+        lines.append(f"Actualisé le {generated_at} avec la clé {policy}; classement par coût moyen hors pointe croissant, après filtres contexte ≥ 1M et coût moyen ≤ 0.5 $/M.")
+        lines.append("Les tarifs sont des références OpenCode Go et peuvent évoluer. Les modèles exclus ne sont pas affichés dans le rapport Markdown; leurs motifs restent disponibles dans le catalogue JSON.")
+        lines.append("Tarifs collectés dans la documentation officielle; les variantes et la provenance restent dans le JSON. Pour plusieurs paliers de contexte, le coût moyen hors pointe maximal est retenu. Estimations de requêtes non collectées : N/A.")
     lines.append("Modalités et routage collectés sans liste de modèles; les sources et dates restent dans le JSON. Les routes documentées ne constituent pas un test de génération.")
     unrouted = [row["id"] for row in rows if row.get("routing_warning")]
     if unrouted:
@@ -845,6 +893,12 @@ def main() -> int:
         opencode_rows, opencode_excluded = build_rows(opencode_payload, go_metadata, go_pricing)
         if not opencode_rows:
             raise RuntimeError("aucun modèle OpenCode Go ne satisfait les filtres TFL")
+        general_payload = fetch_opencode_models(args.timeout)
+        general_metadata = fetch_opencode_metadata(args.timeout)
+        general_pricing = fetch_opencode_pricing(args.timeout)
+        general_rows, general_excluded = build_rows(general_payload, general_metadata, general_pricing, general_catalog=True)
+        if not general_rows:
+            raise RuntimeError("aucun modèle du catalogue général OpenCode ne satisfait les filtres TFL")
         openrouter_payload = fetch_openrouter_models(openrouter_key, args.timeout)
         openrouter_rows, openrouter_excluded = build_openrouter_rows(openrouter_payload)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, RuntimeError, subprocess.SubprocessError) as exc:
@@ -880,21 +934,37 @@ def main() -> int:
         "excluded_models": openrouter_excluded,
         "models": openrouter_rows,
     }
+    general_catalog = {
+        "source_api": OPENCODE_API_URL,
+        "reference_source": OPENCODE_SOURCE_URL,
+        "pricing_reference": general_pricing,
+        "metadata_provider": "opencode",
+        "model_metadata_source": general_metadata.get("source", CONTEXT_METADATA_URL),
+        "model_metadata_retrieved_at": general_metadata.get("retrieved_at"),
+        "selection": "live-api-context-cost-modalities",
+        "source_model_count": len(general_payload["data"]),
+        "excluded_model_count": len(general_excluded),
+        "excluded_models": general_excluded,
+        "models": general_rows,
+    }
     catalog = {
         "schema_version": 1,
         "generated_at": generated_at,
-        "order": ["opencode_go", "openrouter"],
+        "order": ["opencode_go", "opencode", "openrouter"],
         "common_columns": ["rank", "model_id", "context", "output", "input_price", "output_price", "average_cost", "cost_color"],
         "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS, "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION},
-        "blacklists": {"opencode_go": sorted(BLACKLISTED_MODEL_IDS), "openrouter": sorted(OPENROUTER_BLACKLIST)},
+        "blacklists": {"opencode_go": sorted(BLACKLISTED_MODEL_IDS), "opencode": sorted(BLACKLISTED_MODEL_IDS), "openrouter": sorted(OPENROUTER_BLACKLIST)},
         "opencode_go": opencode_catalog,
+        "opencode": general_catalog,
         "openrouter": openrouter_catalog,
     }
     output_dir = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "tfl.json"
     markdown_path = output_dir / "tfl.md"
-    markdown = "# TFL — Test Fournisseur LLM\n\n" + format_opencode_table(opencode_rows, policy, generated_at) + "\n" + format_openrouter_table(openrouter_rows, generated_at)
+    markdown = ("# TFL — Test Fournisseur LLM\n\n" + format_opencode_table(opencode_rows, policy, generated_at)
+                + "\n" + format_opencode_table(general_rows, None, generated_at, general_catalog=True)
+                + "\n" + format_openrouter_table(openrouter_rows, generated_at))
     try:
         serialized = json.dumps(catalog, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     except ValueError:

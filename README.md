@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.5.5`.
+Version de release : `0.5.6`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -38,6 +38,12 @@ déclarations API et models.dev, sans listes statiques de modèles. Le JSON
 conserve les sources et dates ; une information absente reste non vérifiée,
 une contradiction ou une URL de routage non sûre bloque la publication.
 Une route documentée reste distincte d'un test réel de génération.
+Le rapport comprend trois tableaux : OpenCode Go, catalogue général OpenCode,
+puis OpenRouter. Le catalogue général est collecté publiquement et conserve
+ses propres tarifs et métadonnées `opencode`, indépendants de `opencode-go`.
+Les trois catalogues exigent contexte ≥ 1M et coût moyen ≤ 0,50 USD/M ; une
+variante gratuite à 200K reste exclue. La section JSON supplémentaire
+`opencode` ne change pas les politiques PLLM existantes.
 
 Les prérequis et limites de qualification sont décrits dans
 [`BUILD.md`](BUILD.md) et [`TECHNICAL.md`](TECHNICAL.md).

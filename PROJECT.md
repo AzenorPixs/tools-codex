@@ -68,7 +68,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Plugin | `tcu` | Met à jour les briques installées depuis marketplace et GitHub. |
 | Plugin | `cm` | Distribue le catalogue des commandes maison, invocable avec `$cm`. |
 | Plugin | `pllm` | Évalue une politique de modèles LLM et l'applique à une session OpenCode autorisée. |
-| Plugin | `tfl` | Produit le rapport comparatif des fournisseurs OpenCode Go et OpenRouter. |
+| Plugin | `tfl` | Compare OpenCode Go, le catalogue général OpenCode et OpenRouter. |
 | Skill | `cgpt` | Affiche les quotas Codex disponibles. |
 | Skill | `coding-session-statistics` | Produit un bilan auditable d'une session de codage ou de pilotage. |
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |

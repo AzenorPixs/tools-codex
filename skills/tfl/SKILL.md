@@ -1,23 +1,24 @@
 ---
 name: tfl
-description: Générer un rapport autonome et unifié des LLM OpenCode Go puis OpenRouter, avec filtres de contexte, coût, multimédia, blacklist et code couleur communs. Utiliser pour /tfl, TFL ou « Test Fournisseur LLM ».
+description: Générer un rapport autonome et unifié des LLM OpenCode Go, du catalogue général OpenCode puis OpenRouter, avec filtres de contexte, coût, multimédia, blacklist et code couleur communs. Utiliser pour /tfl, TFL ou « Test Fournisseur LLM ».
 ---
 
 # TFL — Test Fournisseur LLM
 
-Produire un rapport unifié, en français, des modèles LLM retenus chez deux
-fournisseurs. L’ordre est obligatoire :
+Produire un rapport unifié, en français, des modèles LLM retenus dans trois
+catalogues. L’ordre est obligatoire :
 
 1. OpenCode Go ;
-2. OpenRouter.
+2. catalogue général OpenCode ;
+3. OpenRouter.
 
-TFL est autonome : il interroge directement les deux APIs, applique ses propres
+TFL est autonome : il interroge directement les catalogues et sources officielles, applique ses propres
 règles et ne dépend pas des skills ou plugins TOCG/TLOLC.
 
 ## Exécution
 
 L’exécution de TFL est obligatoirement effectuée hors sandbox, car le générateur
-doit accéder aux APIs OpenCode Go et OpenRouter. Dans Codex, lancer la commande
+doit accéder aux APIs OpenCode Go, OpenCode général et OpenRouter. Dans Codex, lancer la commande
 avec une exécution autorisée hors sandbox (par exemple
 `sandbox_permissions=require_escalated`). Cette règle s’applique aux invocations
 directes, aux commandes `/tfl` et à tout plugin qui charge cette skill. Ne pas
@@ -37,7 +38,7 @@ Lorsqu’une demande `/TFL`, `/tfl` ou « Test Fournisseur LLM » est exécutée
 depuis la console, la sortie non sensible de la commande doit toujours être
 restituée dans le message final visible de l’interface Codex, et pas seulement
 dans la sortie technique d’un outil ou dans un message de progression :
-tableaux, date d’actualisation, chemins des fichiers et messages d’erreur
+les trois tableaux, date d’actualisation, chemins des fichiers et messages d’erreur
 éventuels. Ne pas exécuter silencieusement la commande ni renvoyer uniquement
 les liens vers les fichiers. Les clés et toute autre donnée sensible restent
 exclues de la restitution.
@@ -52,11 +53,11 @@ la sortie, les fichiers ou les journaux.
 La commande écrit atomiquement :
 
 - `data/tfl.json`, catalogue unifié et audit détaillé ;
-- `data/tfl.md`, rapport complet dans l’ordre OpenCode Go puis OpenRouter.
+- `data/tfl.md`, rapport complet dans l’ordre Go, OpenCode général, OpenRouter.
 
 ## Colonnes communes
 
-Les deux tableaux utilisent exactement les mêmes colonnes : `Rang`, `Modèle /
+Les trois tableaux utilisent exactement les mêmes colonnes : `Rang`, `Modèle /
 ID`, `Contexte`, `Sortie`, `Entrée $/M`, `Sortie $/M`, `Coût moyen $/M` et `Code
 couleur`. Les métadonnées propres à un fournisseur restent dans le JSON, mais
 ne sont jamais ajoutées à un seul des tableaux.
@@ -131,6 +132,29 @@ Pour `responses`, le corps utilise `input`, `max_output_tokens`, `stream=true`,
 `x-opencode-session`. Une route absente ou inconnue doit être signalée et ne
 doit pas être remplacée silencieusement par une autre.
 
+## Règles du catalogue général OpenCode
+
+- Disponibilité : `https://opencode.ai/zen/v1/models`, par GET public sans
+  Authorization ni emprunt du secret Go.
+- Tarifs : `https://opencode.ai/v2/docs/console/models/`, collectés à chaque
+  exécution, sans table statique ni repli sur un ancien catalogue.
+- Métadonnées : fournisseur `opencode` de `https://models.dev/api.json`,
+  indépendant de `opencode-go` pour contexte, modalités et transport.
+- Contexte vérifié ≥ 1M tokens ; moyenne des prix d'entrée/sortie comprise
+  entre zéro et 0,50 USD/M inclus. Le prix de classement est le maximum des
+  moyennes des variantes publiées, paliers et périodes compris ; les prix
+  de cache restent séparés. Go conserve sa référence hors pointe.
+- Les sorties audio/vidéo/speech/sound et `muse-spark-1.2-contributor` sont
+  exclues. Une entrée multimodale reste admissible ; l'inconnu reste explicite.
+- La section JSON `opencode` conserve sources, dates, variantes, modèles et
+  exclusions. Un même ID dans Go et le catalogue général garde ses données
+  propres dans chaque section, sans emprunt de prix, contexte ou route.
+
+Les variantes gratuites de contexte inférieur à 1M restent exclues. Le
+catalogue général possède son propre classement et les mêmes huit colonnes.
+Les sections `opencode_go` et `openrouter` restent compatibles avec PLLM ;
+l'ajout du catalogue général ne change pas ses politiques de sélection.
+
 ## Règles OpenRouter
 
 - Source API : `https://openrouter.ai/api/v1/models`.
@@ -159,7 +183,7 @@ finis ou débordants ne sont pas exploitables.
 
 ## Robustesse et présentation
 
-TFL exécute et affiche le tableau OpenCode Go avant celui d’OpenRouter. Une
+TFL affiche OpenCode Go, puis le catalogue général OpenCode, puis OpenRouter. Une
 erreur d’authentification, de réseau, de JSON ou de filtre fait échouer la
 génération plutôt que de produire un classement partiel silencieux.
 
@@ -170,8 +194,9 @@ rapports précédents. Aucun prix historique n'est réutilisé silencieusement.
 Une route de génération Go inconnue reste signalée sans protocole inventé.
 
 Le rapport commence par `# TFL — Test Fournisseur LLM`, puis affiche les titres
-`Rapport des LMM OpenCode Go les moins onéreux` et `Rapports des LMM OpenRouter
-les moins onéreux`. Il restitue la date de récupération, les filtres appliqués,
+`Rapport des LMM OpenCode Go les moins onéreux`, `Rapport des LMM du catalogue
+général OpenCode les moins onéreux` et `Rapports des LMM OpenRouter les moins
+onéreux`. Il restitue la date de récupération, les filtres appliqués,
 les chemins des fichiers et les exclusions dans le JSON.
 
 TFL ne mesure ni la qualité de code, ni la latence, ni le débit. Les tarifs sont

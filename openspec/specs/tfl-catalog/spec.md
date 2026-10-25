@@ -7,15 +7,15 @@ Définir la collecte, le filtrage, le classement et la publication vérifiable d
 ## Requirements
 
 ### Requirement: Collecte complète et ordre des fournisseurs
-TFL SHALL collecter les modèles OpenCode Go et OpenRouter, en utilisant
-models.dev comme complément de contexte pour OpenCode Go. Une erreur de
-collecte, d'authentification ou de données indispensables SHALL faire échouer
-la génération, sans annoncer un rapport partiel comme complet. La restitution
-SHALL présenter OpenCode Go avant OpenRouter.
+TFL SHALL collecter Go, le catalogue général OpenCode et OpenRouter, avec
+models.dev comme complément de métadonnées OpenCode. Une erreur de collecte,
+d'authentification ou de données indispensables SHALL faire échouer la
+génération sans rapport partiel complet. La restitution SHALL présenter
+OpenCode Go, puis OpenCode général, puis OpenRouter.
 
 #### Scenario: Collecte complète
-- **WHEN** les deux collectes et leurs métadonnées indispensables réussissent
-- **THEN** le rapport contient les deux tableaux dans l'ordre OpenCode Go puis OpenRouter
+- **WHEN** les trois collectes et leurs métadonnées indispensables réussissent
+- **THEN** le rapport contient les trois tableaux dans l'ordre Go, OpenCode général, OpenRouter
 
 #### Scenario: Échec d'un fournisseur
 - **WHEN** une collecte indispensable échoue
@@ -45,9 +45,9 @@ SHALL empêcher la publication d'un catalogue non conforme.
 ### Requirement: Modalités et blacklists explicites
 Les sorties déclarées audio, vidéo, speech ou sound SHALL être exclues. Une
 entrée multimodale reste admissible ; une sortie inconnue SHALL être signalée
-comme non vérifiée.
-Les blacklists permanentes SHALL exclure `muse-spark-1.2-contributor` pour
-OpenCode Go et `meta/muse-spark-1.2-contributor` pour OpenRouter.
+comme non vérifiée. Les blacklists permanentes SHALL exclure
+muse-spark-1.2-contributor pour Go et OpenCode général, et
+meta/muse-spark-1.2-contributor pour OpenRouter.
 
 #### Scenario: Modèle hors critères
 - **WHEN** un modèle examiné ne satisfait pas un critère de sélection vérifiable
@@ -70,12 +70,12 @@ sans effet sur les autres résultats admissibles.
 - **THEN** les autres modèles admissibles sont publiés sans erreur liée à cet identifiant
 
 ### Requirement: Classement et colonnes communes
-TFL SHALL classer les modèles par coût moyen croissant. Les deux tableaux
-SHALL partager les colonnes rang, modèle/ID, contexte, sortie, prix d'entrée,
-prix de sortie, coût moyen et code couleur.
+TFL SHALL classer les modèles de chaque catalogue par coût moyen croissant.
+Les trois tableaux SHALL partager les colonnes rang, modèle/ID, contexte,
+sortie, prix d'entrée, prix de sortie, coût moyen et code couleur.
 
 #### Scenario: Comparaison des tableaux fournisseurs
-- **WHEN** les deux tableaux sont restitués
+- **WHEN** les trois tableaux sont restitués
 - **THEN** leurs colonnes sont identiques et chaque classement suit le coût moyen croissant
 
 ### Requirement: Publication des fichiers courants
@@ -113,11 +113,11 @@ d'exécution hors sandbox et ne pas contourner un refus de la plateforme.
 - **THEN** TFL rapporte l'erreur sans essayer l'autre secret pour cette requête
 
 ### Requirement: Actualisation tarifaire sans repli historique
-TFL SHALL collecter à chaque génération les tarifs OpenCode Go dans sa
-documentation officielle et les tarifs OpenRouter dans son API modèles.
-TFL MUST NOT utiliser une table tarifaire statique ou un ancien catalogue
-comme repli lorsque cette collecte échoue. Chaque fournisseur SHALL exposer
-la source et la date de récupération tarifaire dans le JSON.
+TFL SHALL collecter à chaque génération les tarifs Go et OpenCode général
+dans leurs documentations officielles respectives, et OpenRouter dans son
+API modèles. TFL MUST NOT utiliser de table statique ou ancien catalogue
+comme repli. Chaque catalogue SHALL exposer la source et la date de
+récupération tarifaire dans le JSON.
 
 #### Scenario: Nouveau modèle et nouveau prix
 - **WHEN** un modèle disponible possède un tarif officiel exploitable ou son tarif change
@@ -232,3 +232,27 @@ SHALL être distinguée d'une qualification réelle de génération.
 #### Scenario: Route documentée
 - **WHEN** une route est résolue depuis les sources publiées
 - **THEN** le catalogue indique ses sources et sa date sans prétendre à un test de génération
+
+### Requirement: Catalogue général OpenCode indépendant
+TFL SHALL ajouter une section opencode distincte de opencode_go et openrouter.
+Disponibilité, tarifs et métadonnées opencode de models.dev SHALL être
+collectés indépendamment de Go. Le contexte vérifiable SHALL être ≥ 1M et
+la moyenne entrée/sortie comprise entre zéro et 0,50 USD/M inclus. Les
+sections existantes SHALL rester compatibles avec leurs consommateurs.
+
+#### Scenario: Modèle gratuit trop court
+- **WHEN** une variante gratuite possède seulement 200 000 tokens de contexte
+- **THEN** elle est exclue avec le motif de contexte sans abaisser le seuil 1M
+
+#### Scenario: Même identifiant dans deux catalogues
+- **WHEN** Go et le catalogue général publient le même identifiant avec des tarifs ou métadonnées distincts
+- **THEN** chaque section conserve ses propres données et sources sans emprunt à l'autre
+
+#### Scenario: Compatibilité des consommateurs existants
+- **WHEN** un consommateur lit opencode_go ou openrouter dans le catalogue enrichi
+- **THEN** il retrouve leurs champs et classements sans dépendre de la nouvelle section opencode
+
+#### Scenario: Plusieurs variantes publiées
+- **WHEN** le catalogue général publie plusieurs variantes de contexte ou de période
+- **THEN** son prix de classement est la moyenne maximale des variantes publiées
+- **AND** la référence hors pointe de Go reste inchangée

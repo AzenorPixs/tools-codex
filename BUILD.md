@@ -24,7 +24,7 @@ Les plugins destinés à la marketplace sont actuellement :
 | `cm` | `cm` | Catalogue des commandes maison et de leurs syntaxes. |
 | `tcu` | `tcu` | Mise à jour vérifiée des briques déjà installées. |
 | `pllm` | `pllm` | Évaluation et application contrôlée d'une politique LLM. |
-| `tfl` | `tfl` | Rapport comparatif OpenCode Go puis OpenRouter. |
+| `tfl` | `tfl` | Rapport OpenCode Go, catalogue général OpenCode puis OpenRouter. |
 
 Les commandes de `.codex/commands/` et les skills autonomes de `skills/` sont
 des sources du dépôt. Leur mise à disposition ne résulte pas, à elle seule, de
@@ -154,6 +154,12 @@ pour ces résolutions. Une information inconnue reste signalée ; une
 contradiction ou une URL non sûre bloque la publication. La route documentée
 n'est pas une qualification de génération. Les tests de compatibilité avec
 PLLM ne lancent ni quotas ni benchmarks ; aucune dépendance SDK n'est installée.
+Le catalogue général ajoute un accès public à `https://opencode.ai/zen/v1/models`
+et à ses tarifs Console officiels, sans secret Go ni nouvelle dépendance.
+Les métadonnées proviennent de `opencode` dans models.dev. Les trois tableaux
+s'affichent dans l'ordre Go, OpenCode général, OpenRouter, avec mêmes colonnes
+et seuils 1M/0,50 USD/M. Une source indispensable en échec empêche la publication.
+La section JSON `opencode` est additive ; la politique PLLM reste inchangée.
 
 Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.

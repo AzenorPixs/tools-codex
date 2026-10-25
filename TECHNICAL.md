@@ -164,7 +164,7 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 
 | Composant | Prérequis locaux | Services externes nécessaires |
 |---|---|---|
-| `tfl` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS, exécution hors sandbox et répertoire de données inscriptible. Les accès aux fournisseurs sont configurés localement hors des sources. | OpenCode Go, models.dev et OpenRouter. |
+| `tfl` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS, exécution hors sandbox et répertoire de données inscriptible. Les accès aux fournisseurs sont configurés localement hors des sources. | OpenCode Go, catalogue général OpenCode, models.dev et OpenRouter. |
 | `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les quatre politiques sont initialisées si le fichier courant manque. | OpenCode Go, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
@@ -278,6 +278,24 @@ source, date, SDK, portée des surcharges et référence du contrat de protocole
 documentaire d'un appel réel. `tests/test_tfl_go_metadata.py` couvre ces cas
 sur les deux distributions et vérifie la lecture par les consommateurs PLLM
 inchangés, sans quota ni benchmark.
+
+Le catalogue général est collecté séparément par GET public sur
+`https://opencode.ai/zen/v1/models`, sans Authorization ni clé Go. Ses tarifs
+proviennent de `https://opencode.ai/v2/docs/console/models/` et ses métadonnées
+du fournisseur models.dev `opencode`. Les collecteurs communs reçoivent
+explicitement le catalogue, son API et ses sources ; les deux sections ne
+partagent jamais leurs prix, contextes ou routes pour un même ID.
+La section JSON `opencode` s'ajoute à `opencode_go` et `openrouter`, dans cet
+ordre de restitution, avec les huit mêmes colonnes. Contexte ≥ 1M, moyenne
+entre zéro et 0,50 USD/M inclus, modalités et blacklist sont conservés. Pour
+le catalogue général, la moyenne maximale des variantes publiées sert de
+référence ; Go garde le hors pointe. Les prix généraux portent les champs
+`input`, `output`, `average` dans `reference_pricing_usd_per_million_tokens`.
+Les sources, dates, variantes et exclusions restent auditables. L'échec d'une
+collecte indispensable bloque toute publication partielle. Les consommateurs
+PLLM continuent de lire leurs sections existantes sans utiliser `opencode`.
+`tests/test_tfl_opencode_catalog.py` vérifie séparation, bornes, trois tableaux,
+exclusions des variantes gratuites 200K, erreurs et compatibilité.
 
 OpenRouter conserve la collecte `pricing.prompt/completion` et le classement
 sur les prix API de base, avec conversion par million. Les caches et les

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Ajouter le catalogue général OpenCode à TFL par collecte publique indépendante de Go, avec tarifs Console et métadonnées `opencode` ; conserver contexte ≥ 1M, coût moyen maximal 0,50 USD/M, modalités, blacklist et exclusions motivées, y compris variantes gratuites 200K.
+- Restituer Go, OpenCode général puis OpenRouter avec trois tableaux aux colonnes identiques ; ajouter la section JSON `opencode` sans changer les sections ni politiques PLLM existantes, et préserver les rapports si une collecte indispensable échoue.
+- Aligner la release commune, pyproject.toml, README et les cinq plugins sur 0.5.6 ; synchroniser distributions, wrapper et descriptions CM/TFL, sans installation de profil ni publication distante.
+
 - Collecter les modalités et le routage OpenCode Go depuis les déclarations API et models.dev, sans listes statiques de modèles ; conserver sources, dates, surcharges SDK/base API et informations inconnues explicites.
 - Vérifier les contradictions de modalités, les contrats de transport génériques et les URL HTTPS d'origine OpenCode avant publication ; distinguer route documentée et génération testée, avec compatibilité des consommateurs PLLM inchangés.
 - Qualifier les deux distributions TFL et aligner VERSION, pyproject.toml, README et les cinq plugins sur 0.5.5, sans installation de profil, génération ni consultation des quotas.
