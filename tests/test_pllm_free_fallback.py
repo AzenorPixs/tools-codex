@@ -361,7 +361,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                         patch.object(module.time, 'monotonic', side_effect=(0, 1, 2, 3, 4, 5)):
                     self.assertTrue(module.benchmark(model, 'offline-fixture', 1024, {}, session_id='stable-fixture'))
                 self.assertEqual(model['ttft_seconds'], 2)
-                self.assertEqual(model['tokens_per_second'], 50)
+                self.assertEqual(model['tokens_per_second'], 20.2)
                 self.assertEqual(model['throughput_scope'], 'reasoning_and_response')
                 self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'high'})
                 self.assertEqual(request.call_args.kwargs['extra_headers']['x-opencode-session'], 'stable-fixture')
@@ -382,7 +382,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                     patch.object(module.time, 'monotonic', side_effect=(0, 1, 2, 3, 4, 5)):
                 self.assertTrue(module.benchmark(model, 'offline-fixture', 1024,
                                                 {'reasoning': {'supported_efforts': ['high']}}))
-            self.assertEqual(model['tokens_per_second'], 20)
+            self.assertEqual(model['tokens_per_second'], 4.2)
             self.assertEqual(model['throughput_scope'], 'response_only')
             self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'high'})
             self.assertNotIn('provider', request.call_args.args[2])

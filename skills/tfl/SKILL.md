@@ -244,3 +244,22 @@ gratuits, avec fournisseur, modèle, TTFT, débit, raisonnement et état/cause.
 Si une section devient vide après qualification, arrêter avant publication et
 préserver les rapports existants. Ne pas confondre ce résultat daté et lié au
 compte utilisé avec une indisponibilité permanente du fournisseur.
+
+
+## Débit moyen — protocole 8
+
+Utiliser la même mesure que PLLM : tokens de sortie Go/général, ou tokens de
+réponse seuls OpenRouter, divisés par la durée complète non arrondie de la
+requête. L'attente, le TTFT et le raisonnement sont inclus dans cette durée.
+Il s'agit d'une moyenne côté client, sans extrapoler une rafale de fragments
+ni soustraire le premier token, sans écrêtage ou plancher artificiel.
+request_seconds porte le dénominateur exact ; duration_seconds est un affichage
+arrondi ; generation_seconds reste un diagnostic entre fragments.
+Une réponse complète en un bloc est mesurable ; une durée invalide ou un
+comptage inexploitable exclut le gratuit avec une mesure indisponible.
+Les rapports tracent throughput_metric=request_average_v1,
+throughput_window=request_total et measurement_protocol_version=8.
+Les seuils 30 s / 20 tokens/s restent stricts, mais le nouveau débit peut
+modifier l'éligibilité. Les valeurs anciennes ne sont pas directement
+comparables et ne sont pas réécrites. Relancer TFL puis PLLM après mise à jour
+pour obtenir de nouvelles qualifications avec le protocole 8.

@@ -3,7 +3,7 @@
 Version : 0.7
 
 Généré automatiquement par Debian Installeur Unifié (DIU).
-Début du relevé (UTC) : 2026-10-25T10:11:02Z
+Début du relevé (UTC) : 2026-10-25T23:02:08Z
 Environnement d'exécution DIU : PROXMOX
 
 Les sondes système concernent le contexte d'exécution DIU.
@@ -116,7 +116,7 @@ Cet inventaire ne constitue pas une qualification fonctionnelle ni une preuve de
 
 # Python
 
-  * 3.14.9
+  * 3.14.10
   * /home/devops/python/current/bin/python3
   * venv: disponible
 

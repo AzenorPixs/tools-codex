@@ -383,7 +383,7 @@ Après un repli HTTP 429, recalculer les paliers pour la nouvelle configuration 
 sans réussite mémorisée correspondante, commencer à 1 024 tokens. Effectuer les contrôles applicables avant sa requête, sans quota en 3/4. Le dernier palier et l'épuisement des candidats
 ne permettent jamais de déclarer valide un modèle sans mesures concluantes.
 
-## Protocole de performance reproductible — version 7
+## Protocole de performance reproductible — version 8
 
 À chaque invocation, exécuter `python3 scripts/evaluate.py`, chemin relatif au dossier de ce skill. Le script contrôle les quotas applicables avant chaque test (jamais en 3/4), mesure les réponses en streaming et publie le JSON et le Markdown. Il compare les candidats de chaque catégorie ; une invocation forcée ne remplace jamais son candidat.
 
@@ -392,7 +392,7 @@ Le test utilise le même prompt de tri fusion Python et de trois assertions pour
 Le parseur streaming et les seuils sont fournis par scripts/performance.py,
 embarqué et identique dans PLLM et TFL. Les imports n'effectuent aucun appel réseau.
 
-Mémoriser par politique dans `data/pllm-performance-memory.json` le dernier palier ayant satisfait **tous** les critères de performance après les contrôles applicables, avec date et identité modèle/fournisseur/raisonnement/type de débit. Lors de l’invocation suivante, commencer à ce palier puis augmenter en cas d’échec. Ne pas remplacer la dernière réussite par un échec. Si le modèle ou sa configuration change sans réussite correspondante mémorisée, repartir à 1 024 ; ne pas réutiliser un palier appris pour une autre configuration. Cette mémoire ne remplace jamais les nouveaux contrôles en temps réel. Afficher `last_successful_max_tokens` dans le catalogue et le tableau. Enregistrer atomiquement chaque réussite dès qu’elle est obtenue.
+Mémoriser par politique dans `data/pllm-performance-memory.json` le dernier palier ayant satisfait **tous** les critères de performance après les contrôles applicables, avec date et identité modèle/fournisseur/raisonnement/type et profil de débit. Lors de l’invocation suivante, commencer à ce palier puis augmenter en cas d’échec. Ne pas remplacer la dernière réussite par un échec. Si le modèle ou sa configuration change sans réussite correspondante mémorisée, repartir à 1 024 ; ne pas réutiliser un palier appris pour une autre configuration. Cette mémoire ne remplace jamais les nouveaux contrôles en temps réel. Afficher `last_successful_max_tokens` dans le catalogue et le tableau. Enregistrer atomiquement chaque réussite dès qu’elle est obtenue.
 
 La nouvelle mémoire est initialement vide : aucun ancien résultat n’est transformé artificiellement en apprentissage du nouveau protocole.
 
@@ -407,7 +407,32 @@ empruntée. Aucun niveau inférieur n'est autorisé. Les paramètres demandés e
 le niveau effectif sont tracés, sans promettre une profondeur interne mesurée.
 Source : https://openrouter.ai/docs/guides/best-practices/reasoning-tokens .
 
-La TTFT porte sur le premier contenu visible de réponse ; le premier événement de raisonnement est chronométré séparément. Conserver le comptage de sortie et de raisonnement fourni par l’API même en cas de troncature. Pour OpenCode Go et OpenCode général (modes 1 à 4), utiliser le débit global : `(completion_tokens - 1) / (instant_dernier_token_généré - instant_premier_token_généré)`, raisonnement et réponse compris. Les instants doivent correspondre à du texte généré, pas à des événements vides ou à des métadonnées. Le compteur séparé de raisonnement n’est pas requis. Conserver `throughput_scope=reasoning_and_response` dans le JSON. Pour OpenRouter et DeepSeek direct, conserver le débit de réponse seul, hors raisonnement, avec `throughput_scope=response_only` dans le JSON. Le tableau n’ajoute aucune étiquette de type de débit. Les seuils sont >20 tokens/s pour tous les gratuits et >15 tokens/s pour les payants pour le type de débit ainsi défini ; ne pas comparer directement les deux types de débit comme une mesure identique. La sélection entre modes suit la priorité ; dans un même mode, retenir le débit maximal puis le TTFT minimal. Une absence de comptage fiable rend le résultat non mesurable ; ne pas remplacer des tokens par des fragments de flux.
+La TTFT porte toujours sur le premier contenu visible ; le premier raisonnement
+est chronométré séparément. Le protocole 8 mesure un débit moyen côté client
+sur la requête complète, attente et TTFT inclus :
+
+- Go et OpenCode général : completion_tokens / request_seconds, raisonnement
+  et réponse compris ; throughput_scope=reasoning_and_response.
+- OpenRouter et DeepSeek : (completion_tokens - reasoning_tokens) /
+  request_seconds, réponse seule au numérateur ; throughput_scope=response_only.
+
+request_seconds est la durée monotone non arrondie, avant ouverture HTTP
+jusqu'à la fin du flux et la libération de la réponse. Ne jamais utiliser la
+valeur arrondie duration_seconds pour le calcul, ni soustraire le premier token.
+La fenêtre generation_seconds entre fragments reste un diagnostic ; elle ne
+détermine plus les tokens/s. Une réponse complète reçue en un bloc est
+mesurable si durée et compteurs sont fiables. Une durée nulle, négative ou
+non finie, un comptage incohérent ou un flux incomplet ne produit aucun débit
+inventé ou valeur historique reprise. Aucun écrêtage ni plancher arbitraire.
+
+Tracer throughput_metric=request_average_v1, throughput_window=request_total
+et measurement_protocol_version=8 sur les mesures et les configurations de
+mémoire. Les anciens succès restent historiques ; sans réussite du même
+profil, commencer à 1024. Ce débit n'est pas une vitesse intrinsèque fournisseur
+et n'est pas directement comparable à l'ancien débit entre fragments.
+Les seuils numériques restent >20 tokens/s pour les gratuits et >15 pour les
+payants, mais classement et éligibilité peuvent changer. Les portées de
+comptage restent distinctes ; les priorités entre modes restent inchangées.
 
 Après le dernier palier, une réponse encore tronquée reste `Invalide` faute de mesure concluante, avec la cause `Budget du test épuisé`, sans présenter cela comme une panne du modèle. Distinguer cette cause des erreurs HTTP et des seuils de performance réellement non satisfaits.
 

@@ -13,6 +13,10 @@ from zoneinfo import ZoneInfo
 
 PROMPT = 'Write only Python code for a stable merge_sort(values) function and three assert tests. No explanation.'
 BUDGETS = (1024, 2048, 4096, 8192)
+MEASUREMENT_PROTOCOL_VERSION = 8
+THROUGHPUT_METRIC = 'request_average_v1'
+THROUGHPUT_WINDOW = 'request_total'
+
 FREE_CRITERIA = {'minimum_context_tokens': 1_000_000, 'ttft_lt_seconds': 30, 'tokens_per_second_gt': 20}
 
 class AuthenticationFailure(RuntimeError):
@@ -268,12 +272,16 @@ def can_retry_xhigh(model, metadata, diagnostic):
             and 'xhigh' in (capabilities(metadata).get('supported_efforts') or []))
 
 def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, request, now, api_error, clock, alarm):
+    m.update(ttft_seconds=None, tokens_per_second=None, throughput_metric=THROUGHPUT_METRIC,
+             throughput_window=THROUGHPUT_WINDOW, measurement_protocol_version=MEASUREMENT_PROTOCOL_VERSION)
     options = reasoning(m, budget, metadata)
     protocol = m.get('api_protocol', 'chat_completions')
     result = {'status': 'running', 'prompt': PROMPT, 'max_tokens': budget, 'reasoning_request': options,
               'started_at': now(), 'ttft_target': 'content (hors raisonnement)', 'requests': 1,
               'api_protocol': protocol, 'api_endpoint': m.get('api_endpoint'),
-              'reasoning': m['reasoning'], 'requested_reasoning': 'high'}
+              'reasoning': m['reasoning'], 'requested_reasoning': 'high',
+              'throughput_metric': THROUGHPUT_METRIC, 'throughput_window': THROUGHPUT_WINDOW,
+              'measurement_protocol_version': MEASUREMENT_PROTOCOL_VERSION}
     if m['provider'] in ('opencodego', 'opencode'):
         result['session_header'] = 'x-opencode-session'
     m['performance_test'] = result
@@ -388,9 +396,21 @@ def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, reque
                         result['finish_reason'] = choice['finish_reason']
     finally:
         alarm(0)
-        result['duration_seconds'] = round(clock() - start, 4)
-        result['ttft_reasoning_seconds'] = None if first_reason is None else round(first_reason - start, 4)
-        m['ttft_seconds'] = None if first is None else round(first - start, 4)
+        finished = clock()
+        elapsed = finished - start
+        elapsed = elapsed if math.isfinite(elapsed) else None
+        result['request_seconds'] = elapsed
+        result['duration_seconds'] = None if elapsed is None else round(elapsed, 4)
+        for field, tick in (('ttft_reasoning_seconds', first_reason), ('ttft_seconds', first)):
+            delay = None if tick is None else tick - start
+            if (delay is None or not math.isfinite(delay) or elapsed is None or elapsed <= 0
+                    or delay < 0 or delay > elapsed):
+                delay = None
+            value = None if delay is None else round(delay, 4)
+            if field == 'ttft_seconds':
+                m[field] = value
+            else:
+                result[field] = value
     if usage:
         if protocol in ('responses', 'messages'):
             result['completion_tokens'] = usage.get('output_tokens')
@@ -405,27 +425,40 @@ def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, reque
         result['finish_reason'] = 'stop'
     if not done or result.get('finish_reason') != 'stop' or first is None:
         raise RuntimeError('Réponse absente ou flux incomplet')
+    if elapsed is None or elapsed <= 0:
+        raise RuntimeError('Durée totale de requête invalide : débit non mesurable')
+    if m['ttft_seconds'] is None:
+        raise RuntimeError('Horodatage du contenu invalide : débit non mesurable')
     n = result.get('completion_tokens')
     rn = result.get('reasoning_tokens')
-    if not isinstance(n, int) or n <= 1:
+    if type(n) is not int or n <= 1:
         raise RuntimeError('Comptage des tokens indisponible')
     if m['provider'] in ('opencodego', 'opencode'):
         count = n
         begin, end = first_generated, last_generated
         m['throughput_scope'] = 'reasoning_and_response'
-        result['throughput_formula'] = '(completion_tokens - 1) / (last_generated_time - first_generated_time)'
+        result['throughput_formula'] = 'completion_tokens / request_seconds'
     else:
-        if first_reason is not None and not isinstance(rn, int):
-            raise RuntimeError('Comptage distinct des tokens indisponible')
+        if ((first_reason is not None and rn is None)
+                or (rn is not None and (type(rn) is not int or rn < 0 or rn > n))):
+            raise RuntimeError('Comptage distinct des tokens indisponible ou incohérent')
         count = n - (rn or 0)
         begin, end = first, last
         m['throughput_scope'] = 'response_only'
-        result['throughput_formula'] = '(completion_tokens - reasoning_tokens - 1) / (last_content_time - first_content_time)'
-    if count <= 1 or begin is None or end is None or end <= begin:
-        raise RuntimeError('Échantillon de génération insuffisant')
+        result['throughput_formula'] = '(completion_tokens - reasoning_tokens) / request_seconds'
+    if (count <= 1 or begin is None or end is None or not math.isfinite(begin)
+            or not math.isfinite(end) or begin < start or end < begin or end > finished):
+        raise RuntimeError('Échantillon de génération insuffisant ou incohérent')
+    # La fenêtre entre fragments reste un diagnostic ; un bloc unique peut donner une durée nulle.
     result['generation_seconds'] = round(end - begin, 4)
     result['throughput_scope'] = m['throughput_scope']
-    m['tokens_per_second'] = round((count - 1) / (end - begin), 3)
+    try:
+        rate = count / elapsed
+    except OverflowError as error:
+        raise RuntimeError('Débit non fini : mesure inexploitable') from error
+    if not math.isfinite(rate):
+        raise RuntimeError('Débit non fini : mesure inexploitable')
+    m['tokens_per_second'] = round(rate, 3)
     result['status'] = 'completed'
     return True
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Corriger les tokens/s PLLM/TFL face aux fragments reçus en rafale : comptage API sur la durée complète non arrondie de la requête, attente et TTFT inclus, sans soustraction du premier token ni écrêtage.
+- Accepter une réponse complète reçue en un bloc avec mesures fiables ; tracer les durées et le profil request_average_v1/request_total, protocole 8 ; rendre les mesures invalides indisponibles sans réutiliser une ancienne valeur.
+- Séparer la mémoire par profil de débit, préserver les succès historiques et les seuils numériques ; le nouveau débit moyen n'est pas directement comparable à l'ancien et peut modifier classement et éligibilité.
+- Aligner les distributions, VERSION, pyproject.toml, README et cinq plugins sur 0.7.3. Qualification locale hors ligne, sans installation ni benchmark fournisseur réel.
+
 - Harmoniser les gratuits PLLM/TFL : prix nuls vérifiés, contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s, y compris le repli gratuit OpenRouter de PLLM 5.
 - Tester en HIGH avec le seul repli XHIGH pris en charge ; appliquer ce défaut aux six modes PLLM et aux gratuits TFL, avec moteur streaming commun embarqué et mémoire séparée par raisonnement effectif.
 - Exclure de TFL models les gratuits échoués ou non mesurables, conserver causes et tentatives dans les exclusions et ajouter le tableau de tous les essais gratuits ; aucun quota consulté par ces tests.

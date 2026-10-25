@@ -405,7 +405,8 @@ def policy_table(models):
             display_timestamp(model.get('evaluated_at')),
         ]
         lines.append('| ' + ' | '.join(markdown_text(value) for value in values) + ' |')
-    return '\n'.join(['### Rapport PLLM', '', *lines])
+    return '\n'.join(['### Rapport PLLM', '',
+                      'Débit moyen sur la requête complète, attente et TTFT inclus.', '', *lines])
 
 
 def quota_summary(models):
@@ -440,7 +441,7 @@ def publish(d, active=False, forced_mode=None):
         m['selected'] = m is chosen
         m['quota_display'] = quota_display(m, fx)
     d.update(published_at=now(), evaluated_at=now(), selected_mode=chosen['mode'] if chosen else None,
-             selection_status='selected' if chosen else 'no_valid_model', protocol_version=7)
+             selection_status='selected' if chosen else 'no_valid_model', protocol_version=performance.MEASUREMENT_PROTOCOL_VERSION)
     d.pop('last_partial_evaluation_at', None)
     if forced_mode:
         models = [m for m in d['models'] if m.get('evaluated_this_run') and m['mode'] == forced_mode]
@@ -552,7 +553,8 @@ def load_memory():
 
 
 def identity(m):
-    return {k: m.get(k) for k in ('model_id', 'provider', 'reasoning', 'throughput_scope', 'api_protocol', 'api_endpoint')}
+    return {k: m.get(k) for k in ('model_id', 'provider', 'reasoning', 'throughput_scope', 'api_protocol', 'api_endpoint',
+                                    'throughput_metric', 'throughput_window', 'measurement_protocol_version')}
 
 
 def budgets_for(m, memory):
@@ -600,6 +602,8 @@ def initial_model(priority, provider):
                 '(solde > 0 pour un payant OU épuisement confirmé et gratuit accessible)' if mode == 'mode5' else
                 'is_available=true ET au moins un solde utilisable > 0' if mode == 'mode6' else 'quotas valides'),
             'performance_criteria': {'ttft_lt_seconds': ttft, 'tokens_per_second_gt': throughput},
+            'throughput_metric': performance.THROUGHPUT_METRIC, 'throughput_window': performance.THROUGHPUT_WINDOW,
+            'measurement_protocol_version': performance.MEASUREMENT_PROTOCOL_VERSION,
             'quota_status': 'not_applicable' if mode in FREE_MODES else 'not_evaluated',
             'selected': False, 'evaluated_this_run': False, 'evaluated_at': None,
             'ttft_seconds': None, 'tokens_per_second': None, 'quotas': None,
@@ -754,6 +758,8 @@ def candidates_for(model, category, catalog_path, forced=None):
 def evaluate_candidate(model, key, category, memory, session_id):
     attempts = []
     stage = 'configuration du test'
+    model.update(throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
+                 measurement_protocol_version=performance.MEASUREMENT_PROTOCOL_VERSION)
     try:
         metadata = {'reasoning_capabilities': model.get('reasoning_capabilities', {})}
         if model['provider'] == 'openrouter':
@@ -853,6 +859,8 @@ def main(active=False, forced=None, tfl_catalog=None):
                      provider=provider, model='Non évalué', model_id='Non évalué', reasoning='high',
                      ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
                      last_successful_max_tokens=None, selection_category=None,
+                     throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
+                     measurement_protocol_version=performance.MEASUREMENT_PROTOCOL_VERSION,
                      candidate_results=[], candidate_exclusions=[],
                      condition=initial_model(model['priority'], provider)['condition'],
                      performance_criteria=initial_model(model['priority'], provider)['performance_criteria'],

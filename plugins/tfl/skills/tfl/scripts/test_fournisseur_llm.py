@@ -901,6 +901,8 @@ def evaluate_free(model: dict, key: str, metadata: dict) -> dict:
     model.update(state='Invalide', cause='', reasoning='high', requested_reasoning='high',
                  evaluated_at=performance.now(), ttft_seconds=None, tokens_per_second=None,
                  performance_criteria=dict(performance.FREE_CRITERIA), quota_status='not_applicable',
+                 throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
+                 measurement_protocol_version=performance.MEASUREMENT_PROTOCOL_VERSION,
                  performance_test={'status': 'not_run', 'requests': 0})
     attempts = []
     previous_handler = signal.signal(signal.SIGALRM, performance.expire)
@@ -988,7 +990,8 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
         audit.append(copy.deepcopy(model))
         row.update({field: copy.deepcopy(model[field]) for field in (
             'reasoning', 'requested_reasoning', 'evaluated_at', 'ttft_seconds', 'tokens_per_second',
-            'performance_criteria', 'quota_status', 'performance_test')})
+            'performance_criteria', 'quota_status', 'performance_test',
+            'throughput_metric', 'throughput_window', 'measurement_protocol_version')})
         if model['state'] == 'Valide':
             if isinstance(row.get('routing_metadata'), dict):
                 row['routing_metadata']['generation_tested'] = True
@@ -1002,7 +1005,8 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
 
 def format_free_performance(audit: list[dict]) -> str:
     lines = ['## Tests de performance des modèles gratuits', '',
-             'Critères : contexte ≥1M, gratuité vérifiée, réponse complète, TTFT <30 s et débit >20 tokens/s. HIGH puis XHIGH si pris en charge ; aucun contrôle de quota.', '',
+             'Critères : contexte ≥1M, gratuité vérifiée, réponse complète, TTFT <30 s et débit >20 tokens/s. HIGH puis XHIGH si pris en charge ; aucun contrôle de quota.',
+             'Débit moyen sur la requête complète, attente et TTFT inclus.', '',
              '| Fournisseur | Modèle / ID | TTFT (s) | Tokens/s | Raisonnement | État / cause |',
              '|---|---|---:|---:|---|---|']
     for model in audit:
@@ -1104,6 +1108,9 @@ def main() -> int:
     }
     catalog = {
         "schema_version": 1,
+        "measurement_protocol_version": performance.MEASUREMENT_PROTOCOL_VERSION,
+        "throughput_metric": performance.THROUGHPUT_METRIC,
+        "throughput_window": performance.THROUGHPUT_WINDOW,
         "free_performance_criteria": dict(performance.FREE_CRITERIA),
         "free_performance_results": audit,
         "generated_at": generated_at,

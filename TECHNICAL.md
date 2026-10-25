@@ -215,8 +215,21 @@ les candidats courants 1/2 restent exclusivement payants Go.
 
 Les réussites de même mode sont classées par débit maximal, TTFT minimal puis
 ordre TFL stable ; l'arrêt au premier succès concerne seulement ses paliers.
-Go et OpenCode général utilisent le débit raisonnement+réponse ; OpenRouter
-et DeepSeek le débit réponse seule. Les priorités entre modes restent fixes.
+Go/général comptent la sortie raisonnement+réponse ; OpenRouter/DeepSeek la
+réponse seule. Le protocole 8 divise ce comptage par la durée complète non
+arrondie de la requête, attente et TTFT inclus. Aucun premier token n'est
+soustrait. Une réponse complète en un bloc reste mesurable ; les durées ou
+comptages invalides rendent le débit indisponible. Les priorités restent fixes.
+Les rapports exposent request_seconds, throughput_metric=request_average_v1,
+throughput_window=request_total et measurement_protocol_version=8.
+duration_seconds est un affichage arrondi ; generation_seconds reste la
+fenêtre diagnostique entre fragments. Ces deux affichages ne servent pas de
+dénominateur. Aucun plafond ou minimum de durée artificiel ne corrige la valeur.
+La mémoire inclut ce profil dans l'identité : les anciennes réussites restent
+historiques sans amorcer le nouveau protocole. Un nouveau succès de même
+profil peut réutiliser son palier. Les anciens débits ne sont pas comparables ;
+les seuils numériques conservés peuvent produire un autre classement et une
+autre éligibilité.
 Le JSON additif conserve catégorie, exclusions, candidats et tentatives, ainsi
 que les quotas réels. La mémoire garde les succès par configuration ; un
 palier d'un autre candidat n'est pas affiché. Les erreurs HTTP/SSE sont filtrées
@@ -312,7 +325,7 @@ La lecture des sources, les contrôles documentaires et la validation OpenSpec
 ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
 La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py`,
 `tests/test_pllm_free_fallback.py`,
-`tests/test_pllm_http_diagnostics.py`, `tests/test_pllm_six_modes.py`, `tests/test_free_performance.py`,
+`tests/test_pllm_http_diagnostics.py`, `tests/test_pllm_six_modes.py`, `tests/test_free_performance.py`, `tests/test_throughput_measurement.py`,
 `tests/test_extension_qualification.py`, `tests/test_tcu_update.py` et
 `tests/test_prompt_dispatch.py`, exécutables avec
 `python3 -B -m unittest discover -s tests -v`. Elle couvre les deux

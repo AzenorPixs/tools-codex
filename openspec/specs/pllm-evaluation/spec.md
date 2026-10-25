@@ -154,11 +154,12 @@ SHALL être comparés hors forçage.
 - **THEN** le candidat reste invalide même avec un débit suffisant
 
 ### Requirement: Protocole des mesures traçable
-Les mesures SHALL employer une horloge monotone et un flux réel ; le TTFT
-SHALL porter sur le premier contenu visible. Le JSON SHALL conserver la
-portée du débit : raisonnement et réponse pour Go et OpenCode général,
-réponse seule pour OpenRouter et DeepSeek. Le classement interne SHALL
-comparer uniquement des débits de même portée.
+Les mesures SHALL utiliser une horloge monotone. Le TTFT SHALL porter sur
+le premier contenu visible. Le débit SHALL être le comptage de sortie divisé
+par la durée totale non arrondie de la requête, TTFT inclus : global pour
+Go/général, réponse seule pour OpenRouter/DeepSeek. Une réponse complète en
+un bloc SHALL être mesurable. Durée ou comptage invalides SHALL produire
+une mesure indisponible. Le JSON SHALL tracer profil, formule et durées.
 
 #### Scenario: Deux catalogues OpenCode
 - **WHEN** les candidats gratuits Go et OpenCode général sont comparés
@@ -169,13 +170,30 @@ comparer uniquement des débits de même portée.
 - **WHEN** des mesures OpenCode et OpenRouter sont restituées
 - **THEN** le JSON conserve leur portée sans les présenter comme une mesure identique
 
+
+#### Scenario: Fragments reçus en rafale
+- **WHEN** un flux complet est reçu sur une fenêtre de contenu très courte
+- **THEN** les tokens/s utilisent la durée complète de la requête sans extrapolation entre fragments
+
+#### Scenario: Un bloc complet
+- **WHEN** une réponse complète est reçue en un seul bloc avec compteur et durée fiables
+- **THEN** le débit moyen est calculé sans exiger plusieurs fragments
+
+#### Scenario: Durée invalide
+- **WHEN** la durée totale est nulle, négative ou non finie
+- **THEN** aucun débit n'est fabriqué et le candidat reste invalide avec cause explicite
+
+#### Scenario: Durée non arrondie
+- **WHEN** l'affichage arrondit la durée
+- **THEN** le calcul utilise encore la durée monotone non arrondie
+
 ### Requirement: Paliers et mémoire de performance bornés
 PLLM SHALL garder les paliers 1024, 2048, 4096, 8192 et 120 s par requête.
 Les contrôles applicables SHALL précéder chaque requête, sans quota en 3/4.
-Un HTTP 400/429 SHALL arrêter le candidat, hors unique repli d'effort XHIGH
-autorisé. La mémoire SHALL garder les succès complets par configuration,
-distinguer Low/HIGH/XHIGH et adapter le schéma 1 en 2. Une mémoire invalide
-SHALL NOT être écrasée ; un palier mémorisé SHALL NOT valider l'invocation.
+Un HTTP 400/429 SHALL arrêter le candidat, hors repli XHIGH autorisé.
+La mémoire SHALL distinguer modèle, raisonnement et profil de débit, garder
+les succès historiques sans les réutiliser pour un autre profil. Une mémoire
+invalide SHALL NOT être écrasée ; un ancien succès SHALL NOT valider l'invocation.
 
 #### Scenario: Nouvelle politique gratuite
 - **WHEN** mode3 ou mode4 est évalué pour la première fois après migration
@@ -227,10 +245,22 @@ SHALL NOT être écrasée ; un palier mémorisé SHALL NOT valider l'invocation.
 - **AND** HTTP 401/403/429, troncature ou seuil ne déclenchent aucun repli d'effort
 
 
+
+#### Scenario: Nouveau profil après un ancien succès
+- **WHEN** un succès utilise l'ancien débit entre fragments
+- **THEN** il reste historique et n'amorce pas le nouveau protocole
+- **AND** sans succès du nouveau profil, le premier palier est 1024
+
+#### Scenario: Réutilisation du nouveau profil
+- **WHEN** une réussite mémorisée correspond à la même configuration et au même profil de débit
+- **THEN** son palier peut être repris avec des mesures actuelles
+
 ### Requirement: Publication traçable
-PLLM SHALL publier `pllm-current.json` et `pllm-current.md` par remplacement
-atomique de chaque fichier, sans secret. Le JSON SHALL tracer les horodatages,
-critères, résultats, causes, sélection et type de débit.
+PLLM SHALL publier pllm-current.json et pllm-current.md atomiquement par
+fichier, sans secret. Le JSON SHALL tracer horodatages, critères, causes,
+sélection, comptages, profil de débit et durée totale non arrondie utilisée.
+Les rapports SHALL indiquer que le débit moyen inclut l'attente et le TTFT.
+Les anciens débits SHALL NOT être présentés comme comparables ou actuels.
 
 #### Scenario: Résultats publiés
 - **WHEN** l'évaluation se termine et la publication réussit

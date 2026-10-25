@@ -1,6 +1,6 @@
 {
   "name": "prompt",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Liste et lance les prompts du projet courant depuis son référentiel DEVOPS.md.",
   "author": {
     "name": "AzenorPixs"

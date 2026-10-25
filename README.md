@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.2`.
+Version de release : `0.7.3`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -36,7 +36,13 @@ HIGH/XHIGH autorisé, transports et diagnostics s'appliquent partout. Un gratuit
 aux limitations fournisseur. Dans chaque mode, le débit maximal puis le TTFT
 minimal désignent le gagnant sans changer les priorités 1 à 6.
 Tous les benchmarks demandent HIGH ; XHIGH est le seul repli autorisé si
-HIGH est indisponible et XHIGH pris en charge. Les références de secrets restent inchangées. Les historiques à quatre modes
+HIGH est indisponible et XHIGH pris en charge. Les tokens/s représentent désormais une moyenne sur la requête complète,
+attente et TTFT inclus, sans extrapolation entre fragments reçus. Le protocole
+8 conserve la portée de comptage Go/général ou OpenRouter/DeepSeek, trace la
+durée non arrondie et sépare les anciens succès en mémoire. Une réponse
+complète en un bloc reste mesurable. Les anciens débits ne sont pas directement
+comparables ; les seuils numériques conservés peuvent modifier le classement
+et la qualification. Les références de secrets restent inchangées. Les historiques à quatre modes
 sont adaptés au schéma 2 sans sélection actuelle héritée ; les nouveaux 3/4
 commencent sans mesure ni apprentissage. Un fichier corrompu est préservé.
 Le schéma 2 nécessite une copie des anciennes données pour revenir à l'ancien

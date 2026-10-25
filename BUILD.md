@@ -368,3 +368,20 @@ Les payants TFL ne sont pas benchmarkés. Une nouvelle invocation PLLM reteste
 ses candidats retenus avec ses propres comptes et le raisonnement HIGH/XHIGH.
 Les anciens résultats Low ne sont pas des réussites HIGH. Cette livraison
 locale est qualifiée hors ligne et n'exécute aucun benchmark fournisseur réel.
+
+
+## Protocole 8 de débit moyen
+
+Distribuer les quatre copies identiques de performance.py avec les scripts
+PLLM/TFL de la même release 0.7.3. Le débit utilise désormais le comptage API
+sur la durée totale non arrondie de la requête, attente et TTFT inclus.
+Les rafales et réponses en un bloc ne sont plus extrapolées sur la fenêtre
+entre fragments. Les durées invalides produisent une mesure indisponible,
+sans plafond ou plancher artificiel. Le JSON conserve les diagnostics et le
+profil request_average_v1/request_total, protocole 8.
+Les seuils et interfaces sont conservés, mais la signification du débit change :
+classement et qualification peuvent changer. Les anciens succès de mémoire
+restent présents et ne sont pas utilisés pour amorcer ce profil ; une réussite
+courante est nécessaire. Aucune migration destructive ni réécriture des
+rapports utilisateur pendant cette livraison. Après installation distincte,
+relancer TFL puis PLLM pour obtenir des résultats sous la nouvelle méthode.
