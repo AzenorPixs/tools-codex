@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Accepter les identifiants OpenRouter à préfixe `~` valide dans les six modules LM/TFL/PLLM, sans modifier leur identité canonique, les exclusions par défaut/personnalisées/permanentes ni les validations strictes.
+- Qualifier les préfixes marqués, la persistance canonique et les gardes TFL/PLLM ; aligner VERSION, pyproject.toml, README et les six manifestes sur 0.7.7. La relance TFL depuis les sources corrigées est distincte de la mise à jour des sources installées dans le profil.
+
 - Ajouter LM : plugin, skill autonome et embarqué, commande source /LM, LIST sans écriture, ADD/REMOVE atomiques et catalogue CM actualisé ; mimo-v2.5 exclu par défaut.
 - Partager les exclusions via CODEX_HOME/lm/blacklist.json hors cache ; filtrer TFL/PLLM avant classement, sélection et tests, y compris catalogues anciens, rangs forcés et candidat direct. Préserver les exclusions permanentes et les données utilisateur ; une politique invalide bloque sans écrasement.
 - Aligner VERSION, pyproject.toml, documentation et six manifestes sur 0.7.6. Qualification locale hors ligne ; aucune publication, installation utilisateur ni génération fournisseur réelle. Une ancienne release ignore la nouvelle politique LM.

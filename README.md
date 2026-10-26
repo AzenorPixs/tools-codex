@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.6`.
+Version de release : `0.7.7`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -123,6 +123,8 @@ décrits dans [BUILD](BUILD.md#utilisation-de-prompt).
 `/LM` ou `$lm` affiche la liste sans écriture ; `/LM ADD identifiant` ajoute
 une exclusion et `/LM REMOVE identifiant` la retire. `mimo-v2.5` est exclu
 par défaut, y compris avec préfixe fournisseur ou suffixe gratuit.
+Les préfixes OpenRouter marqués, comme `~vendor/model`, sont acceptés sans
+changer l'identité LM : `~xiaomi/mimo-v2.5:free` reste exclu.
 LM figure dans le catalogue CM. Les plugins et skills TFL/PLLM appliquent la
 même liste avant classement, sélection et tests, même avec un ancien catalogue
 ou une cible forcée. Les exclusions permanentes historiques restent actives.

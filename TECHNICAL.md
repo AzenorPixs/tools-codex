@@ -544,6 +544,11 @@ fcntl non bloquant et un remplacement atomique en UTF-8/LF. Les identifiants
 ASCII sont bornés à 256 caractères ; la casse, le préfixe fournisseur et
 les seuls suffixes :free/-free sont normalisés. Pas de rapprochement par
 sous-chaîne : mimo-v2.5-pro et mimo-v2.50 restent distincts.
+Un unique `~` initial est accepté devant un segment fournisseur valide suivi
+de `/`, comme `~unbiased/pareto-latest`. Il disparaît avec le préfixe lors de
+la canonicalisation : `~xiaomi/mimo-v2.5:free` reste exclu. La limite de 256
+caractères inclut ce marqueur ; `~model`, `~~vendor/model` et `vendor/~model`
+restent invalides. Les noms finaux différents restent des identités distinctes.
 Une politique illisible, dupliquée ou de schéma invalide bloque avant appel
 fournisseur et reste préservée. Les exclusions permanentes muse-spark restent
 applicables indépendamment des retraits LM. Le module est identique dans

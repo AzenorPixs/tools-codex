@@ -84,6 +84,68 @@ class LmBlacklistTests(unittest.TestCase):
         self.assertEqual(second.load_models(), ())
         self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
 
+    def test_marked_provider_keeps_canonical_identity_in_all_packages(self):
+        cases = {
+            '~unbiased/pareto-latest': 'pareto-latest',
+            '~XIAOMI/MIMO-V2.5:free': 'mimo-v2.5',
+            '~vendor/model-free-free:free': 'model',
+            '~vendor/nested/model:extended': 'model:extended',
+        }
+        for helper in HELPERS:
+            module = load_script(helper)
+            for identifier, expected in cases.items():
+                with self.subTest(helper=helper, identifier=identifier):
+                    self.assertEqual(module.canonical_id(identifier), expected)
+                    self.assertEqual(module.canonical_id(expected), expected)
+                    self.assertEqual(module.canonical_id(identifier[1:]), expected)
+            self.assertTrue(module.is_blocked('~XIAOMI/MIMO-V2.5:free'))
+            self.assertTrue(module.is_blocked('~meta/muse-spark-1.2-contributor-free'))
+            for identifier in ('~xiaomi/mimo-v2.50', '~xiaomi/mimo-v2.5-pro'):
+                self.assertFalse(module.is_blocked(identifier))
+
+    def test_marked_provider_does_not_relax_grammar_or_full_length_limit(self):
+        invalid = ('~model', '~~vendor/model', 'vendor/~model', '~vendor/~model',
+                   '~vendor/', '~/model', '~vendor//model', '~../model',
+                   '~vendor/model~', '~vendor/model:free:free', '~vendor/bad model',
+                   '~vendor/model\n', '~vendor/\x00model', '~vendor/é',
+                   '~v/' + 'x' * 254, None, 12)
+        for helper in HELPERS:
+            module = load_script(helper)
+            boundary = '~v/' + 'x' * 253
+            self.assertEqual(len(boundary), 256)
+            self.assertEqual(module.canonical_id(boundary), 'x' * 253)
+            for identifier in invalid:
+                with self.subTest(helper=helper, identifier=identifier):
+                    with self.assertRaises(module.BlacklistError):
+                        module.canonical_id(identifier)
+        self.assertFalse(self.home.exists())
+
+    def test_marked_crud_uses_shared_identity_without_losing_exclusions(self):
+        self.assertEqual(self.m.update_models('ADD', '~vendor/CUSTOM:free'),
+                         ('custom', 'mimo-v2.5'))
+        for helper in HELPERS:
+            module = load_script(helper)
+            for identifier in ('custom', 'vendor/custom', '~other/CUSTOM-free'):
+                self.assertTrue(module.is_blocked(identifier))
+            self.assertFalse(module.is_blocked('~vendor/custom-pro'))
+            module.update_models('REMOVE', '~meta/muse-spark-1.2-contributor')
+            self.assertTrue(module.is_blocked('~meta/muse-spark-1.2-contributor'))
+        self.assertEqual(json.loads(self.path.read_text())['models'], ['custom', 'mimo-v2.5'])
+        self.assertEqual(self.m.update_models('REMOVE', '~vendor/custom-free'), ('mimo-v2.5',))
+        self.assertTrue(self.m.is_blocked('~xiaomi/mimo-v2.5'))
+
+    def test_marked_duplicate_or_invalid_policy_stays_blocking_and_preserved(self):
+        for models in (['model', '~vendor/MODEL:free'], ['~model'], ['vendor/~model']):
+            raw = json.dumps({'schema_version': 1, 'models': models})
+            self.write(raw)
+            for helper in HELPERS:
+                module = load_script(helper)
+                with self.assertRaises(module.BlacklistError):
+                    module.load_models()
+                with self.assertRaises(module.BlacklistError):
+                    module.update_models('ADD', 'other')
+                self.assertEqual(self.path.read_text(), raw)
+
     def test_permanent_exclusions_cannot_be_removed_by_lm(self):
         self.m.update_models('REMOVE', 'muse-spark-1.2-contributor')
         self.assertTrue(self.m.is_blocked('meta/muse-spark-1.2-contributor'))
@@ -177,16 +239,18 @@ class LmBlacklistTests(unittest.TestCase):
         for script in TFL:
             module = load_script(script)
             for section in ('opencode_go', 'opencode', 'openrouter'):
-                excluded, audit = [], []
-                with patch.object(module, 'evaluate_free') as evaluate:
-                    self.assertEqual(module.qualify_free_models([row('mimo-v2.5', section, True)], excluded, section, 'offline', audit), [])
-                evaluate.assert_not_called()
-                self.assertEqual(audit, [])
-                self.assertEqual(len(excluded), 1)
-            with patch.object(module.performance, 'run_benchmark') as benchmark:
-                with self.assertRaises(RuntimeError):
-                    module.evaluate_free({'model_id': 'mimo-v2.5'}, 'offline', {})
-            benchmark.assert_not_called()
+                for identifier in ('mimo-v2.5', '~xiaomi/MIMO-V2.5:free'):
+                    excluded, audit = [], []
+                    with patch.object(module, 'evaluate_free') as evaluate:
+                        self.assertEqual(module.qualify_free_models([row(identifier, section, True)], excluded, section, 'offline', audit), [])
+                    evaluate.assert_not_called()
+                    self.assertEqual(audit, [])
+                    self.assertEqual(len(excluded), 1)
+            for identifier in ('mimo-v2.5', '~xiaomi/MIMO-V2.5:free'):
+                with patch.object(module.performance, 'run_benchmark') as benchmark:
+                    with self.assertRaises(RuntimeError):
+                        module.evaluate_free({'model_id': identifier}, 'offline', {})
+                benchmark.assert_not_called()
 
     def test_tfl_full_collection_publishes_exclusion_without_any_generation(self):
         from test_tfl_pricing import general_fixture, document
@@ -198,7 +262,9 @@ class LmBlacklistTests(unittest.TestCase):
                                {'id':'mimo-v2.5','context_length':1_000_000}]}
             router = {'data':[{'id':'xiaomi/mimo-v2.5','context_length':1_000_000,
                                'pricing':{'prompt':'0','completion':'0'}},
-                              {'id':'allowed','context_length':1_000_000,
+                              {'id':'~xiaomi/MIMO-V2.5:free'},
+                              {'id':'~meta/muse-spark-1.2-contributor'},
+                              {'id':'~unbiased/pareto-latest','context_length':1_000_000,
                                'pricing':{'prompt':'0.0000001','completion':'0.0000001'}}]}
             general, metadata, pricing = general_fixture(module)
             general['data'].append({'id':'mimo-v2.5-free','context_length':1_000_000})
@@ -223,6 +289,10 @@ class LmBlacklistTests(unittest.TestCase):
                 self.assertTrue(any('LM' in item['reason'] for item in data[section]['excluded_models']))
             self.assertEqual(data['free_performance_results'],[])
             self.assertEqual(data['lm_blacklist']['model_ids'],['mimo-v2.5'])
+            self.assertEqual(data['openrouter']['models'][0]['id'], '~unbiased/pareto-latest')
+            self.assertEqual({item['id'] for item in data['openrouter']['excluded_models']},
+                             {'xiaomi/mimo-v2.5', '~xiaomi/MIMO-V2.5:free',
+                              '~meta/muse-spark-1.2-contributor'})
             self.assertNotIn('mimo-v2.5',(output/'tfl.md').read_text())
 
     def test_invalid_lm_stops_tfl_and_pllm_before_any_provider(self):
@@ -288,6 +358,34 @@ class LmBlacklistTests(unittest.TestCase):
                     module.benchmark(model,'offline',8192,{})
             raw.assert_not_called()
 
+    def test_pllm_marked_catalog_and_generation_guards_keep_lm_exclusions(self):
+        self.m.update_models('ADD', 'custom')
+        path = self.catalog()
+        content = json.loads(path.read_text())
+        blocked = ('~xiaomi/MIMO-V2.5:free', '~meta/muse-spark-1.2-contributor',
+                   '~vendor/custom-free')
+        content['openrouter']['models'] = [row(identifier, 'openrouter') for identifier in
+                                           (*blocked, '~unbiased/pareto-latest')]
+        path.write_text(json.dumps(content))
+        for script in PLLM:
+            module = load_script(script)
+            model = module.initial_model(5, 'openrouter')
+            model['candidate_exclusions'] = []
+            candidates = module.candidates_for(model, 'paid', path)
+            self.assertEqual([item['model_id'] for item in candidates], ['~unbiased/pareto-latest'])
+            self.assertEqual(len(model['candidate_exclusions']), 3)
+            for identifier in blocked:
+                model.update(model_id=identifier)
+                with patch.object(module, 'benchmark') as benchmark, patch.object(module, 'quota') as quota:
+                    with self.assertRaises(RuntimeError):
+                        module.evaluate_candidate(model, 'offline', 'paid', {}, None)
+                benchmark.assert_not_called()
+                quota.assert_not_called()
+                with patch.object(module.performance, 'run_benchmark') as raw:
+                    with self.assertRaises(RuntimeError):
+                        module.benchmark(model, 'offline', 8192, {})
+                raw.assert_not_called()
+
     def test_unvisited_historical_winner_and_candidates_are_invalidated(self):
         for script in PLLM:
             module = load_script(script)
@@ -331,7 +429,7 @@ class LmBlacklistTests(unittest.TestCase):
         self.assertIn('lm',{item['name'] for item in plugins})
         for item in plugins:
             manifest = json.loads((ROOT/item['source']['path']/'.codex-plugin/plugin.json').read_text())
-            self.assertEqual(manifest['version'],'0.7.6')
+            self.assertEqual(manifest['version'],'0.7.7')
 
 
 if __name__ == '__main__':

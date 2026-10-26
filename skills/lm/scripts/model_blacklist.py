@@ -25,7 +25,9 @@ def policy_path() -> Path:
 
 def canonical_id(value: str) -> str:
     if (not isinstance(value, str) or len(value) > 256
-            or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*(?::[A-Za-z0-9][A-Za-z0-9._-]*)?', value)):
+            or not re.fullmatch(
+                r'(?:~(?=[A-Za-z0-9][A-Za-z0-9._-]*/))?'
+                r'[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*(?::[A-Za-z0-9][A-Za-z0-9._-]*)?', value)):
         raise BlacklistError('LM : identifiant de modèle invalide')
     model = value.lower().rsplit('/', 1)[-1]
     while model.endswith((':free', '-free')):
