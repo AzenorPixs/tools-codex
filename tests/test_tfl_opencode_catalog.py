@@ -243,24 +243,101 @@ class GeneralOpenCodeTests(unittest.TestCase):
                     self.assertIn('Coût moyen €/M', headers[1])
                     self.assertNotIn('clé None', markdown)
 
-    def test_general_failures_or_empty_selection_preserve_previous_reports(self):
+    def test_general_collection_failures_preserve_previous_reports(self):
         for path, module in self.modules():
-            for failing in ('fetch_opencode_models', 'fetch_opencode_metadata', 'fetch_opencode_pricing', 'empty'):
+            for failing in ('fetch_opencode_models', 'fetch_opencode_metadata', 'fetch_opencode_pricing'):
                 with self.subTest(path=path, failing=failing):
                     with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp, ExitStack() as stack:
                         output = Path(tmp)
                         for name in ('tfl.json', 'tfl.md'):
                             (output / name).write_text('previous-report', encoding='utf-8')
                         self.setup_main(module, output, stack)
-                        if failing == 'empty':
-                            stack.enter_context(patch.object(module, 'fetch_opencode_models', return_value={'data': []}))
-                        else:
-                            stack.enter_context(patch.object(module, failing, side_effect=URLError('fixture')))
+                        stack.enter_context(patch.object(module, failing, side_effect=URLError('fixture')))
                         error = stack.enter_context(patch('sys.stderr', new_callable=io.StringIO))
                         self.assertEqual(module.main(), 1)
                         self.assertIn('Erreur TFL', error.getvalue())
                         for name in ('tfl.json', 'tfl.md'):
                             self.assertEqual((output / name).read_text(), 'previous-report')
+
+    def test_empty_selections_publish_all_catalogs_and_current_exclusions(self):
+        fetches = {'opencode_go': 'fetch_models', 'opencode': 'fetch_opencode_models',
+                   'openrouter': 'fetch_openrouter_models'}
+        for path, module in self.modules():
+            for empty_sections in (('opencode_go',), ('opencode',), ('openrouter',), tuple(fetches)):
+                for cause in ('empty_api', 'missing_effort'):
+                    with self.subTest(path=path, sections=empty_sections, cause=cause):
+                        with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp, ExitStack() as stack:
+                            output = Path(tmp)
+                            for name in ('tfl.json', 'tfl.md'):
+                                (output / name).write_text('previous-report', encoding='utf-8')
+                            self.setup_main(module, output, stack)
+                            for section in empty_sections:
+                                fetch = getattr(module, fetches[section])
+                                if cause == 'empty_api':
+                                    fetch.return_value['data'] = []
+                                else:
+                                    for model in fetch.return_value['data']:
+                                        model.pop('reasoning_capabilities')
+                            stdout = stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
+                            self.assertEqual(module.main(), 0)
+                            catalog = json.loads((output / 'tfl.json').read_text())
+                            markdown = (output / 'tfl.md').read_text()
+                            for section, fetch_name in fetches.items():
+                                getattr(module, fetch_name).assert_called_once()
+                                current = catalog[section]
+                                self.assertEqual(current['selection_status'],
+                                                 'empty' if section in empty_sections else 'available')
+                                self.assertEqual(bool(current['models']), section not in empty_sections)
+                                expected_excluded = int(section in empty_sections and cause == 'missing_effort')
+                                self.assertEqual(current['excluded_model_count'], expected_excluded)
+                                self.assertEqual(sum(current['exclusion_summary'].values()), expected_excluded)
+                                if expected_excluded:
+                                    self.assertEqual(current['excluded_models'][0]['exclusion_type'], 'reasoning_effort')
+                                    self.assertNotIn(current['excluded_models'][0]['id'], markdown)
+                            self.assertEqual(markdown.count('Aucun modèle admissible.'),
+                                             sum(section != 'opencode' for section in empty_sections))
+                            self.assertEqual(len([line for line in markdown.splitlines() if line.startswith('| Rang |')]), 2)
+                            self.assertLess(markdown.index('OpenCode Go'), markdown.index('OpenRouter'))
+                            self.assertNotIn('## Rapport des LMM du catalogue général', markdown)
+                            self.assertIn('Taux BCE du ' + catalog['openrouter']['cost_exchange_rates']['date'], markdown)
+                            self.assertIn(catalog['generated_at'], markdown)
+                            self.assertIn(markdown, stdout.getvalue())
+                            self.assertNotIn('previous-report', markdown)
+                            self.assertNotIn('offline-fixture', markdown + json.dumps(catalog))
+                            self.assertEqual(catalog['free_performance_results'], [])
+
+    def test_pllm_can_read_published_catalogs_with_empty_sections(self):
+        consumers = [ROOT / 'skills/pllm/scripts/evaluate.py', ROOT / 'plugins/pllm/skills/pllm/scripts/evaluate.py']
+        fetches = {'opencode_go': 'fetch_models', 'opencode': 'fetch_opencode_models',
+                   'openrouter': 'fetch_openrouter_models'}
+        for (path, module), consumer_path in zip(self.modules(), consumers):
+            for empty_sections in (('opencode_go',), ('opencode',), ('openrouter',), tuple(fetches)):
+                with self.subTest(path=path, sections=empty_sections):
+                    with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp, ExitStack() as stack:
+                        output = Path(tmp)
+                        self.setup_main(module, output, stack)
+                        # Prix exactement représentables pour isoler la lecture des sections vides.
+                        module.fetch_openrouter_models.return_value['data'][0]['pricing'] = {
+                            'prompt': '0.000000125', 'completion': '0.00000025'}
+                        for section in empty_sections:
+                            getattr(module, fetches[section]).return_value['data'] = []
+                        stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
+                        self.assertEqual(module.main(), 0)
+                        consumer = load_script(consumer_path)
+                        catalog_path = output / 'tfl.json'
+                        catalog = consumer.load_tfl_catalog(catalog_path)
+                        for section in empty_sections:
+                            self.assertEqual(catalog[section]['models'], [])
+                        for mode in ('mode1', 'mode2', 'mode3', 'mode4', 'mode5'):
+                            free = mode in ('mode3', 'mode4')
+                            section = 'openrouter' if mode == 'mode5' else 'opencode_go'
+                            with patch.object(consumer.performance, 'fetch_eur_rates',
+                                              return_value=catalog['openrouter']['cost_exchange_rates']):
+                                selected = consumer.candidates_for({'mode': mode, 'candidate_exclusions': []},
+                                                                   'free' if free else 'paid', catalog_path)
+                            expected = [] if free or section in empty_sections else [
+                                'router-only' if section == 'openrouter' else 'go-only']
+                            self.assertEqual([model['model_id'] for model in selected], expected)
 
     def test_existing_pllm_consumers_ignore_the_added_section(self):
         consumers = [ROOT / 'skills/pllm/scripts/evaluate.py', ROOT / 'plugins/pllm/skills/pllm/scripts/evaluate.py']

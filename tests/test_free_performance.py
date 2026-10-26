@@ -283,32 +283,45 @@ class FreePerformanceTests(unittest.TestCase):
             self.assertEqual([event[3] for event in events if event[0]=='benchmark'],[1024])
             self.assertEqual(data['models'][2]['reasoning'],'high')
 
-    def test_tfl_no_candidate_after_free_tests_preserves_previous_reports(self):
+    def test_tfl_sections_emptied_by_free_tests_are_published_without_blocking_others(self):
         for script in TFL:
             module=load_script(script)
-            with tempfile.TemporaryDirectory(prefix='free-empty-',dir=ROOT/'tests') as directory:
-                output=Path(directory)
-                for name in ('tfl.json','tfl.md'):
-                    (output/name).write_text('preserved')
-                with ExitStack() as stack:
-                    stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
-                    stack.enter_context(patch.object(module,'parse_args',return_value=SimpleNamespace(policy_option=None,policy='auto',timeout=1,output_dir=output)))
-                    stack.enter_context(patch.dict(module.os.environ,{'CODEX_HOME':str(output/'codex-profile')},clear=True))
-                    stack.enter_context(patch.object(module,'select_secret',return_value=('mode1','offline-key')))
-                    stack.enter_context(patch.object(module,'openrouter_secret',return_value='router-offline'))
-                    for name in ('fetch_models','fetch_opencode_models','fetch_openrouter_models'):
-                        stack.enter_context(patch.object(module,name,return_value={'data':[]}))
-                    for name in ('fetch_go_metadata','fetch_opencode_metadata','fetch_go_pricing','fetch_opencode_pricing'):
-                        stack.enter_context(patch.object(module,name,return_value={}))
-                    stack.enter_context(patch.object(module,'build_rows',side_effect=[([candidate('free')],[]),([candidate('general','opencode')],[])]))
-                    stack.enter_context(patch.object(module,'build_openrouter_rows',return_value=([candidate('router','openrouter')],[])))
-                    stack.enter_context(patch.object(module.performance,'benchmark',side_effect=failure(429)))
-                    write=stack.enter_context(patch.object(module,'atomic_write'))
-                    stack.enter_context(patch('sys.stderr',new_callable=io.StringIO))
-                    self.assertEqual(module.main(),1)
-                    write.assert_not_called()
-                for name in ('tfl.json','tfl.md'):
-                    self.assertEqual((output/name).read_text(),'preserved')
+            for failed_ids in (('free',), ('general',), ('router',), ('free', 'general', 'router')):
+                with self.subTest(script=script, failed_ids=failed_ids), tempfile.TemporaryDirectory(prefix='free-empty-',dir=ROOT/'tests') as directory:
+                    output=Path(directory)
+                    for name in ('tfl.json','tfl.md'):
+                        (output/name).write_text('preserved')
+                    def bench(model,key,budget,metadata,session_id=None):
+                        if model['model_id'] in failed_ids:
+                            raise failure(429)
+                        return self.successful_benchmark(model,key,budget,metadata,session_id)
+                    with ExitStack() as stack:
+                        stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
+                        stack.enter_context(patch.object(module,'parse_args',return_value=SimpleNamespace(policy_option=None,policy='auto',timeout=1,output_dir=output)))
+                        stack.enter_context(patch.dict(module.os.environ,{'CODEX_HOME':str(output/'codex-profile')},clear=True))
+                        stack.enter_context(patch.object(module,'select_secret',return_value=('mode1','offline-key')))
+                        stack.enter_context(patch.object(module,'openrouter_secret',return_value='router-offline'))
+                        for name in ('fetch_models','fetch_opencode_models','fetch_openrouter_models'):
+                            stack.enter_context(patch.object(module,name,return_value={'data':[]}))
+                        for name in ('fetch_go_metadata','fetch_opencode_metadata','fetch_go_pricing','fetch_opencode_pricing'):
+                            stack.enter_context(patch.object(module,name,return_value={}))
+                        stack.enter_context(patch.object(module,'build_rows',side_effect=[([candidate('free')],[]),([candidate('general','opencode')],[])]))
+                        stack.enter_context(patch.object(module,'build_openrouter_rows',return_value=([candidate('router','openrouter')],[])))
+                        benchmark=stack.enter_context(patch.object(module.performance,'benchmark',side_effect=bench))
+                        stdout=stack.enter_context(patch('sys.stdout',new_callable=io.StringIO))
+                        self.assertEqual(module.main(),0)
+                        self.assertEqual(benchmark.call_count,3)
+                    catalog=json.loads((output/'tfl.json').read_text())
+                    for section,model_id in (('opencode_go','free'),('opencode','general'),('openrouter','router')):
+                        current=catalog[section]
+                        self.assertEqual(current['selection_status'],'empty' if model_id in failed_ids else 'available')
+                        self.assertEqual(bool(current['models']),model_id not in failed_ids)
+                        if model_id in failed_ids:
+                            self.assertEqual(current['excluded_models'][0]['id'],model_id)
+                            self.assertEqual(sum(current['exclusion_summary'].values()),1)
+                    self.assertEqual(len(catalog['free_performance_results']),3)
+                    self.assertIn('HTTP 429',stdout.getvalue())
+                    self.assertNotIn('preserved',(output/'tfl.md').read_text())
 
 
 if __name__=='__main__':

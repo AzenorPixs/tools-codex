@@ -171,7 +171,8 @@ l'ajout du catalogue général ne change pas ses politiques de sélection.
   JSON.
 - Un nouveau modèle admissible est classé automatiquement. La disparition
   d'un ancien modèle ne provoque pas d'échec si d'autres résultats sont
-  admissibles. Si aucun modèle ne satisfait les filtres, TFL échoue explicitement.
+admissibles. Si aucun modèle ne satisfait les filtres, TFL publie la sélection
+vide et ses exclusions sans interrompre les autres catalogues.
 
 Les prix OpenRouter sont récupérés à chaque exécution dans `pricing.prompt`
 et `pricing.completion`, puis convertis par million de tokens. Les prix de
@@ -183,8 +184,15 @@ finis ou débordants ne sont pas exploitables.
 ## Robustesse et présentation
 
 TFL affiche OpenCode Go puis OpenRouter ; le général reste dans le JSON. Une
-erreur d’authentification, de réseau, de JSON ou de filtre fait échouer la
-génération plutôt que de produire un classement partiel silencieux.
+erreur d’authentification, de réseau, de JSON ou de données indispensables fait
+échouer la génération plutôt que de produire un classement partiel silencieux.
+Une collecte valide sans modèle admissible reste un résultat publiable : les
+autres catalogues continuent, même si les trois sélections sont vides. Chaque
+tableau fournisseur garde ses huit colonnes et affiche « Aucun modèle
+admissible » avec une synthèse des exclusions lorsqu'il est vide. Le JSON
+conserve models vide, selection_status (available ou empty), exclusion_summary
+(motif vers nombre), les compteurs, sources et exclusions détaillées courants.
+Une publication valide retourne zéro, sans réutiliser d'ancien catalogue.
 
 Le JSON conserve la source et la date de récupération tarifaire de chaque
 fournisseur. Une source indispensable inaccessible, invalide ou de format
@@ -237,8 +245,9 @@ HTTP est un échec d'accès, jamais une mesure de TTFT/débit inventée. Recalcu
 les rangs après exclusion, sans modifier le classement des payants.
 Ajouter après les deux tableaux fournisseurs un tableau commun des essais
 gratuits, avec fournisseur, modèle, TTFT, débit, raisonnement et état/cause.
-Si une section devient vide après qualification, arrêter avant publication et
-préserver les rapports existants. Ne pas confondre ce résultat daté et lié au
+Si une section devient vide après qualification, publier son état, ses
+exclusions et les essais effectués, puis poursuivre les autres sections.
+Ne pas confondre ce résultat daté et lié au
 compte utilisé avec une indisponibilité permanente du fournisseur.
 
 
@@ -286,6 +295,8 @@ puis PLLM normal ; un quota nul ou inconnu bloque l'étape. PLLM reçoit le
 catalogue fraîchement publié, sans repli sur un ancien fichier en cas d'échec.
 Les passages manqués ne sont pas rattrapés. Cette coordination ne change ni
 les filtres TFL, ni les seuils gratuits, ni LM, ni les invocations manuelles.
+Le contrôle du planning reste inchangé : une section models vide dans un
+rapport manuel valide empêche encore le lancement planifié de PLLM.
 
 
 ## Admission stricte HIGH/XHIGH
@@ -297,8 +308,8 @@ admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
 budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
-filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide bloque
-la publication et préserve les rapports existants.
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
+publiée explicitement avec ses exclusions et ne bloque pas les autres sections.
 
 
 ## Plafond OpenRouter en euros

@@ -666,7 +666,27 @@ def build_rows(payload: dict, metadata: dict, pricing: dict, *, general_catalog:
     return known, excluded
 
 
-def format_opencode_table(rows: list[dict], policy: str | None, generated_at: str, *, general_catalog: bool = False) -> str:
+def selection_metadata(rows: list[dict], excluded: list[dict]) -> dict:
+    summary: dict[str, int] = {}
+    for model in excluded:
+        reason = model['reason']
+        summary[reason] = summary.get(reason, 0) + 1
+    return {'selection_status': 'available' if rows else 'empty',
+            'exclusion_summary': dict(sorted(summary.items()))}
+
+
+def format_empty_selection(excluded: list[dict]) -> list[str]:
+    lines = ['Aucun modèle admissible.']
+    summary = selection_metadata([], excluded)['exclusion_summary']
+    if summary:
+        lines.append('Exclusions : ' + '; '.join(
+            f'{escape(reason)} ({count})' for reason, count in summary.items()) + '.')
+    else:
+        lines.append('Aucun modèle retourné par le catalogue courant.')
+    return lines + ['']
+
+
+def format_opencode_table(rows: list[dict], policy: str | None, generated_at: str, *, general_catalog: bool = False, excluded: list[dict] | None = None) -> str:
     lines = [
         "## Rapport des LMM du catalogue général OpenCode les moins onéreux" if general_catalog else "## Rapport des LMM OpenCode Go les moins onéreux",
         "",
@@ -691,6 +711,8 @@ def format_opencode_table(rows: list[dict], policy: str | None, generated_at: st
             cost_color(prices.get(average_key)),
         )) + " |")
     lines.append("")
+    if not rows:
+        lines.extend(format_empty_selection(excluded or []))
     if general_catalog:
         lines.append(f"Actualisé le {generated_at}; catalogue général OpenCode public, contexte ≥ 1M et coût moyen publié ≤ 0.5 $/M. Classement par coût moyen croissant.")
         lines.append("Les tarifs du catalogue général sont collectés indépendamment de Go. Le coût moyen maximal des variantes publiées est retenu ; les sources, dates et exclusions restent dans le JSON.")
@@ -890,12 +912,10 @@ def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | N
     rows.sort(key=lambda row: (row["average"], row["input_price"], row["output_price"], row["id"]))
     for rank, row in enumerate(rows, 1):
         row["rank"] = rank
-    if not rows:
-        raise RuntimeError("aucun modèle OpenRouter ne satisfait les filtres TFL")
     return rows, excluded
 
 
-def format_openrouter_table(rows: list[dict], generated_at: str) -> str:
+def format_openrouter_table(rows: list[dict], generated_at: str, *, excluded: list[dict] | None = None, exchange_rates: dict | None = None) -> str:
     lines = [
         "## Rapports des LMM OpenRouter les moins onéreux",
         "",
@@ -922,8 +942,10 @@ def format_openrouter_table(rows: list[dict], generated_at: str) -> str:
             cost_color(prices['average_eur']),
         )) + " |")
     lines.append("")
+    if not rows:
+        lines.extend(format_empty_selection(excluded or []))
     lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, HIGH/XHIGH vérifiable, coût moyen ≤ 0.20 €/M, classement croissant.")
-    rates = next((row.get('exchange_rates') for row in rows if row.get('exchange_rates')), None)
+    rates = exchange_rates or next((row.get('exchange_rates') for row in rows if row.get('exchange_rates')), None)
     if rates:
         lines.append(f"Taux BCE du {rates['date']} : 1 EUR = {rates['rates']['USD']} USD ; source : {performance.ECB_RATES_URL}.")
     lines.append("Les modèles multimodaux en entrée sont conservés; les métadonnées et capacités OpenRouter restent disponibles dans le catalogue JSON TFL.")
@@ -1087,14 +1109,10 @@ def main() -> int:
         go_metadata = fetch_go_metadata(args.timeout)
         go_pricing = fetch_go_pricing(args.timeout)
         opencode_rows, opencode_excluded = build_rows(opencode_payload, go_metadata, go_pricing, blacklisted_models=blacklisted_models)
-        if not opencode_rows:
-            raise RuntimeError("aucun modèle OpenCode Go ne satisfait les filtres TFL")
         general_payload = fetch_opencode_models(args.timeout)
         general_metadata = fetch_opencode_metadata(args.timeout)
         general_pricing = fetch_opencode_pricing(args.timeout)
         general_rows, general_excluded = build_rows(general_payload, general_metadata, general_pricing, general_catalog=True, blacklisted_models=blacklisted_models)
-        if not general_rows:
-            raise RuntimeError("aucun modèle du catalogue général OpenCode ne satisfait les filtres TFL")
         openrouter_payload = fetch_openrouter_models(openrouter_key, args.timeout)
         cost_exchange_rates = performance.fetch_eur_rates(timeout=args.timeout)
         openrouter_rows, openrouter_excluded = build_openrouter_rows(openrouter_payload, blacklisted_models, exchange_rates=cost_exchange_rates)
@@ -1114,8 +1132,6 @@ def main() -> int:
         opencode_rows = qualify_free_models(opencode_rows, opencode_excluded, 'opencode_go', api_key, audit)
         general_rows = qualify_free_models(general_rows, general_excluded, 'opencode', api_key, audit)
         openrouter_rows = qualify_free_models(openrouter_rows, openrouter_excluded, 'openrouter', openrouter_key or '', audit)
-        if not all((opencode_rows, general_rows, openrouter_rows)):
-            raise RuntimeError('aucun modèle admissible après qualification gratuite dans un catalogue ; rapports préservés')
 
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"Erreur TFL: {exc}", file=sys.stderr)
@@ -1137,6 +1153,7 @@ def main() -> int:
         "excluded_model_count": len(opencode_excluded),
         "excluded_models": opencode_excluded,
         "models": opencode_rows,
+        **selection_metadata(opencode_rows, opencode_excluded),
     }
     openrouter_catalog = {
         "cost_exchange_rates": cost_exchange_rates,
@@ -1151,6 +1168,7 @@ def main() -> int:
         "excluded_model_count": len(openrouter_excluded),
         "excluded_models": openrouter_excluded,
         "models": openrouter_rows,
+        **selection_metadata(openrouter_rows, openrouter_excluded),
     }
     general_catalog = {
         "source_api": OPENCODE_API_URL,
@@ -1164,6 +1182,7 @@ def main() -> int:
         "excluded_model_count": len(general_excluded),
         "excluded_models": general_excluded,
         "models": general_rows,
+        **selection_metadata(general_rows, general_excluded),
     }
     catalog = {
         "schema_version": 1,
@@ -1190,8 +1209,8 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "tfl.json"
     markdown_path = output_dir / "tfl.md"
-    markdown = ("# TFL — Test Fournisseur LLM\n\n" + format_opencode_table(opencode_rows, policy, generated_at)
-                + "\n" + format_openrouter_table(openrouter_rows, generated_at)
+    markdown = ("# TFL — Test Fournisseur LLM\n\n" + format_opencode_table(opencode_rows, policy, generated_at, excluded=opencode_excluded)
+                + "\n" + format_openrouter_table(openrouter_rows, generated_at, excluded=openrouter_excluded, exchange_rates=cost_exchange_rates)
                 + "\n" + format_free_performance(audit))
     try:
         serialized = json.dumps(catalog, ensure_ascii=False, indent=2, allow_nan=False) + "\n"

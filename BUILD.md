@@ -372,8 +372,8 @@ Aucun quota ou solde n'est consulté pour ces tests ; les clés existantes sont
 injectées en mémoire. OpenRouter utilise l'environnement existant, sinon la
 référence historique PLLM de ce compte dans le trousseau.
 Les gratuits échoués sortent de models ; leurs preuves restent dans les
-exclusions et le tableau commun des tests. Une section devenue vide bloque
-la publication et préserve les anciens rapports. La qualification est datée
+exclusions et le tableau commun des tests. Une section devenue vide est
+publiée avec ses motifs sans bloquer les autres sections. La qualification est datée
 et dépend du compte choisi par TFL, même si un autre compte pourrait réussir.
 Les payants TFL ne sont pas benchmarkés. Une nouvelle invocation PLLM reteste
 ses candidats retenus avec ses propres comptes et le raisonnement HIGH/XHIGH.
@@ -495,11 +495,11 @@ admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
 budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
-filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide bloque
-la publication et préserve les rapports existants.
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
+publiée explicitement sans réintégrer de modèle exclu.
 
 
-## Contrat TFL/PLLM 0.7.9 et conversion OpenRouter
+## Contrat TFL/PLLM 0.7.10 et conversion OpenRouter
 
 La section JSON opencode reste collectée pour PLLM 3/4 ; son tableau est retiré.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
@@ -512,7 +512,13 @@ prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
 publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
 et à la frontière de génération, y compris pour les anciens catalogues et
 les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
-Go et général gardent 0,50 USD/M. Les capacités absentes peuvent vider une
-section et bloquer le nouveau TFL ; ce résultat préserve les anciens fichiers
-sans les qualifier à nouveau. Les tests de cette release sont hors ligne,
-sans mise à jour de profil, activation du planning ni benchmark réel.
+Go et général gardent 0,50 USD/M. Une sélection vide après filtrage ou essais
+gratuits n'empêche plus les autres collectes et leur publication. Les tableaux
+vides gardent leurs huit colonnes avec « Aucun modèle admissible » et une
+synthèse des exclusions. Le JSON ajoute selection_status (available ou empty)
+et exclusion_summary (motif vers nombre) aux trois sections et conserve les
+sources, compteurs et motifs détaillés. Même trois sélections vides valides
+sont publiées avec un code zéro ; les erreurs réelles préservent les anciens
+rapports. Le planning reste inchangé et exige encore trois listes models non
+vides pour lancer PLLM. Les tests de cette release sont hors ligne, sans mise
+à jour de profil, activation du planning ni benchmark réel.

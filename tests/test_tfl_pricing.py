@@ -419,7 +419,7 @@ class PricingTests(unittest.TestCase):
                     self.assertLess(markdown.index('OpenCode Go'), markdown.index('OpenRouter'))
                     self.assertIn('0.375', markdown)
 
-    def test_no_dynamic_result_preserves_existing_reports(self):
+    def test_no_dynamic_result_publishes_empty_router_and_keeps_other_results(self):
         for path, module in self.modules():
             with self.subTest(path=path):
                 payload = self.openrouter(module)
@@ -432,11 +432,18 @@ class PricingTests(unittest.TestCase):
                     self.setup_main(module, output, stack)
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.pricing(module)))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=payload))
-                    error = stack.enter_context(patch('sys.stderr', new_callable=io.StringIO))
-                    self.assertEqual(module.main(), 1)
-                    self.assertIn('aucun modèle OpenRouter', error.getvalue())
-                    for name in ('tfl.json', 'tfl.md'):
-                        self.assertEqual((output / name).read_text(), 'previous-report')
+                    stdout = stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
+                    self.assertEqual(module.main(), 0)
+                    catalog = json.loads((output / 'tfl.json').read_text())
+                    self.assertEqual(catalog['openrouter']['models'], [])
+                    self.assertEqual(catalog['openrouter']['selection_status'], 'empty')
+                    self.assertEqual(catalog['openrouter']['excluded_model_count'], 3)
+                    self.assertEqual(sum(catalog['openrouter']['exclusion_summary'].values()), 3)
+                    self.assertTrue(catalog['opencode_go']['models'])
+                    self.assertTrue(catalog['opencode']['models'])
+                    self.assertIn('Aucun modèle admissible.', stdout.getvalue())
+                    self.assertIn('Exclusions :', stdout.getvalue())
+                    self.assertNotIn('previous-report', (output / 'tfl.md').read_text())
 
 
 if __name__ == '__main__':

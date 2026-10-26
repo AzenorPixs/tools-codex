@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.9`.
+Version de release : `0.7.10`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -83,8 +83,15 @@ général gardent coût moyen ≤0,50 USD/M ; OpenRouter exige ≤0,20 EUR/M con
 au dernier taux BCE publié ; une
 variante gratuite à 200K reste exclue. La section JSON supplémentaire
 `opencode` fournit également les gratuits PLLM des modes 3/4 décrits plus haut.
-TFL ne consulte aucun quota pour ses tests gratuits. Une section devenue vide
-après qualification bloque la publication et préserve les rapports précédents.
+TFL ne consulte aucun quota pour ses tests gratuits. Une sélection vide après
+filtrage ou qualification ne bloque pas les autres catalogues : les deux
+tableaux sont publiés, avec « Aucun modèle admissible » et une synthèse des
+exclusions pour un tableau vide. Le JSON conserve les sources, motifs détaillés,
+compteurs, selection_status (available ou empty) et exclusion_summary. Même
+trois sélections vides issues de collectes valides produisent un rapport frais
+et un code zéro. Les erreurs de collecte ou de données indispensables restent
+bloquantes et préservent les rapports précédents. Le planning reste inchangé :
+son contrôle exige encore trois listes models non vides avant PLLM.
 Un échec dépend du compte TFL utilisé ; les exclus ne sont pas réintégrés par
 PLLM. Le moteur scripts/performance.py est embarqué dans chaque paquet pour
 préserver son autonomie, sans nouvelle dépendance Python.

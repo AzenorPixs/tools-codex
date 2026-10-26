@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Publier les sélections TFL vides avant ou après qualification gratuite sans bloquer les autres catalogues, même si les trois sont vides : deux tableaux explicites, synthèses d'exclusions et états JSON disponibles, avec code zéro pour une collecte valide. Préserver les filtres et les échecs bloquants sur les erreurs réelles.
+- Aligner la release locale et les six plugins sur 0.7.10 ; qualifier les deux distributions et les consommateurs PLLM hors ligne. Le planning reste inchangé et exige encore trois sélections non vides ; aucune installation utilisateur ni publication distante.
+
 - Exiger une preuve publiée HIGH/XHIGH pour tout modèle gratuit ou payant TFL/PLLM ; exclure avant génération, sélection et affichage, y compris anciens catalogues, historiques, forçages et DeepSeek direct sans preuve. Garder les motifs dans les audits JSON ; un budget seul ne suffit plus.
 - Retirer le tableau fournisseur général OpenCode de TFL tout en préservant sa collecte et sa section JSON pour PLLM 3/4. Afficher Go puis OpenRouter et les essais gratuits admissibles à l’effort.
 - Appliquer à OpenRouter la moyenne de base ≤0,20 EUR/M après conversion non arrondie au dernier taux BCE publié ; afficher les prix en EUR, tracer taux/source/dates et prix USD, recontrôler dans PLLM et préserver les rapports si la conversion est invérifiable.

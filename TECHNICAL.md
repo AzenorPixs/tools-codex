@@ -272,7 +272,8 @@ Les gratuits échoués sont retirés de models et conservés dans excluded_model
 et free_performance_results avec critères, dates, niveaux et tentatives.
 Les deux tableaux fournisseurs Go puis OpenRouter conservent huit colonnes ; un tableau
 commun des essais gratuits est ajouté. Une section vide après qualification
-arrête la publication et préserve les rapports. Le filtre dépend du compte
+est publiée avec son état et ses exclusions, sans bloquer les autres sections.
+Le filtre dépend du compte
 TFL utilisé : un autre compte peut avoir un accès différent, sans que PLLM
 réintègre automatiquement un candidat exclu du catalogue.
 
@@ -403,7 +404,9 @@ collecte indispensable bloque toute publication partielle. Les consommateurs
 PLLM lisent leurs sections Go/OpenRouter et utilisent `opencode` pour les
 gratuits des modes 3/4, sans emprunt de tarif ni de route entre sections.
 `tests/test_tfl_opencode_catalog.py` vérifie séparation, bornes, deux tableaux fournisseurs,
-exclusions des variantes gratuites 200K, erreurs et compatibilité.
+exclusions des variantes gratuites 200K, erreurs, sélections vides et lecture
+par PLLM. `tests/test_free_performance.py` couvre aussi chaque section vidée
+par les essais gratuits et les trois sections vides après qualification.
 
 OpenRouter conserve la collecte `pricing.prompt/completion` et le classement
 sur les prix API de base, avec conversion par million. Les caches et les
@@ -425,7 +428,8 @@ Cette suite couvre aussi l'arrivée et la disparition de modèles, les prix
 gratuits et les bornes, l'audit des exclusions et un catalogue de plus de
 1 000 modèles. Le JSON désigne cette sélection par
 `live-api-context-cost-modalities`. L'absence d'un ancien modèle n'est plus
-bloquante ; l'absence de tout résultat admissible reste une erreur explicite.
+bloquante ; l'absence de tout résultat admissible est publiée explicitement
+avec ses exclusions et ne bloque plus les autres catalogues.
 
 Avant publication, chaque plugin doit être vérifié dans une nouvelle session
 Codex après son installation depuis la marketplace. La validation couvre au
@@ -640,11 +644,11 @@ admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
 budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
-filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide bloque
-la publication et préserve les rapports existants.
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
+publiée explicitement sans réintégrer de modèle exclu.
 
 
-## Contrat TFL/PLLM 0.7.9 et conversion OpenRouter
+## Contrat TFL/PLLM 0.7.10 et conversion OpenRouter
 
 La section JSON opencode reste collectée pour PLLM 3/4 ; son tableau est retiré.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
@@ -658,6 +662,14 @@ publication si le cours est invérifiable ; PLLM refait le contrôle à la séle
 et à la frontière de génération, y compris pour les anciens catalogues et
 les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
 Go et général gardent 0,50 USD/M. Les capacités absentes peuvent vider une
-section et bloquer le nouveau TFL ; ce résultat préserve les anciens fichiers
-sans les qualifier à nouveau. Les tests de cette release sont hors ligne,
-sans mise à jour de profil, activation du planning ni benchmark réel.
+section sans bloquer les autres collectes ni la publication. Chaque section
+conserve models, compteurs, sources et exclusions, avec selection_status
+(available ou empty) et exclusion_summary (motif vers nombre). Les tableaux
+vides gardent huit colonnes, annoncent « Aucun modèle admissible » et donnent
+la synthèse des exclusions, sans ligne de modèle fictive. Le taux BCE daté
+reste affiché même si OpenRouter est vide. Trois sélections vides issues de
+collectes valides produisent des fichiers frais et un code zéro ; aucune
+qualification historique n'est reprise. Les erreurs réelles restent bloquantes.
+Le planning est inchangé : son contrôle exige encore trois listes models non
+vides avant PLLM. Les tests de cette release sont hors ligne, sans mise à jour
+de profil, activation du planning ni benchmark réel.
