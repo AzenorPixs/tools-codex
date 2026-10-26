@@ -52,7 +52,7 @@ class ScheduleTests(unittest.TestCase):
         for name, filename in self.m.FILES.items():
             scripts = self.roots / name / 'scripts'
             scripts.mkdir(parents=True)
-            for item in (filename, 'performance.py', 'model_blacklist.py'):
+            for item in (filename, 'performance.py', 'model_blacklist.py', 'model_evidence.py'):
                 (scripts / item).write_text('# fixture hors ligne\n')
         context = patch.object(self.m, 'development', return_value=False)
         context.start()
@@ -327,7 +327,7 @@ class ScheduleTests(unittest.TestCase):
         for name, filename in self.m.FILES.items():
             scripts = self.home / 'plugins/cache/tools-codex' / name / '0.7.8/skills' / name / 'scripts'
             scripts.mkdir(parents=True)
-            for item in (filename, 'performance.py', 'model_blacklist.py'):
+            for item in (filename, 'performance.py', 'model_blacklist.py', 'model_evidence.py'):
                 (scripts / item).write_text('# fixture\n')
             entries.append({'name': name, 'installed': True, 'enabled': True, 'marketplaceName': 'tools-codex',
                             'pluginId': name + '@tools-codex', 'version': '0.7.8'})

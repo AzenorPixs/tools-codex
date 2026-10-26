@@ -55,7 +55,7 @@ class LmBlacklistTests(unittest.TestCase):
     def test_missing_policy_applies_default_without_writing(self):
         for helper in HELPERS:
             module = load_script(helper)
-            self.assertEqual(module.load_models(), ('mimo-v2.5',))
+            self.assertEqual(module.load_models(), ('mimo-v2.5', 'muse-spark-1.2-contributor'))
             self.assertTrue(module.is_blocked('xiaomi/mimo-v2.5:free'))
         self.assertFalse(self.home.exists())
 
@@ -73,14 +73,15 @@ class LmBlacklistTests(unittest.TestCase):
 
     def test_add_remove_shared_and_empty_list_persist(self):
         first, second = (load_script(p) for p in HELPERS[:2])
-        self.assertEqual(first.update_models('ADD', 'vendor/OTHER:free'), ('mimo-v2.5', 'other'))
+        self.assertEqual(first.update_models('ADD', 'vendor/OTHER:free'), ('mimo-v2.5', 'muse-spark-1.2-contributor', 'other'))
         before = self.path.read_bytes(), self.path.stat().st_mtime_ns
         first.update_models('ADD', 'other')
         self.assertEqual((self.path.read_bytes(), self.path.stat().st_mtime_ns), before)
-        self.assertEqual(second.load_models(), ('mimo-v2.5', 'other'))
+        self.assertEqual(second.load_models(), ('mimo-v2.5', 'muse-spark-1.2-contributor', 'other'))
         second.update_models('REMOVE', 'mimo-v2.5')
         self.assertFalse(first.is_blocked('xiaomi/mimo-v2.5:free'))
         first.update_models('REMOVE', 'other')
+        first.update_models('REMOVE', 'muse-spark-1.2-contributor')
         self.assertEqual(second.load_models(), ())
         second.update_models('REMOVE', 'absent')
         self.assertEqual(second.load_models(), ())
@@ -124,14 +125,14 @@ class LmBlacklistTests(unittest.TestCase):
 
     def test_marked_crud_uses_shared_identity_without_losing_exclusions(self):
         self.assertEqual(self.m.update_models('ADD', '~vendor/CUSTOM:free'),
-                         ('custom', 'mimo-v2.5'))
+                         ('custom', 'mimo-v2.5', 'muse-spark-1.2-contributor'))
         for helper in HELPERS:
             module = load_script(helper)
             for identifier in ('custom', 'vendor/custom', '~other/CUSTOM-free'):
                 self.assertTrue(module.is_blocked(identifier))
             self.assertFalse(module.is_blocked('~vendor/custom-pro'))
             module.update_models('REMOVE', '~meta/muse-spark-1.2-contributor')
-            self.assertTrue(module.is_blocked('~meta/muse-spark-1.2-contributor'))
+            self.assertFalse(module.is_blocked('~meta/muse-spark-1.2-contributor'))
         self.assertEqual(json.loads(self.path.read_text())['models'], ['custom', 'mimo-v2.5'])
         self.assertEqual(self.m.update_models('REMOVE', '~vendor/custom-free'), ('mimo-v2.5',))
         self.assertTrue(self.m.is_blocked('~xiaomi/mimo-v2.5'))
@@ -148,9 +149,20 @@ class LmBlacklistTests(unittest.TestCase):
                     module.update_models('ADD', 'other')
                 self.assertEqual(self.path.read_text(), raw)
 
-    def test_permanent_exclusions_cannot_be_removed_by_lm(self):
-        self.m.update_models('REMOVE', 'muse-spark-1.2-contributor')
+    def test_old_permanent_exclusion_is_removable_in_every_distribution(self):
         self.assertTrue(self.m.is_blocked('meta/muse-spark-1.2-contributor'))
+        self.m.update_models('REMOVE', 'muse-spark-1.2-contributor')
+        for helper in HELPERS:
+            module = load_script(helper)
+            self.assertFalse(module.is_blocked('~meta/muse-spark-1.2-contributor-free'))
+
+    def test_explicit_empty_policy_has_no_residual_blacklist(self):
+        self.write('{"schema_version":1,"models":[]}')
+        for helper in HELPERS:
+            module = load_script(helper)
+            self.assertEqual(module.load_models(), ())
+            self.assertFalse(module.is_blocked('muse-spark-1.2-contributor'))
+            self.assertFalse(module.is_blocked('mimo-v2.5'))
 
     def test_corrupt_schema_or_duplicates_are_preserved(self):
         cases = ('{', '[]', '{"schema_version":2,"models":[]}',
@@ -290,7 +302,10 @@ class LmBlacklistTests(unittest.TestCase):
                 self.assertEqual(len(data[section]['models']),1)
                 self.assertTrue(any('LM' in item['reason'] for item in data[section]['excluded_models']))
             self.assertEqual(data['free_performance_results'],[])
-            self.assertEqual(data['lm_blacklist']['model_ids'],['mimo-v2.5'])
+            self.assertEqual(data['lm_blacklist']['model_ids'],['mimo-v2.5', 'muse-spark-1.2-contributor'])
+            self.assertNotIn('blacklists', data)
+            self.assertNotIn('blacklist', data['openrouter'])
+            self.assertNotIn('permanent_model_ids', data['lm_blacklist'])
             self.assertEqual(data['openrouter']['models'][0]['id'], '~unbiased/pareto-latest')
             self.assertEqual({item['id'] for item in data['openrouter']['excluded_models']},
                              {'xiaomi/mimo-v2.5', '~xiaomi/MIMO-V2.5:free',
@@ -431,7 +446,7 @@ class LmBlacklistTests(unittest.TestCase):
         self.assertIn('lm',{item['name'] for item in plugins})
         for item in plugins:
             manifest = json.loads((ROOT/item['source']['path']/'.codex-plugin/plugin.json').read_text())
-            self.assertEqual(manifest['version'],'0.7.10')
+            self.assertEqual(manifest['version'],'0.7.11')
 
 
 if __name__ == '__main__':

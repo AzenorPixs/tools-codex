@@ -10,6 +10,65 @@ import test_tfl_go_metadata as go_fixtures
 
 
 class ReasoningAdmissionTests(unittest.TestCase):
+    def test_models_dev_published_effort_levels_drive_each_transport(self):
+        declarations = (
+            ('deepseek-v4.1-flash', ['low', 'high', 'max'], 'high'),
+            ('muse-spark-1.3-contributor', ['minimal', 'low', 'medium', 'high', 'xhigh'], 'high'),
+            ('glm-5.3-flash', ['low', 'high', 'max'], 'high'),
+            ('gpt-6-luna', ['none', 'low', 'medium', 'high', 'xhigh', 'max'], 'high'),
+            ('minimax-m3.1-flash', ['low', 'medium', 'high', 'xhigh', 'max'], 'high'),
+            ('beam-free', ['low', 'medium', 'high', 'xhigh', 'max'], 'high'),
+            ('qwen3.8-flash', ['low', 'medium', 'xhigh'], 'xhigh'),
+        )
+        for script in (*TFL, *PLLM):
+            engine = load_script(script).performance
+            for model_id, levels, expected in declarations:
+                with self.subTest(script=script, model=model_id):
+                    metadata = {'reasoning': True, 'reasoning_options': [
+                        {'type': 'toggle'}, {'type': 'effort', 'values': levels},
+                        {'type': 'budget_tokens'}]}
+                    self.assertEqual(engine.verified_effort(metadata), expected)
+                    for provider, protocol, parameters in (
+                        ('opencodego', 'chat_completions', {'reasoning_effort': expected}),
+                        ('opencodego', 'responses', {'reasoning': {'effort': expected}}),
+                        ('opencodego', 'messages', {'thinking': {'type': 'adaptive'},
+                                                  'output_config': {'effort': expected}}),
+                    ):
+                        model = {'provider': provider, 'api_protocol': protocol}
+                        self.assertEqual(engine.reasoning(model, 1024, metadata), parameters)
+
+    def test_models_dev_missing_invalid_and_budget_only_levels_stay_excluded(self):
+        invalid = (None, True, {}, [], [{'type': 'toggle'}], [{'type': 'budget_tokens'}],
+                   [{'type': 'effort'}], [{'type': 'effort', 'values': None}],
+                   [{'type': 'effort', 'values': 'high'}],
+                   [{'type': 'effort', 'values': ['high', None]}],
+                   [{'type': 'effort', 'values': ['medium']}],
+                   [{'type': 'effort', 'values': ['max']}],
+                   [{'type': 'effort', 'values': ['high']},
+                    {'type': 'effort', 'values': ['low']}])
+        for script in (*TFL, *PLLM):
+            engine = load_script(script).performance
+            for options in invalid:
+                with self.subTest(script=script, options=options):
+                    metadata = {'reasoning': True, 'reasoning_options': options}
+                    self.assertFalse(engine.effort_allowed(metadata))
+            self.assertFalse(engine.effort_allowed({
+                'reasoning_capabilities': {'supported_efforts': ['low']},
+                'reasoning_options': [{'type': 'effort', 'values': ['high']}]}))
+
+    def test_go_builder_reads_models_dev_options_before_free_qualification(self):
+        for script in TFL:
+            module = load_script(script)
+            for levels, expected in ((['high', 'xhigh'], 'high'), (['xhigh'], 'xhigh')):
+                payload, metadata, prices = go_fixtures.GoMetadataTests().fixture(module)
+                payload['data'][0].pop('reasoning_capabilities', None)
+                metadata['models']['new-model'].update(reasoning=True, reasoning_options=[
+                    {'type': 'effort', 'values': levels}])
+                retained, excluded = module.build_rows(payload, metadata, prices)
+                self.assertEqual(excluded, [])
+                self.assertEqual(retained[0]['reasoning'], expected)
+                self.assertEqual(retained[0]['reasoning_capabilities']['supported_efforts'], levels)
+
     def test_declared_levels_null_and_invalid_capabilities(self):
         for script in (*TFL, *PLLM):
             engine = load_script(script).performance

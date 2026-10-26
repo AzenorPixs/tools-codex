@@ -18,7 +18,8 @@ explication n'autorise pas une mutation. Restitue le résultat ou l'erreur en
 français. Ne lance pas TFL ou PLLM pour consulter ou modifier la liste.
 
 Les distributions utilisent CODEX_HOME/lm/blacklist.json, avec ~/.codex comme
-CODEX_HOME par défaut. Sans fichier, mimo-v2.5 est exclu en mémoire ; LIST ne
+CODEX_HOME par défaut. Sans fichier, mimo-v2.5 et muse-spark-1.2-contributor
+sont exclus en mémoire ; LIST ne
 crée pas ce fichier. Les modifications sont atomiques et idempotentes.
 Une liste vide explicite reste vide. Une liste illisible ou invalide bloque
 sans écrasement ni réinitialisation. Ne répare pas silencieusement son contenu.
@@ -26,8 +27,9 @@ sans écrasement ni réinitialisation. Ne répare pas silencieusement son conten
 L'identifiant est comparé sans distinction de casse, après retrait du préfixe
 fournisseur et des suffixes :free ou -free. mimo-v2.5 exclut ainsi
 xiaomi/mimo-v2.5:free ; mimo-v2.50 et mimo-v2.5-pro restent distincts.
-Les exclusions permanentes historiques restent applicables et ne sont pas
-retirables avec LM. TFL et PLLM relisent la liste à leur prochaine invocation ;
+LM est l'unique liste noire de TFL et PLLM. Toute entrée, y compris
+muse-spark-1.2-contributor, est retirable avec REMOVE ; aucune exclusion
+permanente ne subsiste. TFL et PLLM relisent la liste à leur prochaine invocation ;
 LM ne réécrit pas les anciens rapports et ne configure pas OpenCode.
 
 Maintenir scripts/model_blacklist.py identique dans les distributions

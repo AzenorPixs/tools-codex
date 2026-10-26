@@ -52,3 +52,12 @@ Exclure gratuits et payants sans preuve publiée HIGH/XHIGH avant test et
 affichage, y compris dans les essais gratuits ; garder les motifs JSON.
 OpenRouter applique la moyenne de base ≤0,20 EUR/M au dernier taux BCE
 publié vérifié ; aucune conversion historique implicite.
+
+Les preuves TFL et les niveaux reasoning_options sont conservés. HIGH/XHIGH
+officiellement acceptés sont admissibles même sans intensité distincte ;
+utiliser et tracer uniquement les paramètres équivalents documentés pour
+le protocole publié. Toute métadonnée d'effort ou de contexte inconnue impose
+une analyse et une recherche du LLM selon le protocole de preuve du skill,
+quel que soit le fournisseur. Un contexte encore invérifiable après
+investigation exclut le modèle. Respecter la restitution exacte du script.
+LM est l'unique liste noire et toutes ses entrées sont retirables.

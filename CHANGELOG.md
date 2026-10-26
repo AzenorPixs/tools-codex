@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Corriger la lecture des niveaux reasoning_options de models.dev et accepter HIGH/XHIGH officiellement reconnus même sans intensité distincte. Livrer la preuve MiMo et son équivalence documentée vers thinking activé sur sa route Chat Completions, sans inventer d'endpoint ni qualifier ses performances.
+- Imposer aux agents l'investigation des efforts et contextes inconnus pour Go, OpenCode général et OpenRouter ; conserver conclusions, sources, dates et empreintes, vérifier les sources courantes et exclure tout contexte encore invérifiable après investigation. Le CLI marque les recherches nécessaires et son rapport provisoire.
+- Faire de LM l'unique liste noire et rendre muse-spark-1.2-contributor retirable ; préserver les listes existantes ou explicitement vides, sans migration implicite lors d'une lecture. Supprimer les anciennes métadonnées de listes permanentes du JSON TFL/PLLM.
+- Aligner les skills, plugins, commandes, VERSION, pyproject.toml et les six manifestes sur 0.7.11. Qualification locale et documentaire, sans installation utilisateur, publication distante ni benchmark fournisseur.
+
 - Publier les sélections TFL vides avant ou après qualification gratuite sans bloquer les autres catalogues, même si les trois sont vides : deux tableaux explicites, synthèses d'exclusions et états JSON disponibles, avec code zéro pour une collecte valide. Préserver les filtres et les échecs bloquants sur les erreurs réelles.
 - Aligner la release locale et les six plugins sur 0.7.10 ; qualifier les deux distributions et les consommateurs PLLM hors ligne. Le planning reste inchangé et exige encore trois sélections non vides ; aucune installation utilisateur ni publication distante.
 

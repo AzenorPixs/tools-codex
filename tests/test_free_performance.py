@@ -232,7 +232,8 @@ class FreePerformanceTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix='isolated-engine-',dir=ROOT/'tests') as directory:
                 installed=Path(directory)/'scripts'/script.name
                 installed.parent.mkdir()
-                for source in (script,script.with_name('performance.py'),script.with_name('model_blacklist.py')):
+                for source in (script,script.with_name('performance.py'),script.with_name('model_blacklist.py'),
+                               script.with_name('model_evidence.py')):
                     installed.with_name(source.name).write_bytes(source.read_bytes())
                 module=load_script(installed)
                 self.assertEqual(module.performance.FREE_CRITERIA['ttft_lt_seconds'],30)

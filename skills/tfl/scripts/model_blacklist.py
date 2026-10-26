@@ -9,8 +9,7 @@ import re
 import tempfile
 
 
-DEFAULT_MODELS = ('mimo-v2.5',)
-PERMANENT_MODELS = ('muse-spark-1.2-contributor',)
+DEFAULT_MODELS = ('mimo-v2.5', 'muse-spark-1.2-contributor')
 MAX_BYTES = 64 * 1024
 
 
@@ -75,12 +74,12 @@ def load_models(path: Path | None = None) -> tuple[str, ...]:
 
 def is_blocked(model_id: str, models: tuple[str, ...] | None = None) -> bool:
     configured = load_models() if models is None else models
-    return canonical_id(model_id) in (*configured, *PERMANENT_MODELS)
+    return canonical_id(model_id) in configured
 
 
 def require_allowed(model_id: str, models: tuple[str, ...] | None = None) -> None:
     if is_blocked(model_id, models):
-        raise BlacklistError('Modèle exclu par la liste noire LM ou permanente')
+        raise BlacklistError('Modèle exclu par la liste noire LM')
 
 
 @contextmanager

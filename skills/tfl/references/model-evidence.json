@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "provider": "opencode_go",
+      "model_id": "mimo-v2.6-flash",
+      "field": "reasoning",
+      "protocol": "chat_completions",
+      "status": "verified",
+      "value": {
+        "supported_efforts": [
+          "high",
+          "xhigh"
+        ],
+        "effort_equivalence": "thinking_enabled"
+      },
+      "conclusion": "Xiaomi accepte HIGH/XHIGH sur Responses et les définit comme raisonnement activé sans intensité distincte. Chat Completions exprime ce même état par thinking.type=enabled. Équivalence admise explicitement par le développeur le 26 octobre 2026 ; route Go conservée, génération non testée.",
+      "investigated_at": "2026-10-26T14:26:13+01:00",
+      "sources": [
+        {
+          "url": "https://mimo.mi.com/static/docs/api/chat/responses.md",
+          "authority": "official",
+          "sha256": "483f91a304f24cf201ae4a29aa1a16925e02a688993b3202b1793e5a7d5f6a17",
+          "retrieved_at": "2026-10-26T14:26:13+01:00"
+        },
+        {
+          "url": "https://mimo.mi.com/static/docs/api/chat/openai-api.md",
+          "authority": "official",
+          "sha256": "5aa307fb7ab2f67c2cce954fff6bb36f5a59ce999a104649ace1e44aaf2ded1a",
+          "retrieved_at": "2026-10-26T14:26:13+01:00"
+        }
+      ]
+    }
+  ]
+}

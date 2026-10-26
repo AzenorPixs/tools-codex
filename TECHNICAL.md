@@ -542,7 +542,8 @@ Le nom d'affichage est LM ; aucune slash native n'est automatiquement créée.
 
 Le fichier commun CODEX_HOME/lm/blacklist.json (repli ~/.codex) porte
 schema_version=1 et models, liste d'identifiants canoniques uniques.
-Sans fichier, mimo-v2.5 est exclu en mémoire, sans écriture ; une liste vide
+Sans fichier, mimo-v2.5 et muse-spark-1.2-contributor sont exclus en mémoire,
+sans écriture ; une liste vide
 valide reste vide. LIST ne modifie rien. ADD/REMOVE utilisent un verrou
 fcntl non bloquant et un remplacement atomique en UTF-8/LF. Les identifiants
 ASCII sont bornés à 256 caractères ; la casse, le préfixe fournisseur et
@@ -554,8 +555,8 @@ la canonicalisation : `~xiaomi/mimo-v2.5:free` reste exclu. La limite de 256
 caractères inclut ce marqueur ; `~model`, `~~vendor/model` et `vendor/~model`
 restent invalides. Les noms finaux différents restent des identités distinctes.
 Une politique illisible, dupliquée ou de schéma invalide bloque avant appel
-fournisseur et reste préservée. Les exclusions permanentes muse-spark restent
-applicables indépendamment des retraits LM. Le module est identique dans
+fournisseur et reste préservée. LM est l'unique liste noire ; toutes les
+entrées, y compris muse-spark, sont retirables. Le module est identique dans
 les six distributions LM/TFL/PLLM, sans dépendance entre plugins installés.
 
 TFL retire les interdits avant tri et tests gratuits dans ses trois sections,
@@ -642,13 +643,20 @@ vérifiable avant test, sélection et affichage. Une liste supported_efforts
 contenant high/xhigh ou un null explicitement publié (tous les efforts) est
 admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
 budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Les niveaux publiés par models.dev dans `reasoning_options`, entrée
+`type=effort` et liste `values`, sont normalisés vers `supported_efforts`.
+Une liste vide, un budget, un interrupteur ou une déclaration ambiguë ne
+prouve aucun niveau ; `values=null` ne signifie pas tous les efforts.
+Une acceptation officielle HIGH/XHIGH reste admissible même sans intensité
+distincte. Une équivalence documentée peut utiliser thinking.type=enabled
+sur Chat Completions OpenCode, avec protocole et sémantique tracés.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
 publiée explicitement sans réintégrer de modèle exclu.
 
 
-## Contrat TFL/PLLM 0.7.10 et conversion OpenRouter
+## Contrat TFL/PLLM 0.7.11 et conversion OpenRouter
 
 La section JSON opencode reste collectée pour PLLM 3/4 ; son tableau est retiré.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
@@ -673,3 +681,24 @@ qualification historique n'est reprise. Les erreurs réelles restent bloquantes.
 Le planning est inchangé : son contrôle exige encore trois listes models non
 vides avant PLLM. Les tests de cette release sont hors ligne, sans mise à jour
 de profil, activation du planning ni benchmark réel.
+
+## Investigation des métadonnées
+
+model_evidence.py est identique dans les quatre paquets TFL/PLLM. Le guide
+references/model-evidence.md définit la recherche obligatoire du LLM lorsque
+le contexte ou l'effort est invérifiable pour Go, OpenCode général ou
+OpenRouter. Le registre de référence TFL est complété par
+<répertoire-du-rapport>/model-evidence.json : fournisseur, ID exact, champ,
+protocole, conclusion, sources officielles HTTPS, dates et empreintes SHA-256.
+Les preuves ne sont pas empruntées entre fournisseurs ou transports.
+TFL vérifie le contenu courant des sources avant admission ; PLLM le
+recontrôle à la frontière de génération. Une source différente ou inaccessible
+exige une nouvelle investigation ; le hash ne prouve pas l'interprétation
+sémantique du LLM. Une preuve documentaire ne vaut ni génération ni benchmark.
+Le JSON conserve model_investigations et investigation_status. Un statut
+required laisse le rapport provisoire et exige l'analyse de l'agent avant
+restitution définitive ou un blocage explicite. Une investigation complète
+sans contexte vérifiable exclut le modèle, sans inventer de limite.
+tests/test_model_evidence.py couvre les trois catalogues, les conclusions,
+les sources changées, le mapping MiMo et le recontrôle PLLM ; les scénarios
+de déploiement isolé incluent désormais ce module dans chaque paquet.

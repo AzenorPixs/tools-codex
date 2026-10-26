@@ -127,11 +127,18 @@ l'archivage, des statistiques puis de l'arrêt de la session de codage.
 ## Liste noire des modèles
 
 LM partage CODEX_HOME/lm/blacklist.json entre toutes les installations TFL/PLLM,
-avec ~/.codex par défaut. La valeur initiale mimo-v2.5 est appliquée sans
-création de fichier ; une liste vide explicite permet son retrait. TFL et
+avec ~/.codex par défaut. Les valeurs initiales mimo-v2.5 et
+muse-spark-1.2-contributor sont appliquées sans création de fichier ; toutes
+les entrées sont retirables et une liste vide explicite reste vide. TFL et
 PLLM filtrent avant classement, sélection et génération, indépendamment des
 anciens catalogues ou succès mémorisés. Le stockage hors cache est conservé
-par TCU. Les exclusions permanentes historiques restent distinctes.
+par TCU. LM constitue l'unique liste noire, sans exclusion permanente intégrée.
+
+Une métadonnée d'effort ou de contexte inconnue impose une analyse et une
+recherche du LLM dans les sources officielles pour les trois catalogues.
+Les valeurs HIGH/XHIGH officiellement acceptées restent admissibles même
+équivalentes ; leurs preuves et paramètres sont tracés. Un contexte encore
+invérifiable après investigation exclut le modèle.
 
 ## Rafraîchissement utilisateur planifié
 

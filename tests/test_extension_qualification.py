@@ -55,6 +55,7 @@ class ExtensionQualificationTests(unittest.TestCase):
         installed.write_bytes(script.read_bytes())
         installed.with_name('performance.py').write_bytes(script.with_name('performance.py').read_bytes())
         installed.with_name('model_blacklist.py').write_bytes(script.with_name('model_blacklist.py').read_bytes())
+        installed.with_name('model_evidence.py').write_bytes(script.with_name('model_evidence.py').read_bytes())
         module = load_script(installed)
         module.MEMORY_PATH = module.ROOT / 'data/pllm-performance-memory.json'
         catalog = base / 'tfl' / 'version-b' / 'skills' / 'tfl' / 'data' / 'tfl.json'

@@ -298,12 +298,22 @@ def capabilities(*records):
             continue
         options = record.get('reasoning_capabilities', record.get('reasoning'))
         if isinstance(options, dict):
-            values = {key: options[key] for key in ('supported_efforts', 'supports_max_tokens') if key in options}
+            values = {key: options[key] for key in ('supported_efforts', 'supports_max_tokens',
+                                                   'effort_equivalence', 'effort_protocol') if key in options}
             if values:
                 return values
         effort = record.get('effort')
         if isinstance(effort, dict) and isinstance(effort.get('supported_levels'), list):
             return {'supported_efforts': effort['supported_levels']}
+        # models.dev publie les niveaux dans reasoning_options, distincts du booléen reasoning.
+        declared = record.get('reasoning_options')
+        if isinstance(declared, list):
+            efforts = [option for option in declared
+                       if isinstance(option, dict) and option.get('type') == 'effort']
+            if efforts:
+                # Une déclaration ambiguë, absente ou null n'est pas un joker.
+                levels = efforts[0].get('values') if len(efforts) == 1 else None
+                return {'supported_efforts': levels if isinstance(levels, list) else []}
     return {}
 
 
@@ -357,6 +367,17 @@ def effort_allowed(record):
 
 def reasoning(model, budget, metadata):
     effort = choose_effort(model, metadata)
+    options = capabilities(metadata)
+    equivalence = options.get('effort_equivalence')
+    if equivalence is not None:
+        protocol = model.get('api_protocol', 'chat_completions')
+        if options.get('effort_protocol') != protocol or equivalence not in ('thinking_enabled', 'accepted_alias'):
+            raise RuntimeError('Équivalence de raisonnement incompatible avec le protocole')
+        model['reasoning_semantics'] = 'documented_equivalent'
+        if equivalence == 'thinking_enabled':
+            if model['provider'] not in ('opencodego', 'opencode') or protocol != 'chat_completions':
+                raise RuntimeError('Équivalence thinking non documentée pour ce transport')
+            return {'thinking': {'type': 'enabled'}}
     if model['provider'] in ('opencodego', 'opencode'):
         protocol = model.get('api_protocol', 'chat_completions')
         if protocol == 'responses':

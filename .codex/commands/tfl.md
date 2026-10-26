@@ -34,3 +34,13 @@ Exclure gratuits et payants sans preuve publiée HIGH/XHIGH avant test et
 affichage, y compris dans les essais gratuits ; garder les motifs JSON.
 OpenRouter applique la moyenne de base ≤0,20 EUR/M au dernier taux BCE
 publié vérifié ; aucune conversion historique implicite.
+
+Pour Go, OpenCode général et OpenRouter, un effort ou un contexte non
+vérifiable impose l'analyse et la recherche du LLM suivant
+`references/model-evidence.md` du skill. Compléter les preuves officielles
+et relancer le générateur ; ne pas restituer un rapport provisoire comme
+définitif sans investigation terminée ou blocage explicite. Un contexte
+invérifiable après investigation exclut le modèle. HIGH/XHIGH officiellement
+acceptés restent valides même s'ils sont équivalents à d'autres niveaux ou
+à thinking activé ; tracer et respecter les paramètres du protocole publié.
+LM est l'unique liste noire, avec toutes ses entrées retirables.

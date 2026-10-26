@@ -4,7 +4,7 @@
 import argparse
 import sys
 
-from model_blacklist import BlacklistError, PERMANENT_MODELS, load_models, policy_path, update_models
+from model_blacklist import BlacklistError, load_models, policy_path, update_models
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,8 +25,7 @@ def main(argv: list[str] | None = None) -> int:
         print('| ' + model + ' |')
     if not models:
         print('Aucun modèle dans la liste personnalisable.')
-    print('\nExclusions permanentes conservées : ' + ', '.join(PERMANENT_MODELS) + '.')
-    print('Stockage commun : ' + str(policy_path()))
+    print('\nStockage commun : ' + str(policy_path()))
     if args.action != 'LIST':
         print('Liste enregistrée ; TFL et PLLM l’appliqueront à leur prochaine invocation.')
     return 0

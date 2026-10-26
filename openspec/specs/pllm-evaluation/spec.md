@@ -454,12 +454,14 @@ un candidat non visité.
 ### Requirement: Contrat Low propre au transport
 Le contrat historique Low SHALL être remplacé par HIGH, puis XHIGH seulement
 si HIGH est indisponible et XHIGH pris en charge. Chat Completions SHALL
-utiliser reasoning_effort ; Responses reasoning.effort ; Messages
-output_config.effort avec thinking adaptive ; DeepSeek thinking activé et
-reasoning_effort. Chaque transport SHALL exiger une preuve publiée de HIGH ou XHIGH ; un budget seul SHALL NOT suffire. Aucun repli vers un niveau inférieur SHALL être effectué.
+utiliser reasoning_effort sauf équivalence documentée ; Responses reasoning.effort ;
+Messages output_config.effort avec thinking adaptive ; DeepSeek thinking activé
+et reasoning_effort. Chaque transport SHALL exiger une preuve publiée de HIGH
+ou XHIGH ; un budget seul SHALL NOT suffire. Aucun repli vers un niveau
+inférieur SHALL être effectué.
 
 #### Scenario: Gratuit OpenCode en Chat Completions
-- **WHEN** un candidat OpenCode utilise chat_completions
+- **WHEN** un candidat OpenCode utilise chat_completions sans équivalence documentée
 - **THEN** la requête contient reasoning_effort=high sans thinking
 - **AND** le modèle doit réussir ses mesures actuelles avant de devenir valide
 
@@ -645,3 +647,19 @@ SHALL rester inchangés.
 #### Scenario: Gratuit général après retrait du tableau
 - **WHEN** les modes 3/4 lisent un catalogue TFL publié sans tableau général
 - **THEN** ils peuvent toujours consommer les gratuits opencode admissibles du JSON
+
+### Requirement: Consommation des preuves et équivalences documentées
+PLLM SHALL préserver les preuves TFL par fournisseur, modèle et protocole.
+Il SHALL accepter HIGH/XHIGH officiellement reconnus même sans intensité
+distincte et utiliser uniquement les paramètres équivalents documentés sur
+sa route publiée. Un effort ou contexte encore invérifiable SHALL déclencher
+le workflow d'investigation du LLM avant toute admission ; un contexte
+invérifiable après investigation SHALL rester exclu.
+
+#### Scenario: Équivalence de transport
+- **WHEN** une preuve vérifiée autorise HIGH via thinking.type=enabled sur Chat Completions
+- **THEN** PLLM utilise ce paramètre et trace HIGH et son équivalence sans modifier la route
+
+#### Scenario: Preuve ou contexte absent
+- **WHEN** aucun résultat d'investigation ne permet l'admission
+- **THEN** le modèle n'atteint pas la génération et le motif reste auditable

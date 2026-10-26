@@ -416,11 +416,12 @@ $lm LIST
 Le script équivalent est `python3 -B scripts/lm.py` depuis le skill, suivi
 de ADD ou REMOVE et de l'identifiant si nécessaire. LIST n'écrit rien.
 Le stockage commun est CODEX_HOME/lm/blacklist.json, avec ~/.codex par défaut.
-Sans fichier, mimo-v2.5 est exclu. Les paquets TFL/PLLM embarquent le module
+Sans fichier, mimo-v2.5 et muse-spark-1.2-contributor sont exclus et retirables.
+Les paquets TFL/PLLM embarquent le module
 identique et appliquent cette liste même sans plugin LM installé.
 Une erreur de politique bloque sans réinitialisation. Les anciens rapports
 restent inchangés jusqu'à leur prochaine génération. Les variantes fournisseur
-et gratuites sont normalisées, les exclusions permanentes restent applicables.
+et gratuites sont normalisées. LM est l'unique liste noire, sans exclusion permanente.
 TCU préserve le fichier utilisateur et ne crée pas un composant LM absent.
 Les tests isolés ne prouvent ni chargement dans une nouvelle session ni
 performance fournisseur. Pour revenir à une ancienne release, tenir compte
@@ -499,7 +500,7 @@ filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
 publiée explicitement sans réintégrer de modèle exclu.
 
 
-## Contrat TFL/PLLM 0.7.10 et conversion OpenRouter
+## Contrat TFL/PLLM 0.7.11 et conversion OpenRouter
 
 La section JSON opencode reste collectée pour PLLM 3/4 ; son tableau est retiré.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
@@ -522,3 +523,20 @@ sont publiées avec un code zéro ; les erreurs réelles préservent les anciens
 rapports. Le planning reste inchangé et exige encore trois listes models non
 vides pour lancer PLLM. Les tests de cette release sont hors ligne, sans mise
 à jour de profil, activation du planning ni benchmark réel.
+
+## Preuves supplémentaires et investigations
+
+Livrer model_evidence.py avec chacun des quatre moteurs TFL/PLLM, le guide
+references/model-evidence.md et le registre de référence TFL. Les niveaux
+reasoning_options de models.dev sont normalisés. Une acceptation officielle
+HIGH/XHIGH suffit même sans intensité distincte ; le mapping documenté MiMo
+vers thinking activé est livré sans changer l'endpoint.
+Une métadonnée de contexte ou d'effort inconnue exige une recherche du LLM
+dans les sources officielles pour les trois catalogues. Le registre du
+répertoire de rapport, model-evidence.json, complète les preuves livrées.
+TFL vérifie leurs sources courantes ; PLLM les recontrôle avant génération.
+Le CLI seul marque investigation_status=required et le rapport provisoire ;
+il ne prétend pas effectuer l'analyse du LLM. Un contexte encore invérifiable
+après investigation exclut le modèle. Les commandes sources et skills
+imposent ce workflow. Les politiques, seuils et règles du planning sont conservés.
+Les lectures documentaires ne qualifient ni accès, ni génération, ni débit.

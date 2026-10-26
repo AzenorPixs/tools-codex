@@ -334,7 +334,7 @@ class PricingTests(unittest.TestCase):
                 self.assertIn('contexte', reasons['new/short-context'])
                 self.assertIn('contexte', reasons['new/unknown-context'])
                 self.assertIn('non vérifiable', reasons['new/unknown-price'])
-                self.assertEqual(reasons['meta/muse-spark-1.2-contributor'], 'blacklist permanente')
+                self.assertEqual(reasons['meta/muse-spark-1.2-contributor'], 'liste noire LM')
                 for modality in ('audio', 'video', 'speech', 'sound'):
                     self.assertIn('sortie', reasons['new/' + modality])
                 reversed_rows, _ = module.build_openrouter_rows({'data': list(reversed(payload['data']))}, exchange_rates=FX)

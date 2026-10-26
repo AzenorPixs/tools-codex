@@ -171,7 +171,7 @@ class GeneralOpenCodeTests(unittest.TestCase):
                 rows, excluded = module.build_rows(payload, metadata, pricing, general_catalog=True)
                 self.assertEqual([m['id'] for m in rows], ['general-model'])
                 reasons = {m['id']: m['reason'] for m in excluded}
-                self.assertEqual(reasons['muse-spark-1.2-contributor'], 'blacklist permanente')
+                self.assertEqual(reasons['muse-spark-1.2-contributor'], 'liste noire LM')
                 self.assertIn('sortie', reasons['audio-model'])
 
     def test_unknown_general_transport_stays_explicit_without_protocol_guess(self):

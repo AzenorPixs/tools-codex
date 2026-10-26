@@ -36,10 +36,12 @@ _PERFORMANCE_SPEC.loader.exec_module(performance)
 _BLACKLIST_SPEC = importlib.util.spec_from_file_location('tfl_blacklist', Path(__file__).with_name('model_blacklist.py'))
 blacklist = importlib.util.module_from_spec(_BLACKLIST_SPEC)
 _BLACKLIST_SPEC.loader.exec_module(blacklist)
+_EVIDENCE_SPEC = importlib.util.spec_from_file_location('tfl_evidence', Path(__file__).with_name('model_evidence.py'))
+evidence_module = importlib.util.module_from_spec(_EVIDENCE_SPEC)
+_EVIDENCE_SPEC.loader.exec_module(evidence_module)
 
 MIN_CONTEXT_TOKENS = 1_000_000
 MAX_REFERENCE_AVERAGE_USD_PER_MILLION = 0.5
-BLACKLISTED_MODEL_IDS = {"muse-spark-1.2-contributor"}
 NON_TEXT_OUTPUT_MODALITIES = {"audio", "video", "speech", "sound"}
 GO_PROTOCOL_PATHS = {"responses": "responses", "chat_completions": "chat/completions", "messages": "messages"}
 # Contrats de transport des SDK publiés, indépendants des identifiants de modèles.
@@ -575,7 +577,7 @@ def build_rows(payload: dict, metadata: dict, pricing: dict, *, general_catalog:
             excluded.append({
                 "id": model_id,
                 "name": model.get("name") or model_id,
-                "reason": "blacklist permanente" if model_id in BLACKLISTED_MODEL_IDS else "liste noire LM",
+                "reason": "liste noire LM",
             })
             continue
         context, context_source = context_info(model, metadata)
@@ -730,7 +732,6 @@ def format_opencode_table(rows: list[dict], policy: str | None, generated_at: st
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/models"
 OPENROUTER_SOURCE_URL = "https://openrouter.ai/models"
-OPENROUTER_BLACKLIST = {"meta/muse-spark-1.2-contributor"}
 
 
 def openrouter_number(value: object) -> float | None:
@@ -837,7 +838,7 @@ def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | N
             continue
         model_id = model["id"]
         if blacklist.is_blocked(model_id, blacklisted_models):
-            excluded.append({"id": model_id, "name": model.get("name") or model_id, "reason": "blacklist permanente" if model_id in OPENROUTER_BLACKLIST else "liste noire LM"})
+            excluded.append({"id": model_id, "name": model.get("name") or model_id, "reason": "liste noire LM"})
             continue
         pricing = model.get("pricing") or {}
         architecture = model.get("architecture") or {}
@@ -1045,7 +1046,7 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
     blacklisted_models = blacklist.load_models()
     for row in rows:
         if blacklist.is_blocked(row['id'], blacklisted_models):
-            excluded.append({**row, 'reason': 'liste noire LM ou permanente'})
+            excluded.append({**row, 'reason': 'liste noire LM'})
             continue
         if not performance.effort_allowed(row):
             excluded.append({**row, 'reason': 'HIGH/XHIGH non vérifiable ou non pris en charge',
@@ -1060,6 +1061,7 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
                  'api_protocol': row.get('api_protocol', 'chat_completions'),
                  'api_endpoint': row.get('api_endpoint') if section != 'openrouter' else 'https://openrouter.ai/api/v1/chat/completions',
                  'is_free': True, 'section': section, 'context_length': row.get('context_length'),
+                 'model_investigations': copy.deepcopy(row.get('model_investigations', [])),
                  'reasoning_capabilities': row['reasoning_capabilities']}
         evaluate_free(model, key, {'reasoning_capabilities': row.get('reasoning_capabilities', {})})
         audit.append(copy.deepcopy(model))
@@ -1068,6 +1070,8 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
             'performance_criteria', 'quota_status', 'performance_test',
             'throughput_metric', 'throughput_window', 'measurement_protocol_version')})
         if model['state'] == 'Valide':
+            if 'reasoning_semantics' in model:
+                row['reasoning_semantics'] = model['reasoning_semantics']
             if isinstance(row.get('routing_metadata'), dict):
                 row['routing_metadata']['generation_tested'] = True
             retained.append(row)
@@ -1097,6 +1101,55 @@ def format_free_performance(audit: list[dict]) -> str:
     return '\n'.join(lines) + '\n'
 
 
+def build_investigated(builder, payload, metadata, section, resolver):
+    """Réexaminer les seuls champs inconnus, sans modifier disponibilité ni route."""
+    working = copy.deepcopy(payload)
+    models = {model['id']: model for model in working['data'] if isinstance(model, dict) and model.get('id')}
+    investigations = {}
+    for _ in range(3):  # Contexte, puis effort éventuellement révélé par sa résolution.
+        rows, excluded = builder(working)
+        changed = False
+        for item in excluded:
+            model = models[item['id']]
+            reason = item['reason']
+            field = None
+            if 'HIGH/XHIGH non vérifiable' in reason:
+                field = 'reasoning'
+            elif 'contexte' in reason:
+                context = (positive_integer(model.get('context_length')) if section == 'openrouter'
+                           else context_info(model, metadata)[0])
+                if context is None:
+                    field = 'context'
+            if field is None or (item['id'], field) in investigations:
+                continue
+            protocol = None
+            if field == 'reasoning':
+                protocol = ('chat_completions' if section == 'openrouter'
+                            else go_transport(model, metadata, working.get('retrieved_at'))['api_protocol'])
+            result = resolver.resolve(section, item['id'], field, protocol)
+            investigations[item['id'], field] = result
+            if result['status'] == 'verified':
+                if field == 'context':
+                    model['context_length'] = result['value']
+                else:
+                    model['reasoning_capabilities'] = {**result['value'], 'effort_protocol': protocol}
+                changed = True
+        if not changed:
+            break
+    for item in (*rows, *excluded):
+        findings = [value for (model_id, _), value in investigations.items() if model_id == item['id']]
+        if findings:
+            item['model_investigations'] = findings
+            for finding in findings:
+                if finding['field'] == 'context' and finding['status'] == 'verified':
+                    item['context_source'] = 'documented_investigation'
+                if finding['status'] in ('unverifiable', 'unsupported') and 'reason' in item:
+                    item['reason'] = ('contexte non vérifiable après investigation' if finding['field'] == 'context'
+                                      else 'HIGH/XHIGH non pris en charge après investigation' if finding['status'] == 'unsupported'
+                                      else 'HIGH/XHIGH non vérifiable après investigation')
+    return rows, excluded, list(investigations.values())
+
+
 def main() -> int:
     args = parse_args()
     requested_policy = args.policy_option or args.policy or "auto"
@@ -1104,18 +1157,31 @@ def main() -> int:
     api_key = ""
     try:
         blacklisted_models = blacklist.load_models()
+        resolver = evidence_module.EvidenceResolver((ROOT / 'references/model-evidence.json',
+                                                    args.output_dir / 'model-evidence.json'), args.timeout)
+        investigations = []
         policy, api_key = select_secret(requested_policy)
         opencode_payload = fetch_models(api_key, args.timeout)
         go_metadata = fetch_go_metadata(args.timeout)
         go_pricing = fetch_go_pricing(args.timeout)
-        opencode_rows, opencode_excluded = build_rows(opencode_payload, go_metadata, go_pricing, blacklisted_models=blacklisted_models)
+        opencode_rows, opencode_excluded, findings = build_investigated(
+            lambda payload: build_rows(payload, go_metadata, go_pricing, blacklisted_models=blacklisted_models),
+            opencode_payload, go_metadata, 'opencode_go', resolver)
+        investigations.extend(findings)
         general_payload = fetch_opencode_models(args.timeout)
         general_metadata = fetch_opencode_metadata(args.timeout)
         general_pricing = fetch_opencode_pricing(args.timeout)
-        general_rows, general_excluded = build_rows(general_payload, general_metadata, general_pricing, general_catalog=True, blacklisted_models=blacklisted_models)
+        general_rows, general_excluded, findings = build_investigated(
+            lambda payload: build_rows(payload, general_metadata, general_pricing, general_catalog=True,
+                                       blacklisted_models=blacklisted_models),
+            general_payload, general_metadata, 'opencode', resolver)
+        investigations.extend(findings)
         openrouter_payload = fetch_openrouter_models(openrouter_key, args.timeout)
         cost_exchange_rates = performance.fetch_eur_rates(timeout=args.timeout)
-        openrouter_rows, openrouter_excluded = build_openrouter_rows(openrouter_payload, blacklisted_models, exchange_rates=cost_exchange_rates)
+        openrouter_rows, openrouter_excluded, findings = build_investigated(
+            lambda payload: build_openrouter_rows(payload, blacklisted_models, exchange_rates=cost_exchange_rates),
+            openrouter_payload, {}, 'openrouter', resolver)
+        investigations.extend(findings)
         audit = []
         for rows, payload, metadata in ((opencode_rows, opencode_payload, go_metadata),
                                         (general_rows, general_payload, general_metadata),
@@ -1163,7 +1229,6 @@ def main() -> int:
         "pricing_retrieved_at": openrouter_payload.get("pricing_retrieved_at"),
         "source_url": OPENROUTER_SOURCE_URL,
         "selection": "live-api-context-cost-modalities",
-        "blacklist": {"model_ids": sorted(OPENROUTER_BLACKLIST), "policy": "permanent_exclusion"},
         "source_model_count": len(openrouter_payload["data"]),
         "excluded_model_count": len(openrouter_excluded),
         "excluded_models": openrouter_excluded,
@@ -1191,6 +1256,8 @@ def main() -> int:
         "throughput_window": performance.THROUGHPUT_WINDOW,
         "free_performance_criteria": dict(performance.FREE_CRITERIA),
         "free_performance_results": audit,
+        "model_investigations": investigations,
+        "investigation_status": "required" if any(item['status'] == 'required' for item in investigations) else "complete",
         "generated_at": generated_at,
         "order": ["opencode_go", "opencode", "openrouter"],
         "report_order": ["opencode_go", "openrouter"],
@@ -1199,8 +1266,7 @@ def main() -> int:
                     "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION,
                     "openrouter_maximum_average_eur_per_million_tokens": 0.20,
                     "required_reasoning_efforts": ["high", "xhigh"]},
-        "lm_blacklist": {"model_ids": list(blacklisted_models), "permanent_model_ids": list(blacklist.PERMANENT_MODELS)},
-        "blacklists": {"opencode_go": sorted(BLACKLISTED_MODEL_IDS), "opencode": sorted(BLACKLISTED_MODEL_IDS), "openrouter": sorted(OPENROUTER_BLACKLIST)},
+        "lm_blacklist": {"model_ids": list(blacklisted_models)},
         "opencode_go": opencode_catalog,
         "opencode": general_catalog,
         "openrouter": openrouter_catalog,
@@ -1212,6 +1278,11 @@ def main() -> int:
     markdown = ("# TFL — Test Fournisseur LLM\n\n" + format_opencode_table(opencode_rows, policy, generated_at, excluded=opencode_excluded)
                 + "\n" + format_openrouter_table(openrouter_rows, generated_at, excluded=openrouter_excluded, exchange_rates=cost_exchange_rates)
                 + "\n" + format_free_performance(audit))
+    pending = sum(item['status'] == 'required' for item in investigations)
+    if pending:
+        markdown += (f"\nInvestigations du LLM requises : {pending}. Le rapport reste provisoire pour ces exclusions. "
+                     "Examiner model_investigations dans le JSON et les sources officielles ; "
+                     "compléter model-evidence.json avant restitution finale ou signaler le blocage.\n")
     try:
         serialized = json.dumps(catalog, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     except ValueError:

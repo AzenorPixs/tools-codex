@@ -6,17 +6,16 @@ Définir la gestion persistante d’une liste noire commune et son application a
 ## Requirements
 
 ### Requirement: Gestion LM explicite et persistante
-LM SHALL fournir /LM et $lm, LIST par défaut, ADD identifiant et REMOVE
-identifiant. LIST SHALL rester sans écriture. Les mutations SHALL être
-idempotentes, verrouillées et publiées atomiquement dans
-CODEX_HOME/lm/blacklist.json, ou ~/.codex/lm/blacklist.json sans CODEX_HOME.
-Le fichier SHALL déclarer schema_version=1 et une liste models canonique.
-Sans fichier, les consommateurs SHALL utiliser mimo-v2.5 en mémoire sans
-créer de fichier. Une liste vide valide SHALL rester vide.
+LM SHALL fournir /LM et $lm : LIST par défaut sans écriture, ADD et REMOVE.
+Les mutations SHALL être atomiques, idempotentes et verrouillées dans
+CODEX_HOME/lm/blacklist.json (repli ~/.codex/lm/blacklist.json), avec
+schema_version=1 et models canonique. Sans fichier, mimo-v2.5 et
+muse-spark-1.2-contributor SHALL être les défauts retirables, sans écriture.
+Une liste vide valide SHALL rester vide.
 
 #### Scenario: Première consultation
 - **WHEN** LM est consulté et le fichier commun manque
-- **THEN** mimo-v2.5 est affiché et aucun fichier utilisateur n'est créé
+- **THEN** mimo-v2.5 et muse-spark-1.2-contributor sont affichés et aucun fichier utilisateur n'est créé
 
 #### Scenario: Ajout et retrait partagés
 - **WHEN** un modèle est ajouté puis retiré par LM depuis deux distributions
@@ -28,7 +27,13 @@ LM SHALL comparer sans distinction de casse l'identifiant après retrait du
 préfixe fournisseur et des seuls suffixes :free ou -free. Les identifiants
 SHALL être ASCII, bornés à 256 caractères et sans espaces ou contrôles.
 Les autres variantes SHALL conserver leur identité distincte.
-Les exclusions permanentes TFL historiques SHALL rester applicables.
+LM SHALL être la seule liste d'exclusion par identifiant de TFL/PLLM,
+sans liste permanente supplémentaire.
+
+#### Scenario: Retrait de l'ancienne exclusion permanente
+- **WHEN** LM retire muse-spark-1.2-contributor de la liste commune
+- **THEN** ses identifiants fournisseur et variantes gratuites ne sont plus exclus par une liste noire
+- **AND** les autres filtres TFL et PLLM restent applicables
 
 #### Scenario: Variantes du modèle initial
 - **WHEN** mimo-v2.5, xiaomi/mimo-v2.5:free ou MIMO-V2.5-FREE est rencontré
@@ -73,7 +78,7 @@ applicables ; la limite de 256 caractères SHALL inclure le marqueur.
 
 #### Scenario: Exclusion marquée non contournable
 - **WHEN** un identifiant marqué désigne un modèle exclu, avec casse ou suffixes gratuits
-- **THEN** les exclusions par défaut, personnalisées et permanentes restent applicables
+- **THEN** les exclusions configurées dans LM restent applicables
 - **AND** les noms voisins restent distincts, sans recherche approximative
 
 #### Scenario: Marqueur mal placé ou identifiant invalide
@@ -83,3 +88,14 @@ applicables ; la limite de 256 caractères SHALL inclure le marqueur.
 #### Scenario: Persistance canonique
 - **WHEN** LM ajoute ou retire ~vendor/model:free
 - **THEN** il utilise la même entrée canonique que model et préserve les autres exclusions
+
+### Requirement: LM unique et retrait effectif
+LM SHALL être la seule liste noire de TFL et PLLM. Les valeurs initiales sans
+fichier SHALL être mimo-v2.5 et muse-spark-1.2-contributor, toutes deux
+retirables. Une liste existante ou vide SHALL rester souveraine. Une migration
+explicitement demandée SHALL utiliser ADD atomique sans perte des autres entrées.
+
+#### Scenario: Ancienne exclusion permanente retirée
+- **WHEN** LM REMOVE retire muse-spark-1.2-contributor
+- **THEN** les six distributions cessent de l'exclure par identifiant
+- **AND** aucune liste permanente ne subsiste dans les consommateurs

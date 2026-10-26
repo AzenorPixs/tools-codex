@@ -36,6 +36,9 @@ _PERFORMANCE_SPEC.loader.exec_module(performance)
 _BLACKLIST_SPEC = importlib.util.spec_from_file_location('pllm_blacklist', Path(__file__).with_name('model_blacklist.py'))
 blacklist = importlib.util.module_from_spec(_BLACKLIST_SPEC)
 _BLACKLIST_SPEC.loader.exec_module(blacklist)
+_EVIDENCE_SPEC = importlib.util.spec_from_file_location('pllm_evidence', Path(__file__).with_name('model_evidence.py'))
+evidence_module = importlib.util.module_from_spec(_EVIDENCE_SPEC)
+_EVIDENCE_SPEC.loader.exec_module(evidence_module)
 
 
 OPENCODE_GO_ROUTE_BY_MODEL = {
@@ -444,18 +447,18 @@ def sanitize_blacklisted_history(data, configured):
         retained = []
         for candidate in model.get('candidate_results', []):
             if forbidden(candidate):
-                exclusions.append({'model_id': candidate['model_id'], 'cause': 'liste noire LM ou permanente'})
+                exclusions.append({'model_id': candidate['model_id'], 'cause': 'liste noire LM'})
             else:
                 retained.append(candidate)
         if 'candidate_results' in model:
             model['candidate_results'] = retained
         if forbidden(model):
-            exclusions.append({'model_id': model['model_id'], 'cause': 'liste noire LM ou permanente'})
+            exclusions.append({'model_id': model['model_id'], 'cause': 'liste noire LM'})
             model.update(state='Invalide', selected=False, model='Non évalué', model_id='Non évalué',
-                         cause='Modèle historique exclu par la liste noire LM ou permanente',
+                         cause='Modèle historique exclu par la liste noire LM',
                          ttft_seconds=None, tokens_per_second=None, last_successful_max_tokens=None,
-                         performance_test={'status': 'not_run', 'reason': 'liste noire LM ou permanente'})
-    data['lm_blacklist'] = {'model_ids': list(configured), 'permanent_model_ids': list(blacklist.PERMANENT_MODELS)}
+                         performance_test={'status': 'not_run', 'reason': 'liste noire LM'})
+    data['lm_blacklist'] = {'model_ids': list(configured)}
 
 
 def sanitize_reasoning_history(data):
@@ -733,8 +736,9 @@ def check_category(model, key, category):
 def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=True, exchange_rates=None):
     if not isinstance(row, dict) or not isinstance(row.get('id'), str) or not row['id']:
         raise RuntimeError('Candidat TFL sans identifiant vérifiable')
-    if row.get('context_length', 0) < 1_000_000:
-        raise RuntimeError('Contexte TFL inférieur à 1M ou non vérifiable')
+    context = row.get('context_length')
+    if type(context) is not int or context < 1_000_000:
+        raise RuntimeError('Contexte TFL inférieur à 1M ou non vérifiable ; investigation du LLM requise si inconnu')
     if set(row.get('output_modalities') or []) & {'audio', 'video', 'speech', 'sound'}:
         raise RuntimeError('Sortie TFL non admissible')
     if enforce_blacklist:
@@ -772,7 +776,9 @@ def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=Tru
             'api_endpoint': endpoint, 'api_protocol': protocol,
             'throughput_scope': 'reasoning_and_response' if section != 'openrouter' else 'response_only',
             'average_price_usd_per_million_tokens': average_price,
-            'is_free': free, 'reasoning_capabilities': performance.capabilities(row), 'model_source': {'selector': 'tfl_order_first_success' if free else 'tfl_price_first_success', 'section': section,
+            'is_free': free, 'reasoning_capabilities': performance.capabilities(row),
+            'model_investigations': copy.deepcopy(row.get('model_investigations', [])),
+            'model_source': {'selector': 'tfl_order_first_success' if free else 'tfl_price_first_success', 'section': section,
                                              'rank': rank, 'generated_at': generated_at,
                                              'input_price_usd_per_million_tokens': prices[0],
                                              'output_price_usd_per_million_tokens': prices[1]}}
@@ -841,12 +847,18 @@ def evaluate_candidate(model, key, category, memory, session_id):
     model.update(throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
                  measurement_protocol_version=performance.MEASUREMENT_PROTOCOL_VERSION)
     try:
+        evidence_module.recheck_findings(model.get('model_investigations', []),
+                                        'opencode_go' if model['provider'] == 'opencodego' else model['provider'],
+                                        model['model_id'], model.get('api_protocol', 'chat_completions'))
         metadata = {'reasoning_capabilities': model.get('reasoning_capabilities', {})}
         if model['provider'] == 'openrouter':
             metadata = next((item for item in get('https://openrouter.ai/api/v1/models', key)['data']
                              if item['id'] == model['model_id']), None)
             if metadata is None:
                 raise RuntimeError('Modèle absent des métadonnées OpenRouter actuelles')
+            if (model.get('model_investigations')
+                    and 'supported_efforts' not in performance.capabilities(metadata)):
+                metadata = {**metadata, 'reasoning_capabilities': model['reasoning_capabilities']}
         model['reasoning_capabilities'] = performance.capabilities(metadata)
         performance.verified_effort(metadata)
         if model['provider'] == 'openrouter':

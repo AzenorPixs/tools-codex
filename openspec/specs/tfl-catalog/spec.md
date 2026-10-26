@@ -51,12 +51,18 @@ SHALL empêcher la publication d'un catalogue non conforme.
 - **THEN** le modèle est exclu comme coût non vérifiable
 - **AND** les prix finis admissibles restent classés selon les règles communes
 
-### Requirement: Modalités et blacklists explicites
+### Requirement: Modalités et liste noire LM explicites
 Les sorties déclarées audio, vidéo, speech ou sound SHALL être exclues. Une
 entrée multimodale reste admissible ; une sortie inconnue SHALL être signalée
-comme non vérifiée. Les blacklists permanentes SHALL exclure
-muse-spark-1.2-contributor pour Go et OpenCode général, et
-meta/muse-spark-1.2-contributor pour OpenRouter.
+comme non vérifiée. TFL SHALL appliquer exclusivement la liste noire partagée
+LM aux trois catalogues, sans liste propre ni exclusion permanente intégrée.
+muse-spark-1.2-contributor SHALL être géré comme une entrée LM ordinaire,
+avec la même identité pour Go, OpenCode général et OpenRouter.
+
+#### Scenario: Retrait LM respecté dans les trois catalogues
+- **WHEN** muse-spark-1.2-contributor est retiré de LM
+- **THEN** aucune liste interne TFL ne l'exclut dans les trois catalogues
+- **AND** les autres critères de contexte, coût, modalités et effort restent obligatoires
 
 #### Scenario: Modèle hors critères
 - **WHEN** un modèle examiné ne satisfait pas un critère de sélection vérifiable
@@ -67,7 +73,7 @@ meta/muse-spark-1.2-contributor pour OpenRouter.
 La sélection OpenRouter SHALL être dynamique sur tous les modèles retournés
 par l'API, sans liste prédéfinie d'identifiants admissibles. Elle SHALL retenir
 les modèles satisfaisant les filtres communs de contexte, coût et modalités,
-ainsi que la blacklist permanente. L'absence d'un ancien modèle SHALL rester
+ainsi que la liste noire LM. L'absence d'un ancien modèle SHALL rester
 sans effet sur les autres résultats admissibles.
 
 #### Scenario: Nouveau modèle admissible
@@ -284,7 +290,8 @@ l'appliquer à Go, OpenCode général et OpenRouter avant tout classement et
 test gratuit. Les modèles interdits SHALL être absents de models et
 free_performance_results ; excluded_models SHALL conserver leur motif.
 Le JSON SHALL tracer la liste appliquée sans données personnelles.
-Les seuils, prix, transports, ordre et exclusions permanentes SHALL rester inchangés.
+Les seuils, prix, transports et ordre SHALL rester inchangés. Les exclusions
+par identifiant SHALL dépendre exclusivement de LM.
 
 #### Scenario: Modèle interdit pourtant admissible
 - **WHEN** mimo-v2.5 satisfait prix, contexte et modalités dans un catalogue
@@ -395,3 +402,39 @@ zéro. Les erreurs réelles SHALL rester bloquantes ; le planning reste inchang�
 #### Scenario: Erreur réelle
 - **WHEN** une source indispensable, une authentification, une conversion BCE ou une donnée de sécurité est invalide
 - **THEN** TFL signale l'erreur, retourne un code non nul et préserve les rapports précédents
+
+### Requirement: Investigation des preuves manquantes
+Pour Go, OpenCode général et OpenRouter, un contexte ou un effort invérifiable
+SHALL déclencher une analyse et une recherche du LLM dans les sources
+officielles. Le catalogue SHALL tracer fournisseur, ID exact, champ, sources,
+dates, empreintes et conclusion. Une absence de preuve SHALL NOT être présentée
+comme une incapacité démontrée. L'agent SHALL terminer l'investigation avant
+la restitution finale, ou déclarer explicitement son blocage.
+
+#### Scenario: Contexte encore invérifiable
+- **WHEN** l'investigation ne permet pas de vérifier le contexte
+- **THEN** le modèle reste exclu avec les sources examinées et la conclusion
+- **AND** aucun contexte ni seuil plus faible n'est inventé
+
+#### Scenario: Source devenue différente ou inaccessible
+- **WHEN** une preuve supplémentaire ne correspond plus à sa source courante
+- **THEN** elle ne permet aucune admission et une nouvelle investigation est requise
+
+### Requirement: Efforts publiés et équivalences documentées
+Les niveaux de reasoning_options type=effort/values SHALL être normalisés.
+HIGH/XHIGH officiellement acceptés SHALL être admissibles même si plusieurs
+niveaux produisent le même comportement. Une équivalence documentée vers un
+interrupteur SHALL être tracée avec son protocole, ses paramètres et ses
+sources, sans inventer un endpoint ni une intensité distincte.
+
+#### Scenario: HIGH équivaut au raisonnement activé
+- **WHEN** les sources officielles du modèle établissent cette équivalence sur le protocole utilisé
+- **THEN** HIGH est admissible et le paramètre équivalent documenté est envoyé
+- **AND** les autres critères et contrôles restent obligatoires
+
+### Requirement: Source unique LM
+TFL SHALL appliquer uniquement la liste LM, sans liste permanente intégrée.
+
+#### Scenario: Retrait d'une ancienne exclusion permanente
+- **WHEN** LM retire muse-spark-1.2-contributor
+- **THEN** aucune liste TFL résiduelle ne l'exclut, y compris avec préfixe fournisseur

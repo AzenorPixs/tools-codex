@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.10`.
+Version de release : `0.7.11`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -130,13 +130,24 @@ décrits dans [BUILD](BUILD.md#utilisation-de-prompt).
 ## LM — Liste noire des modèles
 
 `/LM` ou `$lm` affiche la liste sans écriture ; `/LM ADD identifiant` ajoute
-une exclusion et `/LM REMOVE identifiant` la retire. `mimo-v2.5` est exclu
-par défaut, y compris avec préfixe fournisseur ou suffixe gratuit.
+une exclusion et `/LM REMOVE identifiant` la retire. `mimo-v2.5` et
+`muse-spark-1.2-contributor` sont exclus par défaut et tous deux retirables,
+y compris avec préfixe fournisseur ou suffixe gratuit.
 Les préfixes OpenRouter marqués, comme `~vendor/model`, sont acceptés sans
 changer l'identité LM : `~xiaomi/mimo-v2.5:free` reste exclu.
 LM figure dans le catalogue CM. Les plugins et skills TFL/PLLM appliquent la
 même liste avant classement, sélection et tests, même avec un ancien catalogue
-ou une cible forcée. Les exclusions permanentes historiques restent actives.
+ou une cible forcée. LM est l'unique liste noire ; aucune liste permanente
+interne TFL/PLLM ne subsiste.
+
+Pour les trois catalogues, un effort ou un contexte inconnu impose une
+analyse et une recherche du LLM dans les sources officielles. Un contexte
+encore invérifiable après investigation exclut le modèle. Les valeurs
+HIGH/XHIGH officiellement acceptées sont admissibles même équivalentes,
+comme pour MiMo ; les sources, dates et paramètres effectifs sont tracés.
+Le générateur marque les investigations en attente et son rapport provisoire.
+Le [guide des preuves](skills/tfl/references/model-evidence.md) décrit le registre
+complémentaire et ses contrôles. Les seuils existants restent inchangés.
 
 Le stockage commun CODEX_HOME/lm/blacklist.json (repli ~/.codex) reste hors
 des caches et est conservé par TCU. Une liste invalide bloque sans écrasement.

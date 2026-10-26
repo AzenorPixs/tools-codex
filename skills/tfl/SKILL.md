@@ -81,8 +81,8 @@ vérifié, 🔴 au-delà du seuil.
   multimodale uniquement en entrée reste admissible ; une sortie absente des
   sources reste `Non vérifié`. Les déclarations API et models.dev sont
   confrontées ; des modalités contradictoires font échouer la génération.
-- `muse-spark-1.2-contributor` est une blacklist permanente et reste auditable
-  dans `excluded_models`.
+- Les exclusions par identifiant proviennent exclusivement de LM et restent
+  auditables dans `excluded_models`.
 - Les tarifs pointe/hors pointe, estimations rolling/weekly/monthly, sources de
   contexte et motifs d’exclusion sont conservés dans le JSON, pas dans le
   tableau commun.
@@ -165,7 +165,7 @@ l'ajout du catalogue général ne change pas ses politiques de sélection.
   speech ou sound sont exclues.
 - Le contexte doit être au moins de 1M et le coût moyen compris entre zéro et
   0.20 €/M inclus après conversion BCE vérifiée. Un gratuit vérifié reste admissible.
-- `meta/muse-spark-1.2-contributor` est une blacklist permanente.
+- La liste noire partagée LM s'applique sans liste propre à OpenRouter.
 - Les modalités d’entrée/sortie, capacités (`tools`, `reasoning`, `JSON`),
   paramètres API et motifs d’exclusion restent dans la section OpenRouter du
   JSON.
@@ -274,11 +274,13 @@ pour obtenir de nouvelles qualifications avec le protocole 8.
 
 Charger scripts/model_blacklist.py, embarqué dans ce paquet, avant les appels
 fournisseur. Le script applique la liste CODEX_HOME/lm/blacklist.json,
-avec ~/.codex comme CODEX_HOME par défaut. Sans fichier, mimo-v2.5 est exclu.
+avec ~/.codex comme CODEX_HOME par défaut. Sans fichier, mimo-v2.5 et
+muse-spark-1.2-contributor sont exclus ; les deux entrées sont retirables par LM.
 Une liste invalide bloque sans écrasement. Utiliser $lm ou /LM pour LIST,
 ADD identifiant ou REMOVE identifiant ; ce stockage reste hors des caches.
 Les préfixes fournisseur, la casse et les suffixes :free/-free ne permettent
-pas de contourner une exclusion. Les exclusions permanentes restent en vigueur.
+pas de contourner une exclusion. LM est l'unique liste noire ; aucune exclusion
+permanente ou liste interne TFL ne subsiste. Une liste explicite vide reste vide.
 Les modèles interdits sont absents des listes retenues et des tests ; seules
 les traces d'exclusion les mentionnent. Un ancien catalogue ou historique ne
 valide pas un modèle interdit et une cible forcée interdite reste refusée.
@@ -310,6 +312,23 @@ Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
 publiée explicitement avec ses exclusions et ne bloque pas les autres sections.
+
+Les niveaux publiés dans `reasoning_options` (type=effort, values) sont des
+preuves. HIGH/XHIGH officiellement acceptés restent admissibles même sans
+intensité distincte : tracer l'équivalence et envoyer les paramètres documentés
+du protocole utilisé, comme thinking.type=enabled pour l'équivalence MiMo.
+Une valeur absente, un budget ou un interrupteur seul n'invente pas cette preuve.
+
+## Investigation obligatoire des efforts et contextes
+
+Pour tous les fournisseurs, « HIGH/XHIGH non vérifiable » ou « contexte non
+vérifiable » impose une analyse et une recherche du LLM dans les sources
+officielles. Suivre [le protocole de preuve](references/model-evidence.md),
+compléter les conclusions sourcées dans le répertoire du rapport et relancer
+le générateur. Le JSON marque les investigations `required` ; le rapport est
+alors provisoire. Ne pas le présenter comme définitif sans recherche terminée
+ou blocage explicitement signalé. Si le contexte reste invérifiable après
+investigation, le modèle est écarté. Les seuils restent inchangés.
 
 
 ## Plafond OpenRouter en euros

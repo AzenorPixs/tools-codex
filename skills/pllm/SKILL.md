@@ -490,11 +490,13 @@ une simple évaluation manuelle. Une invocation PLLM manuelle ne lance pas TFL.
 
 Charger scripts/model_blacklist.py, embarqué dans ce paquet, avant les appels
 fournisseur. Le script applique la liste CODEX_HOME/lm/blacklist.json,
-avec ~/.codex comme CODEX_HOME par défaut. Sans fichier, mimo-v2.5 est exclu.
+avec ~/.codex comme CODEX_HOME par défaut. Sans fichier, mimo-v2.5 et
+muse-spark-1.2-contributor sont exclus ; les deux entrées sont retirables par LM.
 Une liste invalide bloque sans écrasement. Utiliser $lm ou /LM pour LIST,
 ADD identifiant ou REMOVE identifiant ; ce stockage reste hors des caches.
 Les préfixes fournisseur, la casse et les suffixes :free/-free ne permettent
-pas de contourner une exclusion. Les exclusions permanentes restent en vigueur.
+pas de contourner une exclusion. LM est l'unique liste noire ; aucune exclusion
+permanente ou liste interne TFL/PLLM ne subsiste. Une liste explicite vide reste vide.
 Les modèles interdits sont absents des listes retenues et des tests ; seules
 les traces d'exclusion les mentionnent. Un ancien catalogue ou historique ne
 valide pas un modèle interdit et une cible forcée interdite reste refusée.
@@ -510,8 +512,29 @@ admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
 budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
-filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide bloque
-la publication et préserve les rapports existants.
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide ne
+fournit aucun candidat pour le mode concerné.
+
+Les niveaux `reasoning_options` type=effort/values sont reconnus. HIGH/XHIGH
+officiellement acceptés sont admissibles même sans intensité distincte ;
+conserver l'équivalence documentée, le protocole et les paramètres effectifs.
+PLLM conserve les preuves du catalogue et recontrôle leurs sources avant
+génération. L'équivalence MiMo HIGH vers thinking.type=enabled ne modifie
+aucun endpoint et ne constitue pas une preuve de performance.
+
+## Investigation obligatoire des métadonnées inconnues
+
+Un effort ou contexte non vérifiable impose une analyse et une recherche du
+LLM, pour Go, OpenCode général et OpenRouter. Suivre
+[le protocole de preuve](references/model-evidence.md). Rechercher les sources
+officielles applicables au fournisseur, à l'ID et au protocole exacts ; tracer
+sources, dates et conclusion. Un contexte encore invérifiable après
+investigation exclut le modèle. Un rapport provisoire ne vaut pas conclusion
+définitive ; si la recherche est bloquée, le signaler sans inventer de capacité.
+La mise à jour du registre TFL ne réécrit jamais son catalogue à la main.
+Une invocation PLLM seule ne lance pas implicitement TFL : signaler la
+collecte nécessaire si elle n'est pas autorisée. Conserver la restitution
+exacte du script lorsqu'elle est demandée, sans ajouter de commentaire.
 
 
 ## Coût OpenRouter admissible

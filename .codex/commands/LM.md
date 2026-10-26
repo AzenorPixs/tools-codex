@@ -12,4 +12,7 @@ Ne lance pas TFL ni PLLM et ne modifie pas OpenCode.
 Cette commande source n'enregistre pas automatiquement une slash native.
 Le skill est directement invocable avec `$lm`.
 
+LM est l'unique liste noire de TFL et PLLM ; aucune liste permanente ne
+subsiste. muse-spark-1.2-contributor est une entrée ordinaire retirable.
+
 Arguments reçus : `$ARGUMENTS`
