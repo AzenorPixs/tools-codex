@@ -1,6 +1,6 @@
 # Investigation des modèles
 
-Ce workflow s'applique à OpenCode Go, OpenCode général et OpenRouter.
+Ce workflow s'applique à OpenCode Go et OpenRouter.
 `model_investigations` dans le JSON TFL donne les champs encore inconnus.
 Le statut `required` exige une analyse et une recherche du LLM avant sa
 restitution finale ; une collecte CLI seule ne réalise pas cette recherche.
@@ -35,7 +35,7 @@ Le fichier déclare `schema_version: 1` et `records`. Chaque entrée contient :
 
 | Champ | Valeur |
 |---|---|
-| provider | opencode_go, opencode ou openrouter |
+| provider | opencode_go ou openrouter ; opencode est seulement accepté dans les registres historiques |
 | model_id | Identifiant exact dans ce catalogue |
 | field | context ou reasoning |
 | protocol | null pour context ; chat_completions, responses ou messages pour reasoning |

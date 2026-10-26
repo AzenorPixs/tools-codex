@@ -215,7 +215,7 @@ class GeneralOpenCodeTests(unittest.TestCase):
                 self.assertEqual(row['endpoint_source'], 'opencode-api')
                 self.assertEqual(row['routing_metadata']['source_api'], module.OPENCODE_API_URL)
 
-    def test_three_sections_and_tables_preserve_order_columns_and_strict_json(self):
+    def test_two_sections_and_tables_preserve_order_columns_and_strict_json(self):
         for path, module in self.modules():
             with self.subTest(path=path):
                 with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp, ExitStack() as stack:
@@ -225,10 +225,11 @@ class GeneralOpenCodeTests(unittest.TestCase):
                     self.assertEqual(module.main(), 0)
                     raw = (output / 'tfl.json').read_text()
                     catalog = json.loads(raw)
-                    self.assertEqual(catalog['order'], ['opencode_go', 'opencode', 'openrouter'])
-                    self.assertEqual(catalog['opencode']['models'][0]['id'], 'general-model')
-                    self.assertEqual(catalog['opencode']['metadata_provider'], 'opencode')
-                    self.assertNotIn('credential_policy', catalog['opencode'])
+                    self.assertEqual(catalog['order'], ['opencode_go', 'openrouter'])
+                    self.assertNotIn('opencode', catalog)
+                    self.assertNotIn('general-model', raw + stdout.getvalue())
+                    for name in ('fetch_opencode_models', 'fetch_opencode_metadata', 'fetch_opencode_pricing'):
+                        getattr(module, name).assert_not_called()
                     self.assertEqual(catalog['opencode_go']['models'][0]['id'], 'go-only')
                     self.assertEqual(catalog['openrouter']['models'][0]['id'], 'router-only')
                     self.assertNotIn('offline-fixture', raw + stdout.getvalue())
@@ -243,27 +244,30 @@ class GeneralOpenCodeTests(unittest.TestCase):
                     self.assertIn('Coût moyen €/M', headers[1])
                     self.assertNotIn('clé None', markdown)
 
-    def test_general_collection_failures_preserve_previous_reports(self):
+    def test_general_collection_is_never_called_or_required(self):
         for path, module in self.modules():
-            for failing in ('fetch_opencode_models', 'fetch_opencode_metadata', 'fetch_opencode_pricing'):
-                with self.subTest(path=path, failing=failing):
-                    with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp, ExitStack() as stack:
-                        output = Path(tmp)
-                        for name in ('tfl.json', 'tfl.md'):
-                            (output / name).write_text('previous-report', encoding='utf-8')
-                        self.setup_main(module, output, stack)
-                        stack.enter_context(patch.object(module, failing, side_effect=URLError('fixture')))
-                        error = stack.enter_context(patch('sys.stderr', new_callable=io.StringIO))
-                        self.assertEqual(module.main(), 1)
-                        self.assertIn('Erreur TFL', error.getvalue())
-                        for name in ('tfl.json', 'tfl.md'):
-                            self.assertEqual((output / name).read_text(), 'previous-report')
+            with self.subTest(path=path):
+                with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp, ExitStack() as stack:
+                    output = Path(tmp)
+                    self.setup_main(module, output, stack)
+                    collectors = [stack.enter_context(patch.object(module, name,
+                                  side_effect=AssertionError('Collecte générale interdite')))
+                                  for name in ('fetch_opencode_models', 'fetch_opencode_metadata',
+                                               'fetch_opencode_pricing')]
+                    stdout = stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
+                    self.assertEqual(module.main(), 0)
+                    for collector in collectors:
+                        collector.assert_not_called()
+                    catalog = json.loads((output / 'tfl.json').read_text())
+                    self.assertNotIn('opencode', catalog)
+                    self.assertNotIn('general-model', (output / 'tfl.md').read_text() + stdout.getvalue())
+                    self.assertTrue(all(item['provider'] != 'opencode'
+                                        for item in catalog['free_performance_results']))
 
     def test_empty_selections_publish_all_catalogs_and_current_exclusions(self):
-        fetches = {'opencode_go': 'fetch_models', 'opencode': 'fetch_opencode_models',
-                   'openrouter': 'fetch_openrouter_models'}
+        fetches = {'opencode_go': 'fetch_models', 'openrouter': 'fetch_openrouter_models'}
         for path, module in self.modules():
-            for empty_sections in (('opencode_go',), ('opencode',), ('openrouter',), tuple(fetches)):
+            for empty_sections in (('opencode_go',), ('openrouter',), tuple(fetches)):
                 for cause in ('empty_api', 'missing_effort'):
                     with self.subTest(path=path, sections=empty_sections, cause=cause):
                         with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp, ExitStack() as stack:
@@ -308,10 +312,9 @@ class GeneralOpenCodeTests(unittest.TestCase):
 
     def test_pllm_can_read_published_catalogs_with_empty_sections(self):
         consumers = [ROOT / 'skills/pllm/scripts/evaluate.py', ROOT / 'plugins/pllm/skills/pllm/scripts/evaluate.py']
-        fetches = {'opencode_go': 'fetch_models', 'opencode': 'fetch_opencode_models',
-                   'openrouter': 'fetch_openrouter_models'}
+        fetches = {'opencode_go': 'fetch_models', 'openrouter': 'fetch_openrouter_models'}
         for (path, module), consumer_path in zip(self.modules(), consumers):
-            for empty_sections in (('opencode_go',), ('opencode',), ('openrouter',), tuple(fetches)):
+            for empty_sections in (('opencode_go',), ('openrouter',), tuple(fetches)):
                 with self.subTest(path=path, sections=empty_sections):
                     with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp, ExitStack() as stack:
                         output = Path(tmp)

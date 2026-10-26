@@ -7,15 +7,15 @@ Définir la collecte, le filtrage, le classement et la publication vérifiable d
 ## Requirements
 
 ### Requirement: Collecte complète et ordre des fournisseurs
-TFL SHALL collecter Go, le catalogue général OpenCode et OpenRouter, avec
+TFL SHALL collecter exclusivement OpenCode Go et OpenRouter, avec
 models.dev comme complément de métadonnées OpenCode. Une erreur de collecte,
 d'authentification ou de données indispensables SHALL faire échouer la
 génération sans rapport partiel complet. La restitution SHALL présenter
-OpenCode Go puis OpenRouter ; OpenCode général reste dans le JSON.
+OpenCode Go puis OpenRouter ; le JSON SHALL NOT contenir de section opencode.
 
 #### Scenario: Collecte complète
-- **WHEN** les trois collectes et leurs métadonnées indispensables réussissent
-- **THEN** le rapport contient les deux tableaux Go puis OpenRouter et conserve opencode dans le JSON
+- **WHEN** les deux collectes et leurs métadonnées indispensables réussissent
+- **THEN** le rapport contient les deux tableaux Go puis OpenRouter et conserve seulement opencode_go et openrouter dans le JSON
 
 #### Scenario: Échec d'un fournisseur
 - **WHEN** une collecte indispensable échoue
@@ -23,7 +23,7 @@ OpenCode Go puis OpenRouter ; OpenCode général reste dans le JSON.
 
 ### Requirement: Seuils de sélection vérifiables
 TFL SHALL retenir un contexte vérifiable ≥1M et un coût moyen entrée/sortie
-≤0,50 USD/M pour Go et général, hors pointe pour Go ; OpenRouter SHALL appliquer ≤0,20 EUR/M au taux BCE vérifié. Prix ou contextes inconnus SHALL être exclus.
+≤0,50 USD/M hors pointe pour Go ; OpenRouter SHALL appliquer ≤0,20 EUR/M au taux BCE vérifié. Prix ou contextes inconnus SHALL être exclus.
 Les gratuits vérifiés SHALL réussir une réponse complète en HIGH ou son repli
 XHIGH autorisé, TTFT <30 s et débit >20 tokens/s avant inclusion dans models.
 Leurs échecs SHALL rester dans excluded_models avec leurs preuves.
@@ -55,13 +55,13 @@ SHALL empêcher la publication d'un catalogue non conforme.
 Les sorties déclarées audio, vidéo, speech ou sound SHALL être exclues. Une
 entrée multimodale reste admissible ; une sortie inconnue SHALL être signalée
 comme non vérifiée. TFL SHALL appliquer exclusivement la liste noire partagée
-LM aux trois catalogues, sans liste propre ni exclusion permanente intégrée.
+LM aux deux catalogues, sans liste propre ni exclusion permanente intégrée.
 muse-spark-1.2-contributor SHALL être géré comme une entrée LM ordinaire,
-avec la même identité pour Go, OpenCode général et OpenRouter.
+avec la même identité pour Go et OpenRouter.
 
 #### Scenario: Retrait LM respecté dans les trois catalogues
 - **WHEN** muse-spark-1.2-contributor est retiré de LM
-- **THEN** aucune liste interne TFL ne l'exclut dans les trois catalogues
+- **THEN** aucune liste interne TFL ne l'exclut dans les deux catalogues
 - **AND** les autres critères de contexte, coût, modalités et effort restent obligatoires
 
 #### Scenario: Modèle hors critères
@@ -137,8 +137,8 @@ hors sandbox SHALL être respectées sans contournement.
 - **THEN** TFL rapporte l'erreur sans essayer l'autre secret pour cette requête
 
 ### Requirement: Actualisation tarifaire sans repli historique
-TFL SHALL collecter à chaque génération les tarifs Go et OpenCode général
-dans leurs documentations officielles respectives, et OpenRouter dans son
+TFL SHALL collecter à chaque génération les tarifs Go
+dans sa documentation officielle, et OpenRouter dans son
 API modèles. TFL MUST NOT utiliser de table statique ou ancien catalogue
 comme repli. Chaque catalogue SHALL exposer la source et la date de
 récupération tarifaire dans le JSON.
@@ -260,33 +260,9 @@ SHALL être distinguée d'une qualification réelle de génération.
 - **WHEN** une route est résolue depuis les sources publiées
 - **THEN** le catalogue indique ses sources et sa date sans prétendre à un test de génération
 
-### Requirement: Catalogue général OpenCode indépendant
-TFL SHALL ajouter une section opencode distincte de opencode_go et openrouter.
-Disponibilité, tarifs et métadonnées opencode de models.dev SHALL être
-collectés indépendamment de Go. Le contexte vérifiable SHALL être ≥ 1M et
-la moyenne entrée/sortie comprise entre zéro et 0,50 USD/M inclus. Les
-sections existantes SHALL rester compatibles avec leurs consommateurs.
-
-#### Scenario: Modèle gratuit trop court
-- **WHEN** une variante gratuite possède seulement 200 000 tokens de contexte
-- **THEN** elle est exclue avec le motif de contexte sans abaisser le seuil 1M
-
-#### Scenario: Même identifiant dans deux catalogues
-- **WHEN** Go et le catalogue général publient le même identifiant avec des tarifs ou métadonnées distincts
-- **THEN** chaque section conserve ses propres données et sources sans emprunt à l'autre
-
-#### Scenario: Compatibilité des consommateurs existants
-- **WHEN** un consommateur lit opencode_go ou openrouter dans le catalogue enrichi
-- **THEN** il retrouve leurs champs et classements sans dépendre de la nouvelle section opencode
-
-#### Scenario: Plusieurs variantes publiées
-- **WHEN** le catalogue général publie plusieurs variantes de contexte ou de période
-- **THEN** son prix de classement est la moyenne maximale des variantes publiées
-- **AND** la référence hors pointe de Go reste inchangée
-
 ### Requirement: Exclusion LM avant sélection et test
 TFL SHALL charger la liste commune LM avant tout appel fournisseur et
-l'appliquer à Go, OpenCode général et OpenRouter avant tout classement et
+l'appliquer à Go et OpenRouter avant tout classement et
 test gratuit. Les modèles interdits SHALL être absents de models et
 free_performance_results ; excluded_models SHALL conserver leur motif.
 Le JSON SHALL tracer la liste appliquée sans données personnelles.
@@ -300,7 +276,7 @@ par identifiant SHALL dépendre exclusivement de LM.
 
 #### Scenario: Liste utilisateur modifiée
 - **WHEN** LM ajoute un modèle avant la nouvelle invocation TFL
-- **THEN** les trois catalogues appliquent la liste courante sans mise à jour du code
+- **THEN** les deux catalogues appliquent la liste courante sans mise à jour du code
 
 ### Requirement: Catalogue OpenRouter avec préfixes marqués
 TFL SHALL examiner les identifiants OpenRouter à préfixe `~` valide sans
@@ -314,8 +290,8 @@ de publication atomique SHALL rester inchangés.
 - **AND** le second figure dans les exclusions sans génération ni examen de ses prix
 
 #### Scenario: Collecte complète sans génération interdite
-- **WHEN** les trois catalogues valides sont collectés avec ces identifiants OpenRouter
-- **THEN** TFL peut publier les trois sections avec leurs filtres et exclusions inchangés
+- **WHEN** les deux catalogues valides sont collectés avec ces identifiants OpenRouter
+- **THEN** TFL peut publier les deux sections avec leurs filtres et exclusions inchangés
 - **AND** les modèles interdits restent absents des listes retenues et des tests gratuits
 
 ### Requirement: Effort vérifiable avant admission
@@ -356,17 +332,16 @@ la publication et préserver les rapports précédents.
 - **WHEN** le cours BCE est absent, invalide ou inaccessible
 - **THEN** aucun nouveau rapport n'est publié et les fichiers précédents restent préservés
 
-### Requirement: Deux tableaux fournisseurs et catalogue général préservé
+### Requirement: Deux tableaux fournisseurs sans catalogue général
 TFL SHALL afficher Go puis OpenRouter, puis les essais gratuits admissibles
 à l'effort. Les tableaux SHALL garder huit colonnes, Go en USD/M et OpenRouter
-en EUR/M avec taux daté, même vides. La collecte et le JSON opencode SHALL
-rester disponibles à PLLM 3/4. Go et général SHALL garder le plafond 0,50 USD/M.
+en EUR/M avec taux daté, même vides. La collecte, les essais et le JSON SHALL exclure OpenCode général. Go SHALL garder le plafond 0,50 USD/M.
 Une sélection vide après filtrage ou qualification SHALL NOT bloquer les
 autres sections. Les filtres et validations indispensables SHALL rester inchangés.
 
 #### Scenario: Publication à deux tableaux
-- **WHEN** les trois collectes satisfont les critères de validité
-- **THEN** le rapport affiche Go puis OpenRouter, aucun tableau général, et le JSON conserve les trois sections
+- **WHEN** les deux collectes satisfont les critères de validité
+- **THEN** le rapport affiche Go puis OpenRouter, aucun tableau général, et le JSON conserve les deux sections
 
 #### Scenario: Aucune preuve d'effort dans une section
 - **WHEN** tous ses candidats sont exclus faute de preuve HIGH/XHIGH
@@ -378,8 +353,8 @@ Chaque catalogue valide SHALL publier models éventuellement vide,
 selection_status (available ou empty), exclusion_summary (motif vers nombre),
 compteurs et exclusions détaillées. Un tableau vide SHALL afficher
 « Aucun modèle admissible » et la synthèse, sans fausse ligne de modèle.
-Trois sélections vides valides SHALL produire les fichiers frais et un code
-zéro. Les erreurs réelles SHALL rester bloquantes ; le planning reste inchangé.
+Deux sélections vides valides SHALL produire les fichiers frais et un code
+zéro. Les erreurs réelles SHALL rester bloquantes ; le planning contrôle les deux sections courantes.
 
 #### Scenario: Go vide et OpenRouter admissible
 - **WHEN** les collectes sont valides, Go ne retient aucun modèle et OpenRouter en retient
@@ -387,8 +362,9 @@ zéro. Les erreurs réelles SHALL rester bloquantes ; le planning reste inchang�
 - **AND** Go expose son état vide, sa synthèse et ses exclusions courantes
 
 #### Scenario: Catalogue général vide
-- **WHEN** seule la sélection générale est vide
-- **THEN** son état et ses exclusions sont publiés dans le JSON sans ajouter de tableau général ni bloquer Go et OpenRouter
+- **WHEN** TFL publie une nouvelle collecte
+- **THEN** aucune section opencode ni donnée générale ne figure dans le JSON ou les essais
+- **AND** Go et OpenRouter sont les deux seuls catalogues courants
 
 #### Scenario: Section vidée par la qualification gratuite
 - **WHEN** tous les modèles d'une section sont des gratuits échoués ou non mesurables
@@ -396,7 +372,7 @@ zéro. Les erreurs réelles SHALL rester bloquantes ; le planning reste inchang�
 - **AND** les autres sections et leurs qualifications continuent
 
 #### Scenario: Trois sélections vides
-- **WHEN** les trois collectes sont valides mais aucun modèle ne reste après filtrage ou qualification
+- **WHEN** les deux collectes sont valides mais aucun modèle ne reste après filtrage ou qualification
 - **THEN** TFL publie les sections vides, les deux tableaux explicites, les exclusions et les essais effectués avec un code de sortie zéro
 
 #### Scenario: Erreur réelle
@@ -404,7 +380,7 @@ zéro. Les erreurs réelles SHALL rester bloquantes ; le planning reste inchang�
 - **THEN** TFL signale l'erreur, retourne un code non nul et préserve les rapports précédents
 
 ### Requirement: Investigation des preuves manquantes
-Pour Go, OpenCode général et OpenRouter, un contexte ou un effort invérifiable
+Pour Go et OpenRouter, un contexte ou un effort invérifiable
 SHALL déclencher une analyse et une recherche du LLM dans les sources
 officielles. Le catalogue SHALL tracer fournisseur, ID exact, champ, sources,
 dates, empreintes et conclusion. Une absence de preuve SHALL NOT être présentée
@@ -438,3 +414,14 @@ TFL SHALL appliquer uniquement la liste LM, sans liste permanente intégrée.
 #### Scenario: Retrait d'une ancienne exclusion permanente
 - **WHEN** LM retire muse-spark-1.2-contributor
 - **THEN** aucune liste TFL résiduelle ne l'exclut, y compris avec préfixe fournisseur
+
+### Requirement: Retrait intégral du catalogue général
+TFL SHALL NOT appeler les collecteurs de disponibilité, prix ou métadonnées
+du catalogue général OpenCode, ni qualifier ou lister ses modèles. Seules les
+métadonnées opencode-go de models.dev SHALL servir à Go. Les sections, ordres,
+investigations et essais publiés SHALL concerner exclusivement Go/OpenRouter.
+
+#### Scenario: Collecteurs généraux interdits
+- **WHEN** les trois collecteurs généraux sont configurés pour échouer s'ils sont appelés
+- **THEN** une collecte Go/OpenRouter valide réussit sans aucun appel général
+- **AND** le JSON, le Markdown et stdout ne contiennent aucun modèle général

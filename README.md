@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.11`.
+Version de release : `0.7.12`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -26,7 +26,7 @@ Les six politiques sont évaluées par priorité :
 | Modes | Candidats | Conditions spécifiques |
 |---|---|---|
 | 1/2 | Payants Go des comptes actuels | Quotas disponibles ; épuisement → rouge et invalide, sans gratuit |
-| 3/4 | Gratuits vérifiés Go puis OpenCode général, comptes de 1/2 | Aucun contrôle de quota ; contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s |
+| 3/4 | Gratuits vérifiés Go exclusivement, comptes de 1/2 | Aucun contrôle de quota ; contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s |
 | 5 | Payants OpenRouter uniquement | Crédit positif ; épuisement → invalide, sans gratuit |
 | 6 | Ancien mode 4 DeepSeek direct | Solde utilisable positif |
 
@@ -35,7 +35,7 @@ y compris le repli OpenRouter de 5, exigent <30 s et >20 tokens/s. Les filtres T
 HIGH/XHIGH autorisé, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
 aux limitations fournisseur. Essayer les payants 1/2/5 par coût moyen TFL
 croissant (hors pointe Go, base OpenRouter), avec ordre TFL à prix égal.
-Essayer les gratuits 3/4 dans l'ordre TFL Go puis général. Retenir le premier
+Essayer les gratuits 3/4 dans l'ordre TFL Go exclusivement. Retenir le premier
 succès aux tests actuels et ne pas tester les suivants du mode ; après un
 échec, essayer le suivant sous réserve des contrôles bloquants. Les priorités
 1 à 6 restent inchangées. En invocation normale, poursuivre les politiques ;
@@ -44,7 +44,7 @@ d'entrée vérifiée, sans envoi d'un million de tokens pendant le benchmark.
 Tous les benchmarks demandent HIGH ; XHIGH est le seul repli autorisé si
 HIGH est indisponible et XHIGH pris en charge. Les tokens/s représentent désormais une moyenne sur la requête complète,
 attente et TTFT inclus, sans extrapolation entre fragments reçus. Le protocole
-8 conserve la portée de comptage Go/général ou OpenRouter/DeepSeek, trace la
+8 conserve la portée de comptage Go ou OpenRouter/DeepSeek, trace la
 durée non arrondie et sépare les anciens succès en mémoire. Une réponse
 complète en un bloc reste mesurable. Les anciens débits ne sont pas directement
 comparables ; les seuils numériques conservés peuvent modifier le classement
@@ -76,22 +76,21 @@ une contradiction ou une URL de routage non sûre bloque la publication.
 Une route documentée reste distincte d'un test réel de génération : les
 gratuits TFL sont désormais testés, les payants restent un catalogue tarifaire.
 Le rapport comprend deux tableaux fournisseurs : OpenCode Go puis OpenRouter,
-suivis du tableau détaillé des tests gratuits admissibles à HIGH/XHIGH. Le catalogue général est collecté publiquement et conserve
-ses propres tarifs et métadonnées `opencode`, indépendants de `opencode-go`.
-Les trois catalogues exigent contexte ≥ 1M et HIGH/XHIGH vérifiable. Go et
-général gardent coût moyen ≤0,50 USD/M ; OpenRouter exige ≤0,20 EUR/M converti
-au dernier taux BCE publié ; une
-variante gratuite à 200K reste exclue. La section JSON supplémentaire
-`opencode` fournit également les gratuits PLLM des modes 3/4 décrits plus haut.
+suivis du tableau détaillé des tests gratuits admissibles à HIGH/XHIGH.
+OpenCode général n'est plus collecté, testé ou publié. Le JSON contient
+seulement opencode_go et openrouter. Les deux catalogues exigent contexte ≥1M
+et HIGH/XHIGH vérifiable ; Go conserve ≤0,50 USD/M et OpenRouter ≤0,20 EUR/M
+au dernier taux BCE publié. Les modes PLLM 1/2 utilisent exclusivement les
+payants Go et 3/4 les gratuits Go, anciens catalogues et rangs forcés compris.
 TFL ne consulte aucun quota pour ses tests gratuits. Une sélection vide après
 filtrage ou qualification ne bloque pas les autres catalogues : les deux
 tableaux sont publiés, avec « Aucun modèle admissible » et une synthèse des
 exclusions pour un tableau vide. Le JSON conserve les sources, motifs détaillés,
 compteurs, selection_status (available ou empty) et exclusion_summary. Même
-trois sélections vides issues de collectes valides produisent un rapport frais
+deux sélections vides issues de collectes valides produisent un rapport frais
 et un code zéro. Les erreurs de collecte ou de données indispensables restent
 bloquantes et préservent les rapports précédents. Le planning reste inchangé :
-son contrôle exige encore trois listes models non vides avant PLLM.
+son contrôle exige les deux listes models Go/OpenRouter non vides avant PLLM.
 Un échec dépend du compte TFL utilisé ; les exclus ne sont pas réintégrés par
 PLLM. Le moteur scripts/performance.py est embarqué dans chaque paquet pour
 préserver son autonomie, sans nouvelle dépendance Python.
@@ -140,7 +139,7 @@ même liste avant classement, sélection et tests, même avec un ancien catalogu
 ou une cible forcée. LM est l'unique liste noire ; aucune liste permanente
 interne TFL/PLLM ne subsiste.
 
-Pour les trois catalogues, un effort ou un contexte inconnu impose une
+Pour les deux catalogues, un effort ou un contexte inconnu impose une
 analyse et une recherche du LLM dans les sources officielles. Un contexte
 encore invérifiable après investigation exclut le modèle. Les valeurs
 HIGH/XHIGH officiellement acceptées sont admissibles même équivalentes,

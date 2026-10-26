@@ -165,8 +165,8 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 
 | Composant | Prérequis locaux | Services externes nécessaires |
 |---|---|---|
-| `tfl` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS, exécution hors sandbox et répertoire de données inscriptible. Les accès aux fournisseurs sont configurés localement hors des sources. | OpenCode Go, catalogue général OpenCode, models.dev et OpenRouter. |
-| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les six politiques sont initialisées si le fichier courant manque. | OpenCode Go, OpenCode général pour les gratuits 3/4, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
+| `tfl` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS, exécution hors sandbox et répertoire de données inscriptible. Les accès aux fournisseurs sont configurés localement hors des sources. | OpenCode Go, models.dev et OpenRouter. |
+| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les six politiques sont initialisées si le fichier courant manque. | OpenCode Go pour 1 à 4, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
 | `$cm` | Skill découvert dans le projet ou installé dans un emplacement reconnu. | Aucun. |
@@ -183,8 +183,7 @@ sélection historique. Un fichier courant invalide provoque un diagnostic et
 reste préservé. Les contrôles de ressources applicables et de performance restent obligatoires ;
 les gratuits 3/4 ne consultent aucun quota.
 
-PLLM définit six priorités : 1/2 payants Go, 3/4 gratuits Go et OpenCode
-général avec les comptes de 1/2 respectivement, 5 ancien OpenRouter, 6 ancien
+PLLM définit six priorités : 1/2 payants Go, 3/4 gratuits Go avec les comptes de 1/2 respectivement, 5 ancien OpenRouter, 6 ancien
 DeepSeek. Les modes 1/2 contrôlent les trois périodes Go avant chaque requête ;
 un épuisement les rend rouges et invalides sans repli gratuit. Les modes 3/4
 ne consultent jamais quota ni solde, même entre paliers ; ils affichent
@@ -207,18 +206,19 @@ Les fichiers existants sont préservés jusqu'à publication ou nouvelle réussi
 les fichiers invalides ne sont pas écrasés. Le schéma 2 n'est pas lisible par
 l'ancien évaluateur : préserver une copie de ses données avant retour de version.
 
-Les routes et fournisseurs de chaque section sont conservés. Les deux
-catalogues OpenCode utilisent la clé du compte associé au mode uniquement sur l'origine
+Les routes et fournisseurs de chaque section sont conservés. Les candidats
+OpenCode Go utilisent la clé du compte associé au mode uniquement sur l'origine
 HTTPS OpenCode validée, un User-Agent PLLM et une session stable. Une restriction
 de client natif ou un refus de clé reste explicite ; le testeur ne fabrique pas
 une identité native et ne crée pas de secret. La configuration OpenCode reste
 inchangée. L'état historique accepte `opencode` pour les anciens 1/2 et les gratuits 3/4 ;
-les candidats courants 1/2 restent exclusivement payants Go.
+les candidats courants 1/2 restent exclusivement payants Go et 3/4 gratuits Go,
+y compris lorsque les catalogues ou historiques contiennent opencode.
 
 Les tests déterminent l'admissibilité. Les payants 1/2/5 sont essayés par coût
 moyen TFL croissant : moyenne des prix d'entrée/sortie hors pointe Go ou de
 base OpenRouter. À prix égal, conserver l'ordre TFL stable. Les gratuits 3/4
-sont essayés dans l'ordre TFL Go puis général. Dans chaque mode, retenir le
+sont essayés dans l'ordre TFL Go exclusivement. Dans chaque mode, retenir le
 premier candidat conforme et ne pas tester les suivants ; après un échec,
 essayer le suivant sous réserve des contrôles bloquants. Mode6 garde son
 unique candidat direct sans tarif inventé. Les forçages de rang conservent
@@ -228,7 +228,7 @@ prix/provenances dans model_source. Les moyennes décimales égales conservent
 leur égalité sans artefact d'addition binaire ; un prix non vérifiable reste
 exclu et aucun prix antérieur n'est hérité. Le contexte d'entrée ≥1M est une
 capacité TFL vérifiée ; le test borné n'envoie pas un million de tokens.
-Go/général comptent la sortie raisonnement+réponse ; OpenRouter/DeepSeek la
+Go comptent la sortie raisonnement+réponse ; OpenRouter/DeepSeek la
 réponse seule. Le protocole 8 divise ce comptage par la durée complète non
 arrondie de la requête, attente et TTFT inclus. Aucun premier token n'est
 soustrait. Une réponse complète en un bloc reste mesurable ; les durées ou
@@ -264,9 +264,9 @@ scripts/performance.py embarque le même moteur dans les quatre distributions
 PLLM/TFL : seuils, gratuité vérifiable, paramètres et mesure streaming. Les
 plugins restent autonomes et leurs paquets isolés contiennent ce module.
 Les dépendances réseau/horloge sont injectées dans le parseur pour les tests.
-TFL teste tous les gratuits structurellement admissibles des trois catalogues,
+TFL teste tous les gratuits structurellement admissibles des deux catalogues,
 sans appel de quota, crédit ou solde. Il utilise la clé Go de sa politique
-pour Go/général et la clé OpenRouter existante (environnement, sinon trousseau
+pour Go et la clé OpenRouter existante (environnement, sinon trousseau
 historique du mode 5). Les valeurs restent en mémoire et hors des sorties.
 Les gratuits échoués sont retirés de models et conservés dans excluded_models
 et free_performance_results avec critères, dates, niveaux et tentatives.
@@ -387,26 +387,18 @@ documentaire d'un appel réel. `tests/test_tfl_go_metadata.py` couvre ces cas
 sur les deux distributions et vérifie la lecture des métadonnées par PLLM,
 sans quota ni benchmark.
 
-Le catalogue général est collecté séparément par GET public sur
-`https://opencode.ai/zen/v1/models`, sans Authorization ni clé Go. Ses tarifs
-proviennent de `https://opencode.ai/v2/docs/console/models/` et ses métadonnées
-du fournisseur models.dev `opencode`. Les collecteurs communs reçoivent
-explicitement le catalogue, son API et ses sources ; les deux sections ne
-partagent jamais leurs prix, contextes ou routes pour un même ID.
-La section JSON `opencode` s'ajoute à `opencode_go` et `openrouter`, dans cet
-ordre JSON ; le rapport affiche seulement Go puis OpenRouter, huit colonnes chacun. Contexte ≥ 1M, moyenne
-entre zéro et 0,50 USD/M inclus, modalités et blacklist sont conservés. Pour
-le catalogue général, la moyenne maximale des variantes publiées sert de
-référence ; Go garde le hors pointe. Les prix généraux portent les champs
-`input`, `output`, `average` dans `reference_pricing_usd_per_million_tokens`.
-Les sources, dates, variantes et exclusions restent auditables. L'échec d'une
-collecte indispensable bloque toute publication partielle. Les consommateurs
-PLLM lisent leurs sections Go/OpenRouter et utilisent `opencode` pour les
-gratuits des modes 3/4, sans emprunt de tarif ni de route entre sections.
-`tests/test_tfl_opencode_catalog.py` vérifie séparation, bornes, deux tableaux fournisseurs,
-exclusions des variantes gratuites 200K, erreurs, sélections vides et lecture
-par PLLM. `tests/test_free_performance.py` couvre aussi chaque section vidée
-par les essais gratuits et les trois sections vides après qualification.
+TFL collecte exclusivement Go et OpenRouter. Les collecteurs historiques
+OpenCode général ne sont plus appelés ; aucun modèle général, investigation,
+essai ou section opencode n'est publié. models.dev reste la source des seules
+métadonnées opencode-go utilisées pour Go. Les helpers de lecture historiques
+restent isolés et ne participent pas au parcours main.
+PLLM ne consomme que opencode_go pour les modes 1 à 4 : payants en 1/2,
+gratuits en 3/4. Une ancienne section opencode, même admissible, malformée ou
+seule disponible, n'est jamais un repli ; les rangs forcés restent bornés à Go.
+Les tests test_tfl_opencode_catalog.py et test_pllm_six_modes.py couvrent la
+publication à deux sections et l'absence d'appels généraux, y compris anciens
+résultats sélectionnés. Les sections Go/OpenRouter valides mais vides restent
+publiables avec leur état et leurs exclusions. Les seuils restent conservés.
 
 OpenRouter conserve la collecte `pricing.prompt/completion` et le classement
 sur les prix API de base, avec conversion par million. Les caches et les
@@ -559,7 +551,7 @@ fournisseur et reste préservée. LM est l'unique liste noire ; toutes les
 entrées, y compris muse-spark, sont retirables. Le module est identique dans
 les six distributions LM/TFL/PLLM, sans dépendance entre plugins installés.
 
-TFL retire les interdits avant tri et tests gratuits dans ses trois sections,
+TFL retire les interdits avant tri et tests gratuits dans ses deux sections,
 avec cause dans excluded_models et politique dans lm_blacklist.
 PLLM filtre aussi ses sélecteurs, replis, mode6 et frontières de génération,
 y compris un catalogue ancien ou un succès mémorisé. Les forçages interdits
@@ -656,9 +648,11 @@ filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
 publiée explicitement sans réintégrer de modèle exclu.
 
 
-## Contrat TFL/PLLM 0.7.11 et conversion OpenRouter
+## Contrat TFL/PLLM 0.7.12 et conversion OpenRouter
 
-La section JSON opencode reste collectée pour PLLM 3/4 ; son tableau est retiré.
+TFL ne collecte ni ne publie plus OpenCode général. Le JSON contient seulement
+opencode_go et openrouter. PLLM 1/2 ne sélectionne que les payants Go et 3/4
+les gratuits Go, même si un ancien catalogue ou historique contient opencode.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
 puis les essais gratuits ayant une preuve HIGH/XHIGH. Aucun modèle exclu
 pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
@@ -669,24 +663,24 @@ prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
 publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
 et à la frontière de génération, y compris pour les anciens catalogues et
 les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
-Go et général gardent 0,50 USD/M. Les capacités absentes peuvent vider une
+Go garde 0,50 USD/M. Les capacités absentes peuvent vider une
 section sans bloquer les autres collectes ni la publication. Chaque section
 conserve models, compteurs, sources et exclusions, avec selection_status
 (available ou empty) et exclusion_summary (motif vers nombre). Les tableaux
 vides gardent huit colonnes, annoncent « Aucun modèle admissible » et donnent
 la synthèse des exclusions, sans ligne de modèle fictive. Le taux BCE daté
-reste affiché même si OpenRouter est vide. Trois sélections vides issues de
+reste affiché même si OpenRouter est vide. Deux sélections vides issues de
 collectes valides produisent des fichiers frais et un code zéro ; aucune
 qualification historique n'est reprise. Les erreurs réelles restent bloquantes.
-Le planning est inchangé : son contrôle exige encore trois listes models non
-vides avant PLLM. Les tests de cette release sont hors ligne, sans mise à jour
+Le planning conserve ses horaires et gardes ; son contrôle exige les deux
+listes models Go/OpenRouter non vides avant PLLM, sans exiger opencode. Les tests de cette release sont hors ligne, sans mise à jour
 de profil, activation du planning ni benchmark réel.
 
 ## Investigation des métadonnées
 
 model_evidence.py est identique dans les quatre paquets TFL/PLLM. Le guide
 references/model-evidence.md définit la recherche obligatoire du LLM lorsque
-le contexte ou l'effort est invérifiable pour Go, OpenCode général ou
+le contexte ou l'effort est invérifiable pour Go ou
 OpenRouter. Le registre de référence TFL est complété par
 <répertoire-du-rapport>/model-evidence.json : fournisseur, ID exact, champ,
 protocole, conclusion, sources officielles HTTPS, dates et empreintes SHA-256.
@@ -699,6 +693,6 @@ Le JSON conserve model_investigations et investigation_status. Un statut
 required laisse le rapport provisoire et exige l'analyse de l'agent avant
 restitution définitive ou un blocage explicite. Une investigation complète
 sans contexte vérifiable exclut le modèle, sans inventer de limite.
-tests/test_model_evidence.py couvre les trois catalogues, les conclusions,
+tests/test_model_evidence.py couvre les deux catalogues, les conclusions,
 les sources changées, le mapping MiMo et le recontrôle PLLM ; les scénarios
 de déploiement isolé incluent désormais ce module dans chaque paquet.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Générer le rapport TFL : OpenCode Go, catalogue général OpenCode, OpenRouter."""
+"""Générer le rapport TFL : OpenCode Go puis OpenRouter."""
 
 from __future__ import annotations
 
@@ -1168,14 +1168,6 @@ def main() -> int:
             lambda payload: build_rows(payload, go_metadata, go_pricing, blacklisted_models=blacklisted_models),
             opencode_payload, go_metadata, 'opencode_go', resolver)
         investigations.extend(findings)
-        general_payload = fetch_opencode_models(args.timeout)
-        general_metadata = fetch_opencode_metadata(args.timeout)
-        general_pricing = fetch_opencode_pricing(args.timeout)
-        general_rows, general_excluded, findings = build_investigated(
-            lambda payload: build_rows(payload, general_metadata, general_pricing, general_catalog=True,
-                                       blacklisted_models=blacklisted_models),
-            general_payload, general_metadata, 'opencode', resolver)
-        investigations.extend(findings)
         openrouter_payload = fetch_openrouter_models(openrouter_key, args.timeout)
         cost_exchange_rates = performance.fetch_eur_rates(timeout=args.timeout)
         openrouter_rows, openrouter_excluded, findings = build_investigated(
@@ -1184,7 +1176,6 @@ def main() -> int:
         investigations.extend(findings)
         audit = []
         for rows, payload, metadata in ((opencode_rows, opencode_payload, go_metadata),
-                                        (general_rows, general_payload, general_metadata),
                                         (openrouter_rows, openrouter_payload, {})):
             raw_models = {row['id']: row for row in payload['data']}
             for row in rows:
@@ -1196,7 +1187,6 @@ def main() -> int:
             except (OSError, subprocess.SubprocessError):
                 openrouter_key = ''
         opencode_rows = qualify_free_models(opencode_rows, opencode_excluded, 'opencode_go', api_key, audit)
-        general_rows = qualify_free_models(general_rows, general_excluded, 'opencode', api_key, audit)
         openrouter_rows = qualify_free_models(openrouter_rows, openrouter_excluded, 'openrouter', openrouter_key or '', audit)
 
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, RuntimeError, subprocess.SubprocessError) as exc:
@@ -1235,20 +1225,6 @@ def main() -> int:
         "models": openrouter_rows,
         **selection_metadata(openrouter_rows, openrouter_excluded),
     }
-    general_catalog = {
-        "source_api": OPENCODE_API_URL,
-        "reference_source": OPENCODE_SOURCE_URL,
-        "pricing_reference": general_pricing,
-        "metadata_provider": "opencode",
-        "model_metadata_source": general_metadata.get("source", CONTEXT_METADATA_URL),
-        "model_metadata_retrieved_at": general_metadata.get("retrieved_at"),
-        "selection": "live-api-context-cost-modalities",
-        "source_model_count": len(general_payload["data"]),
-        "excluded_model_count": len(general_excluded),
-        "excluded_models": general_excluded,
-        "models": general_rows,
-        **selection_metadata(general_rows, general_excluded),
-    }
     catalog = {
         "schema_version": 1,
         "measurement_protocol_version": performance.MEASUREMENT_PROTOCOL_VERSION,
@@ -1259,7 +1235,7 @@ def main() -> int:
         "model_investigations": investigations,
         "investigation_status": "required" if any(item['status'] == 'required' for item in investigations) else "complete",
         "generated_at": generated_at,
-        "order": ["opencode_go", "opencode", "openrouter"],
+        "order": ["opencode_go", "openrouter"],
         "report_order": ["opencode_go", "openrouter"],
         "common_columns": ["rank", "model_id", "context", "output", "input_price", "output_price", "average_cost", "cost_color"],
         "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS,
@@ -1268,7 +1244,6 @@ def main() -> int:
                     "required_reasoning_efforts": ["high", "xhigh"]},
         "lm_blacklist": {"model_ids": list(blacklisted_models)},
         "opencode_go": opencode_catalog,
-        "opencode": general_catalog,
         "openrouter": openrouter_catalog,
     }
     output_dir = args.output_dir

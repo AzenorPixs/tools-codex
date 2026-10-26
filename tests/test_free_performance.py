@@ -194,8 +194,7 @@ class FreePerformanceTests(unittest.TestCase):
                         raise failure(429,{'error':{'code':'FreeUsageLimitError','message':'private-body'}})
                     self.assertEqual(key,'router-offline' if model['provider']=='openrouter' else 'go-offline')
                     return self.successful_benchmark(model,key,budget,metadata,session_id)
-                go=[candidate('pass'),candidate('paid',free=False)]
-                general=[candidate('fail','opencode'),candidate('paid-general','opencode',False)]
+                go=[candidate('pass'),candidate('fail'),candidate('paid',free=False)]
                 router=[candidate('router','openrouter')]
                 with ExitStack() as stack:
                     stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
@@ -207,15 +206,16 @@ class FreePerformanceTests(unittest.TestCase):
                         stack.enter_context(patch.object(module,name,return_value={'data':[]}))
                     for name in ('fetch_go_metadata','fetch_opencode_metadata','fetch_go_pricing','fetch_opencode_pricing'):
                         stack.enter_context(patch.object(module,name,return_value={}))
-                    stack.enter_context(patch.object(module,'build_rows',side_effect=[(go,[]),(general,[])]))
+                    stack.enter_context(patch.object(module,'build_rows',return_value=(go,[])))
                     stack.enter_context(patch.object(module,'build_openrouter_rows',return_value=(router,[])))
                     stack.enter_context(patch.object(module.performance,'benchmark',side_effect=bench))
                     stack.enter_context(patch.object(module.performance,'request',side_effect=AssertionError('Réseau interdit')))
                     stack.enter_context(patch('sys.stdout',new_callable=io.StringIO))
                     self.assertEqual(module.main(),0)
                 data=json.loads((output/'tfl.json').read_text())
-                self.assertEqual([r['id'] for r in data['opencode']['models']],['paid-general'])
-                self.assertEqual(data['opencode']['excluded_models'][0]['id'],'fail')
+                self.assertNotIn('opencode',data)
+                self.assertEqual([r['id'] for r in data['opencode_go']['models']],['pass','paid'])
+                self.assertEqual(data['opencode_go']['excluded_models'][0]['id'],'fail')
                 self.assertEqual(len(data['free_performance_results']),3)
                 self.assertEqual(data['measurement_protocol_version'],8)
                 self.assertEqual(data['throughput_metric'],'request_average_v1')
@@ -287,7 +287,7 @@ class FreePerformanceTests(unittest.TestCase):
     def test_tfl_sections_emptied_by_free_tests_are_published_without_blocking_others(self):
         for script in TFL:
             module=load_script(script)
-            for failed_ids in (('free',), ('general',), ('router',), ('free', 'general', 'router')):
+            for failed_ids in (('free',), ('router',), ('free', 'router')):
                 with self.subTest(script=script, failed_ids=failed_ids), tempfile.TemporaryDirectory(prefix='free-empty-',dir=ROOT/'tests') as directory:
                     output=Path(directory)
                     for name in ('tfl.json','tfl.md'):
@@ -306,21 +306,22 @@ class FreePerformanceTests(unittest.TestCase):
                             stack.enter_context(patch.object(module,name,return_value={'data':[]}))
                         for name in ('fetch_go_metadata','fetch_opencode_metadata','fetch_go_pricing','fetch_opencode_pricing'):
                             stack.enter_context(patch.object(module,name,return_value={}))
-                        stack.enter_context(patch.object(module,'build_rows',side_effect=[([candidate('free')],[]),([candidate('general','opencode')],[])]))
+                        stack.enter_context(patch.object(module,'build_rows',return_value=([candidate('free')],[])))
                         stack.enter_context(patch.object(module,'build_openrouter_rows',return_value=([candidate('router','openrouter')],[])))
                         benchmark=stack.enter_context(patch.object(module.performance,'benchmark',side_effect=bench))
                         stdout=stack.enter_context(patch('sys.stdout',new_callable=io.StringIO))
                         self.assertEqual(module.main(),0)
-                        self.assertEqual(benchmark.call_count,3)
+                        self.assertEqual(benchmark.call_count,2)
                     catalog=json.loads((output/'tfl.json').read_text())
-                    for section,model_id in (('opencode_go','free'),('opencode','general'),('openrouter','router')):
+                    for section,model_id in (('opencode_go','free'),('openrouter','router')):
                         current=catalog[section]
                         self.assertEqual(current['selection_status'],'empty' if model_id in failed_ids else 'available')
                         self.assertEqual(bool(current['models']),model_id not in failed_ids)
                         if model_id in failed_ids:
                             self.assertEqual(current['excluded_models'][0]['id'],model_id)
                             self.assertEqual(sum(current['exclusion_summary'].values()),1)
-                    self.assertEqual(len(catalog['free_performance_results']),3)
+                    self.assertEqual(len(catalog['free_performance_results']),2)
+                    self.assertNotIn('opencode',catalog)
                     self.assertIn('HTTP 429',stdout.getvalue())
                     self.assertNotIn('preserved',(output/'tfl.md').read_text())
 

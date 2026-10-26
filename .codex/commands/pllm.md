@@ -17,7 +17,7 @@ voisin du skill reste utilisé.
 Exécute la commande depuis le répertoire du skill PLLM installé. Ne remplace pas cette exécution par une lecture des anciens fichiers `data/pllm-current.*`. Le script contrôle les ressources applicables avant les tests (aucun quota en 3/4), publie les résultats et ne doit jamais afficher de secret.
 
 Modes 1/2 : payants Go seulement ; quota épuisé → rouge et invalide sans repli.
-Modes 3/4 : gratuits vérifiés Go puis OpenCode général avec les comptes de 1/2,
+Modes 3/4 : gratuits vérifiés Go exclusivement avec les comptes de 1/2,
 sans aucun appel de quota ou solde, contexte ≥1M, réponse complète, TTFT <30 s
 et débit >20 tokens/s. Modes 5/6 : anciens OpenRouter/DeepSeek, contrôles et
 seuils payants conservés (<90 s, >15 tokens/s comme 1/2), gratuits à <30 s et >20 tokens/s. Mode5 reste exclusivement payant ; un crédit épuisé le rend invalide sans repli gratuit. Les forçages OpenRouter 31–33 deviennent
@@ -26,7 +26,7 @@ Tous les tests demandent HIGH, puis XHIGH uniquement si HIGH est indisponible
 et XHIGH pris en charge ; aucun repli inférieur.
 Essayer les payants 1/2/5 par coût moyen TFL croissant (hors pointe Go,
 prix de base OpenRouter), avec ordre TFL stable à prix égal. Essayer les
-gratuits 3/4 dans l'ordre TFL Go puis général. Retenir le premier succès aux
+gratuits 3/4 dans l'ordre TFL Go exclusivement. Retenir le premier succès aux
 tests actuels et arrêter le parcours du mode ; après échec, essayer le suivant
 admissible avec ses propres contrôles. Le contexte ≥1M est une capacité
 d'entrée vérifiée, sans requête d'un million de tokens. Les paliers, seuils
@@ -61,3 +61,7 @@ une analyse et une recherche du LLM selon le protocole de preuve du skill,
 quel que soit le fournisseur. Un contexte encore invérifiable après
 investigation exclut le modèle. Respecter la restitution exacte du script.
 LM est l'unique liste noire et toutes ses entrées sont retirables.
+
+Les modes 1/2 sont exclusivement payants Go et 3/4 exclusivement gratuits Go ;
+une ancienne section opencode ou une sélection historique générale ne fournit
+aucun candidat, y compris pour les rangs forcés.

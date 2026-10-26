@@ -39,7 +39,7 @@ Un historique invalide SHALL produire un diagnostic et SHALL NOT être écrasé.
 - **THEN** le fichier reste préservé et la publication est arrêtée
 
 ### Requirement: Politiques et sélection explicites
-PLLM SHALL garder six priorités : payants Go 1/2, gratuits Go/général 3/4,
+PLLM SHALL garder six priorités : payants Go 1/2, gratuits Go 3/4,
 payants OpenRouter 5 et DeepSeek 6. Les comptes et références historiques
 SHALL être conservés. Les modèles 1 à 5 SHALL provenir de TFL avec route,
 fournisseur et date. HIGH SHALL être le défaut, avec repli XHIGH pris en
@@ -177,14 +177,14 @@ forçage, le parcours SHALL s'arrêter au premier succès selon l'ordre du mode.
 Les mesures SHALL utiliser une horloge monotone. Le TTFT SHALL porter sur
 le premier contenu visible. Le débit SHALL être le comptage de sortie divisé
 par la durée totale non arrondie de la requête, TTFT inclus : global pour
-Go/général, réponse seule pour OpenRouter/DeepSeek. Une réponse complète en
+Go, réponse seule pour OpenRouter/DeepSeek. Une réponse complète en
 un bloc SHALL être mesurable. Durée ou comptage invalides SHALL produire
 une mesure indisponible. Le JSON SHALL tracer profil, formule et durées.
 
 #### Scenario: Deux catalogues OpenCode
-- **WHEN** les candidats gratuits Go et OpenCode général sont comparés
-- **THEN** leurs débits utilisent la même portée raisonnement et réponse
-- **AND** leurs fournisseurs, routes et comptages restent distincts
+- **WHEN** les candidats Go payants ou gratuits sont mesurés
+- **THEN** leurs débits comptent raisonnement et réponse sur la durée complète
+- **AND** aucun candidat général ne peut être mesuré depuis un ancien catalogue
 
 #### Scenario: Mesures provenant de fournisseurs différents
 - **WHEN** des mesures OpenCode et OpenRouter sont restituées
@@ -312,7 +312,7 @@ et SHALL NOT être sélectionnés depuis l'historique.
 Un forçage SHALL limiter l'évaluation au mode et au candidat demandés.
 Les commandes 1 à 6 SHALL cibler le premier candidat admissible de ce mode.
 11–13 et 21–23 SHALL garder les rangs bruts Go ; 31–33 et 41–43 SHALL cibler
-les rangs de la liste gratuite admissible Go puis général ; 51–53 SHALL
+les rangs de la liste gratuite admissible Go ; 51–53 SHALL
 reprendre les rangs bruts OpenRouter. 6 SHALL garder DeepSeek direct. Un
 rang indisponible ou incompatible SHALL échouer sans substitution.
 
@@ -358,7 +358,7 @@ réconcilier la session et ses autorisations avant de poursuivre.
 
 ### Requirement: Catégories payante et gratuite exclusives
 Les modes 1/2 SHALL examiner exclusivement les payants Go. Les modes 3/4
-SHALL examiner exclusivement les gratuits Go puis OpenCode général, quelle que
+SHALL examiner exclusivement les gratuits Go, quelle que
 soit la disponibilité du compte associé. Mode5 SHALL examiner exclusivement
 les payants OpenRouter avec crédit positif. Mode6 SHALL conserver DeepSeek
 direct. Les modes 1/2/5 SHALL NOT basculer vers un candidat gratuit.
@@ -386,6 +386,16 @@ direct. Les modes 1/2/5 SHALL NOT basculer vers un candidat gratuit.
 #### Scenario: Crédit épuisé et modèle payant au nom free
 - **WHEN** le solde OpenRouter est nul et un nom free porte un prix non nul
 - **THEN** le mode5 reste invalide sans génération payante ou gratuite
+
+#### Scenario: Ancien catalogue général payant
+- **WHEN** un ancien catalogue contient des payants généraux admissibles, avec ou sans candidat Go
+- **THEN** les modes 1/2, forcés ou ordinaires, ne sélectionnent et ne testent que les payants opencode_go
+- **AND** aucun résultat historique général ne remplace un candidat Go absent ou invalide
+
+#### Scenario: Ancien catalogue général gratuit
+- **WHEN** un ancien catalogue contient des gratuits généraux admissibles, avec ou sans candidat Go
+- **THEN** les modes 3/4, forcés ou ordinaires, ne sélectionnent et ne testent que les gratuits opencode_go
+- **AND** l'échec ou l'absence des gratuits Go ne déclenche aucun repli général
 
 ### Requirement: Gratuité vérifiable et retour au payant
 La gratuité des modes 3/4 SHALL exiger prix publiés d'entrée et de sortie
@@ -535,18 +545,18 @@ sans héritage périmé. Mode6 SHALL garder son candidat unique sans tarif inven
 
 ### Requirement: Classement des gratuits par performances
 Les modes 3/4 SHALL parcourir les gratuits admissibles dans l'ordre TFL,
-Go avant OpenCode général, et SHALL retenir le premier succès aux tests
+Go exclusivement, et SHALL retenir le premier succès aux tests
 gratuits actuels. Ils SHALL NOT tester les candidats suivants pour chercher
 un débit supérieur. Après échec d'un gratuit, le suivant SHALL conserver
 ses propres mesures et les seuils stricts <30 s et >20 tokens/s.
 
 #### Scenario: Premier gratuit valide
 - **WHEN** le premier gratuit Go satisfait tous les critères
-- **THEN** il est retenu et aucun autre gratuit Go ou général n'est testé
+- **THEN** il est retenu et aucun autre gratuit Go n'est testé
 
 #### Scenario: Repli vers le gratuit suivant
-- **WHEN** les gratuits Go échouent sans blocage d'authentification et un gratuit général réussit
-- **THEN** le premier gratuit général conforme est retenu sans contrôle de quota ni de solde
+- **WHEN** un gratuit Go échoue sans blocage d'authentification et le gratuit Go suivant réussit
+- **THEN** le premier gratuit Go conforme est retenu sans contrôle de quota ni de solde
 
 #### Scenario: Gratuit plus performant
 - **WHEN** un gratuit conforme précède un autre candidat potentiellement plus performant
@@ -645,8 +655,8 @@ SHALL rester inchangés.
 - **THEN** il est exclu avant génération même si son ancien catalogue le retenait
 
 #### Scenario: Gratuit général après retrait du tableau
-- **WHEN** les modes 3/4 lisent un catalogue TFL publié sans tableau général
-- **THEN** ils peuvent toujours consommer les gratuits opencode admissibles du JSON
+- **WHEN** les modes 3/4 lisent un ancien catalogue contenant opencode
+- **THEN** ils ignorent cette section et ne consomment que les gratuits opencode_go admissibles
 
 ### Requirement: Consommation des preuves et équivalences documentées
 PLLM SHALL préserver les preuves TFL par fournisseur, modèle et protocole.

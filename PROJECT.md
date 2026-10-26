@@ -69,7 +69,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Plugin | `tcu` | Met à jour les briques installées depuis marketplace et GitHub. |
 | Plugin | `cm` | Distribue le catalogue des commandes maison, invocable avec `$cm`. |
 | Plugin | `pllm` | Évalue une politique de modèles LLM et l'applique à une session OpenCode autorisée. |
-| Plugin | `tfl` | Compare Go puis OpenRouter ; conserve le catalogue général dans le JSON. |
+| Plugin | `tfl` | Compare exclusivement Go puis OpenRouter ; OpenCode général est retiré. |
 | Skill | `cgpt` | Affiche les quotas Codex disponibles. |
 | Skill | `coding-session-statistics` | Produit un bilan auditable d'une session de codage ou de pilotage. |
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
@@ -135,7 +135,7 @@ anciens catalogues ou succès mémorisés. Le stockage hors cache est conservé
 par TCU. LM constitue l'unique liste noire, sans exclusion permanente intégrée.
 
 Une métadonnée d'effort ou de contexte inconnue impose une analyse et une
-recherche du LLM dans les sources officielles pour les trois catalogues.
+recherche du LLM dans les sources officielles pour les deux catalogues.
 Les valeurs HIGH/XHIGH officiellement acceptées restent admissibles même
 équivalentes ; leurs preuves et paramètres sont tracés. Un contexte encore
 invérifiable après investigation exclut le modèle.

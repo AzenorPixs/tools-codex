@@ -1,13 +1,14 @@
 ---
 name: tfl
-description: Générer un rapport autonome des LLM OpenCode Go puis OpenRouter, avec collecte générale conservée dans le JSON, avec filtres de contexte, coût, multimédia, blacklist et code couleur communs. Utiliser pour /tfl, TFL ou « Test Fournisseur LLM ».
+description: Générer un rapport autonome des LLM OpenCode Go puis OpenRouter, avec filtres de contexte, coût, multimédia, blacklist et code couleur communs. Utiliser pour /tfl, TFL ou « Test Fournisseur LLM ».
 ---
 
 # TFL — Test Fournisseur LLM
 
 Produire un rapport unifié en français avec deux tableaux fournisseurs,
-OpenCode Go puis OpenRouter. Collecter aussi le catalogue général OpenCode
-dans le JSON pour les modes gratuits PLLM 3/4, sans tableau fournisseur général.
+OpenCode Go puis OpenRouter. OpenCode général est retiré : ne collecter ni
+ses modèles, ni ses tarifs, ni ses métadonnées ; ne pas le tester ou le lister.
+Le JSON contient uniquement les sections fournisseurs opencode_go et openrouter.
 
 TFL est autonome : il interroge directement les catalogues et sources officielles, applique ses propres
 règles et ne dépend pas des skills ou plugins TOCG/TLOLC.
@@ -15,7 +16,7 @@ règles et ne dépend pas des skills ou plugins TOCG/TLOLC.
 ## Exécution
 
 L’exécution de TFL est obligatoirement effectuée hors sandbox, car le générateur
-doit accéder aux APIs OpenCode Go, OpenCode général et OpenRouter. Dans Codex, lancer la commande
+doit accéder aux APIs OpenCode Go et OpenRouter. Dans Codex, lancer la commande
 avec une exécution autorisée hors sandbox (par exemple
 `sandbox_permissions=require_escalated`). Cette règle s’applique aux invocations
 directes, aux commandes `/tfl` et à tout plugin qui charge cette skill. Ne pas
@@ -131,29 +132,6 @@ Pour `responses`, le corps utilise `input`, `max_output_tokens`, `stream=true`,
 `x-opencode-session`. Une route absente ou inconnue doit être signalée et ne
 doit pas être remplacée silencieusement par une autre.
 
-## Règles du catalogue général OpenCode
-
-- Disponibilité : `https://opencode.ai/zen/v1/models`, par GET public sans
-  Authorization ni emprunt du secret Go.
-- Tarifs : `https://opencode.ai/v2/docs/console/models/`, collectés à chaque
-  exécution, sans table statique ni repli sur un ancien catalogue.
-- Métadonnées : fournisseur `opencode` de `https://models.dev/api.json`,
-  indépendant de `opencode-go` pour contexte, modalités et transport.
-- Contexte vérifié ≥ 1M tokens ; moyenne des prix d'entrée/sortie comprise
-  entre zéro et 0,50 USD/M inclus. Le prix de classement est le maximum des
-  moyennes des variantes publiées, paliers et périodes compris ; les prix
-  de cache restent séparés. Go conserve sa référence hors pointe.
-- Les sorties audio/vidéo/speech/sound et `muse-spark-1.2-contributor` sont
-  exclues. Une entrée multimodale reste admissible ; l'inconnu reste explicite.
-- La section JSON `opencode` conserve sources, dates, variantes, modèles et
-  exclusions. Un même ID dans Go et le catalogue général garde ses données
-  propres dans chaque section, sans emprunt de prix, contexte ou route.
-
-Les variantes gratuites de contexte inférieur à 1M restent exclues. Le
-catalogue général possède son propre classement dans le JSON, sans tableau fournisseur.
-Les sections `opencode_go` et `openrouter` restent compatibles avec PLLM ;
-l'ajout du catalogue général ne change pas ses politiques de sélection.
-
 ## Règles OpenRouter
 
 - Source API : `https://openrouter.ai/api/v1/models`.
@@ -183,11 +161,11 @@ finis ou débordants ne sont pas exploitables.
 
 ## Robustesse et présentation
 
-TFL affiche OpenCode Go puis OpenRouter ; le général reste dans le JSON. Une
+TFL affiche OpenCode Go puis OpenRouter, ses deux seuls catalogues. Une
 erreur d’authentification, de réseau, de JSON ou de données indispensables fait
 échouer la génération plutôt que de produire un classement partiel silencieux.
 Une collecte valide sans modèle admissible reste un résultat publiable : les
-autres catalogues continuent, même si les trois sélections sont vides. Chaque
+autres catalogues continuent, même si les deux sélections sont vides. Chaque
 tableau fournisseur garde ses huit colonnes et affiche « Aucun modèle
 admissible » avec une synthèse des exclusions lorsqu'il est vide. Le JSON
 conserve models vide, selection_status (available ou empty), exclusion_summary
@@ -215,11 +193,11 @@ source à utiliser par `/pllm` pour son modèle OpenRouter économique, via
 
 ## Qualification obligatoire des gratuits
 
-Pour les trois catalogues, vérifier les prix d'entrée/sortie nuls et les
+Pour les deux catalogues, vérifier les prix d'entrée/sortie nuls et les
 variantes compatibles, contexte ≥1M et les filtres existants. Tester chaque
 candidat gratuit avec scripts/performance.py, moteur local embarqué identique
 à PLLM. Exiger réponse complète, comptage fiable, TTFT <30 s ET débit >20
- tokens/s. Le débit Go/général inclut raisonnement et réponse ; OpenRouter
+ tokens/s. Le débit Go inclut raisonnement et réponse ; OpenRouter
 utilise la réponse seule. Aucune mesure commerciale ou historique ne valide
 la collecte courante.
 
@@ -231,8 +209,8 @@ permet au plus un passage XHIGH annoncé, avec recalcul des paliers ; 401/403/42
 arrêtent le candidat. Les paliers sont 1024, 2048, 4096, 8192, 120 s par requête,
 arrêt au premier succès. Le niveau effectif et les paramètres sont tracés.
 
-Les tests gratuits n'appellent jamais quota, crédit ou solde. Go et général
-utilisent la clé de la politique TFL sélectionnée. Pour les générations
+Les tests gratuits n'appellent jamais quota, crédit ou solde. Go
+utilise la clé de la politique TFL sélectionnée. Pour les générations
 OpenRouter, utiliser la clé d'environnement existante, sinon le trousseau
 historique service=pllm/policy=mode3/provider=openrouter du compte OpenRouter,
 sans valeur transmise au modèle, en argument, dans les rapports ou journaux.
@@ -253,7 +231,7 @@ compte utilisé avec une indisponibilité permanente du fournisseur.
 
 ## Débit moyen — protocole 8
 
-Utiliser la même mesure que PLLM : tokens de sortie Go/général, ou tokens de
+Utiliser la même mesure que PLLM : tokens de sortie Go, ou tokens de
 réponse seuls OpenRouter, divisés par la durée complète non arrondie de la
 requête. L'attente, le TTFT et le raisonnement sont inclus dans cette durée.
 Il s'agit d'une moyenne côté client, sans extrapoler une rafale de fragments
@@ -297,8 +275,9 @@ puis PLLM normal ; un quota nul ou inconnu bloque l'étape. PLLM reçoit le
 catalogue fraîchement publié, sans repli sur un ancien fichier en cas d'échec.
 Les passages manqués ne sont pas rattrapés. Cette coordination ne change ni
 les filtres TFL, ni les seuils gratuits, ni LM, ni les invocations manuelles.
-Le contrôle du planning reste inchangé : une section models vide dans un
-rapport manuel valide empêche encore le lancement planifié de PLLM.
+Le contrôle du planning reste inchangé : une section Go ou OpenRouter models vide dans un
+rapport manuel valide empêche encore le lancement planifié de PLLM ; aucune
+section générale opencode n’est exigée.
 
 
 ## Admission stricte HIGH/XHIGH
@@ -340,6 +319,6 @@ inclus. Une source, une date ou un taux absent, invalide ou inaccessible bloque
 la publication sans repli historique. Conserver prix natifs USD, prix EUR,
 source, date de publication et date de récupération dans le JSON. Les prix
 OpenRouter affichés sont en €/M ; le taux daté accompagne le tableau.
-Go et général gardent le plafond 0,50 USD/M. Le filtre HIGH/XHIGH s’applique
+Go garde le plafond 0,50 USD/M. Le filtre HIGH/XHIGH s’applique
 avant benchmark aux gratuits et payants ; les exclus d’effort sont absents
 de tous les tableaux mais restent dans les audits JSON.

@@ -440,7 +440,7 @@ class PricingTests(unittest.TestCase):
                     self.assertEqual(catalog['openrouter']['excluded_model_count'], 3)
                     self.assertEqual(sum(catalog['openrouter']['exclusion_summary'].values()), 3)
                     self.assertTrue(catalog['opencode_go']['models'])
-                    self.assertTrue(catalog['opencode']['models'])
+                    self.assertNotIn('opencode', catalog)
                     self.assertIn('Aucun modèle admissible.', stdout.getvalue())
                     self.assertIn('Exclusions :', stdout.getvalue())
                     self.assertNotIn('previous-report', (output / 'tfl.md').read_text())

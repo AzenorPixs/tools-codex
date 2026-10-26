@@ -25,7 +25,7 @@ Les plugins destinés à la marketplace sont actuellement :
 | `cm` | `cm` | Catalogue des commandes maison et de leurs syntaxes. |
 | `tcu` | `tcu` | Mise à jour vérifiée des briques déjà installées. |
 | `pllm` | `pllm` | Évaluation et application contrôlée d'une politique LLM. |
-| `tfl` | `tfl` | Rapport OpenCode Go, catalogue général OpenCode puis OpenRouter. |
+| `tfl` | `tfl` | Rapport OpenCode Go puis OpenRouter uniquement. |
 
 Les commandes de `.codex/commands/` et les skills autonomes de `skills/` sont
 des sources du dépôt. Leur mise à disposition ne résulte pas, à elle seule, de
@@ -126,8 +126,7 @@ python3 scripts/evaluate.py --tfl-catalog /chemin/vers/le/catalogue/tfl.json
 
 Cette option accepte le fichier produit par TFL, y compris avec `--output-dir`.
 Sans option, PLLM conserve le chemin voisin `../tfl/data/tfl.json`.
-Ce catalogue fournit les payants Go pour 1/2, les gratuits Go et OpenCode
-général pour 3/4, et OpenRouter pour 5 ; 6 conserve DeepSeek direct.
+Ce catalogue fournit les payants Go pour 1/2, les gratuits Go pour 3/4, et OpenRouter pour 5 ; 6 conserve DeepSeek direct.
 Les modes 1/2 épuisés deviennent rouges et invalides sans essai gratuit.
 Les modes 3/4 utilisent les comptes de 1/2 respectivement sans consulter de
 quota ou solde. Ils exigent prix nuls vérifiés, contexte ≥1M, réponse complète,
@@ -142,7 +141,7 @@ Un ancien évaluateur ne lit pas le schéma 2 : sauvegarder ses données avant
 un retour de version. Aucun historique invalide n'est écrasé.
 Les payants 1/2/5 sont essayés par coût moyen TFL croissant (hors pointe Go,
 prix de base OpenRouter), avec ordre TFL stable à prix égal. Les gratuits 3/4
-sont essayés dans l'ordre TFL Go puis OpenCode général. Retenir le premier
+sont essayés dans l'ordre TFL Go exclusivement. Retenir le premier
 succès aux tests actuels et ne pas tester les candidats suivants du mode.
 Après un échec, essayer le suivant admissible avec ses propres contrôles ;
 une erreur bloquante d'authentification ou de ressources arrête le mode.
@@ -188,12 +187,12 @@ pour ces résolutions. Une information inconnue reste signalée ; une
 contradiction ou une URL non sûre bloque la publication. La route documentée
 n'est pas une qualification de génération. Les tests de compatibilité avec
 PLLM ne lancent ni quotas ni benchmarks ; aucune dépendance SDK n'est installée.
-Le catalogue général ajoute un accès public à `https://opencode.ai/zen/v1/models`
-et à ses tarifs Console officiels, sans secret Go ni nouvelle dépendance.
-Les métadonnées proviennent de `opencode` dans models.dev. Les deux tableaux fournisseurs s’affichent Go puis OpenRouter, avec huit
-colonnes ; le général reste dans le JSON. Contexte ≥1M et HIGH/XHIGH vérifiable
-partout ; Go/général ≤0,50 USD/M, OpenRouter ≤0,20 EUR/M au taux BCE vérifié. Une source indispensable en échec empêche la publication.
-La section JSON `opencode` est additive ; PLLM l'utilise pour les gratuits autonomes 3/4, sans changer le classement tarifaire de TFL.
+TFL ne collecte ni ne teste plus OpenCode général. Le JSON ne publie que
+opencode_go et openrouter et le rapport affiche leurs deux tableaux, huit
+colonnes chacun, puis les essais gratuits. Contexte ≥1M et HIGH/XHIGH restent
+obligatoires ; Go ≤0,50 USD/M, OpenRouter ≤0,20 EUR/M au taux BCE vérifié.
+PLLM ignore les anciennes sections opencode pour tous les modes 1 à 4,
+y compris leurs rangs forcés. Les erreurs de sources indispensables restent bloquantes.
 
 Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.
@@ -500,9 +499,11 @@ filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
 publiée explicitement sans réintégrer de modèle exclu.
 
 
-## Contrat TFL/PLLM 0.7.11 et conversion OpenRouter
+## Contrat TFL/PLLM 0.7.12 et conversion OpenRouter
 
-La section JSON opencode reste collectée pour PLLM 3/4 ; son tableau est retiré.
+TFL ne collecte ni ne publie plus OpenCode général. Le JSON contient seulement
+opencode_go et openrouter. PLLM 1/2 ne sélectionne que les payants Go et 3/4
+les gratuits Go, même si un ancien catalogue ou historique contient opencode.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
 puis les essais gratuits ayant une preuve HIGH/XHIGH. Aucun modèle exclu
 pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
@@ -513,15 +514,15 @@ prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
 publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
 et à la frontière de génération, y compris pour les anciens catalogues et
 les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
-Go et général gardent 0,50 USD/M. Une sélection vide après filtrage ou essais
+Go garde 0,50 USD/M. Une sélection vide après filtrage ou essais
 gratuits n'empêche plus les autres collectes et leur publication. Les tableaux
 vides gardent leurs huit colonnes avec « Aucun modèle admissible » et une
 synthèse des exclusions. Le JSON ajoute selection_status (available ou empty)
-et exclusion_summary (motif vers nombre) aux trois sections et conserve les
-sources, compteurs et motifs détaillés. Même trois sélections vides valides
+et exclusion_summary (motif vers nombre) aux deux sections et conserve les
+sources, compteurs et motifs détaillés. Même deux sélections vides valides
 sont publiées avec un code zéro ; les erreurs réelles préservent les anciens
-rapports. Le planning reste inchangé et exige encore trois listes models non
-vides pour lancer PLLM. Les tests de cette release sont hors ligne, sans mise
+rapports. Le planning garde les mêmes horaires et contrôles ; il exige seulement les
+deux listes models Go/OpenRouter non vides pour lancer PLLM. Les tests de cette release sont hors ligne, sans mise
 à jour de profil, activation du planning ni benchmark réel.
 
 ## Preuves supplémentaires et investigations
@@ -532,7 +533,7 @@ reasoning_options de models.dev sont normalisés. Une acceptation officielle
 HIGH/XHIGH suffit même sans intensité distincte ; le mapping documenté MiMo
 vers thinking activé est livré sans changer l'endpoint.
 Une métadonnée de contexte ou d'effort inconnue exige une recherche du LLM
-dans les sources officielles pour les trois catalogues. Le registre du
+dans les sources officielles pour les deux catalogues. Le registre du
 répertoire de rapport, model-evidence.json, complète les preuves livrées.
 TFL vérifie leurs sources courantes ; PLLM les recontrôle avant génération.
 Le CLI seul marque investigation_status=required et le rapport provisoire ;

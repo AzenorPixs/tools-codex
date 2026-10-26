@@ -79,7 +79,14 @@ class ScheduleTests(unittest.TestCase):
             if self.bad != 'stale':
                 destination = Path(arguments[arguments.index('--output-dir') + 1]) / 'tfl.json'
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                data = {name: {'models': [{'id': 'fixture'}]} for name in ('opencode_go', 'opencode', 'openrouter')}
+                data = {name: {'models': [{'id': 'fixture'}]} for name in ('opencode_go', 'openrouter')}
+                if self.bad in ('empty_go', 'missing_go', 'empty_router', 'missing_router'):
+                    data['opencode'] = {'models': [{'id': 'old-general'}]}
+                    section = 'opencode_go' if self.bad.endswith('go') else 'openrouter'
+                    if self.bad.startswith('empty'):
+                        data[section]['models'] = []
+                    else:
+                        del data[section]
                 destination.write_text(json.dumps(data))
             code = 1 if self.bad == 'tfl' else 0
         elif 'evaluate.py' in str(arguments):
@@ -126,6 +133,14 @@ class ScheduleTests(unittest.TestCase):
         self.assertFalse(self.config.exists())
         self.assertFalse(any('evaluate.py' in str(call) for call in self.calls))
 
+    def test_old_general_section_cannot_replace_a_current_section(self):
+        self.install()
+        for cause in ('empty_go', 'missing_go', 'empty_router', 'missing_router'):
+            with self.subTest(cause=cause):
+                self.bad = cause
+                result = self.evaluate()
+                self.assertEqual(result['status'], 'catalogue_non_valide')
+                self.assertNotIn('pllm', self.events)
     def test_managed_update_preserves_foreign_units_and_reports(self):
         self.install()
         foreign = self.config / 'systemd/user/other.timer'

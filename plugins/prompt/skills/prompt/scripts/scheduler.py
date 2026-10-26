@@ -478,7 +478,7 @@ def run_refresh(home=None, config_home=None, runner=command, quota_reader=read_c
             except (OSError, ScheduleError):
                 return finish('catalogue_non_valide')
             if not all(isinstance(data.get(key), dict) and isinstance(data[key].get('models'), list)
-                       and data[key]['models'] for key in ('opencode_go', 'opencode', 'openrouter')):
+                       and data[key]['models'] for key in ('opencode_go', 'openrouter')):
                 return finish('catalogue_non_valide')
             if not activity():
                 return finish('ignore_codex_ferme', etape='pllm')

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Retirer entièrement OpenCode général du parcours TFL : disponibilité, tarifs, métadonnées, qualification gratuite et publication JSON/Markdown. Conserver les seuls catalogues Go et OpenRouter et leurs filtres.
+- Limiter PLLM 1/2 aux payants Go et 3/4 aux gratuits Go, même avec un ancien catalogue, un résultat historique général ou un rang forcé. Le planning contrôle désormais les deux sections courantes, sans changer ses horaires ni ses autres gardes.
+- Ajouter les familles inkling et inkling-small dans la liste LM utilisateur à la demande explicite du développeur ; préserver les autres entrées et les défauts distribués. L'exclusion couvre leurs variantes payantes/gratuites actuelles, sans joker fournisseur.
+- Aligner les sources, distributions, métadonnées et six plugins sur 0.7.12. Qualification hors ligne ; les installations TFL/PLLM, les anciens rapports et le timer utilisateur ne sont pas actualisés par cette livraison locale.
+
 - Corriger la lecture des niveaux reasoning_options de models.dev et accepter HIGH/XHIGH officiellement reconnus même sans intensité distincte. Livrer la preuve MiMo et son équivalence documentée vers thinking activé sur sa route Chat Completions, sans inventer d'endpoint ni qualifier ses performances.
 - Imposer aux agents l'investigation des efforts et contextes inconnus pour Go, OpenCode général et OpenRouter ; conserver conclusions, sources, dates et empreintes, vérifier les sources courantes et exclure tout contexte encore invérifiable après investigation. Le CLI marque les recherches nécessaires et son rapport provisoire.
 - Faire de LM l'unique liste noire et rendre muse-spark-1.2-contributor retirable ; préserver les listes existantes ou explicitement vides, sans migration implicite lors d'une lecture. Supprimer les anciennes métadonnées de listes permanentes du JSON TFL/PLLM.

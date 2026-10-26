@@ -155,8 +155,11 @@ class PllmFreeFallbackTests(unittest.TestCase):
                              tokens_per_second=40)
                 return True
 
-            self.run_evaluation(module, path, exhausted=True, benchmark_behavior=first_run, active=True)
-            self.assertEqual(module.load_current()['models'][2]['provider'], 'opencode')
+            historical = module.load_current()
+            historical['models'][2].update(provider='opencode', model_id='free-general', state='Valide', is_free=True)
+            current = module.ROOT / 'data/pllm-current.json'
+            current.parent.mkdir()
+            current.write_text(json.dumps(historical))
             data, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode3'})
             self.assertEqual(data['models'][2]['model_id'], 'free-go')
             self.assertTrue(all(event[0] != 'quota' for event in events))
@@ -237,7 +240,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                                                       benchmark_behavior=fail, active=True)
                 self.assertIsNone(data['selected_mode'])
                 relevant = [event for event in events if event[0] == 'benchmark' and event[1] == 'mode3']
-                self.assertEqual(len(relevant), 0 if empty else 8)
+                self.assertEqual(len(relevant), 0 if empty else 4)
                 self.assertTrue(all(event[2].startswith('free-') for event in relevant))
 
     def test_success_does_not_contact_next_candidate_with_unusable_authentication(self):
@@ -310,7 +313,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 self.assertIsNone(data['selected_mode'])
                 self.assertFalse(any(event[0] == 'benchmark' for event in events))
 
-    def test_same_id_different_catalogs_are_separate_candidates(self):
+    def test_general_same_id_cannot_replace_failed_go_candidate(self):
         for script in PLLM:
             module, path, catalog = self.workspace(script)
             catalog['opencode']['models'][0]['id'] = 'free-go'
@@ -323,8 +326,9 @@ class PllmFreeFallbackTests(unittest.TestCase):
             data, events, _ = self.run_evaluation(module, path, exhausted=True,
                                                   benchmark_behavior=behavior, active=True)
             calls = [event for event in events if event[0] == 'benchmark']
-            self.assertEqual([event[-1] for event in calls], ['opencodego'] * 4 + ['opencode'])
-            self.assertEqual(data['models'][2]['provider'], 'opencode')
+            self.assertEqual([event[-1] for event in calls], ['opencodego'] * 8)
+            self.assertIsNone(data['selected_mode'])
+            self.assertTrue(all(model['state'] == 'Invalide' for model in data['models'][2:4]))
 
     def test_eligibility_checks_prices_context_protocol_and_endpoint(self):
         for script in PLLM:

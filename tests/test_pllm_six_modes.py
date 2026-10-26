@@ -232,9 +232,11 @@ class PllmSixModesTests(unittest.TestCase):
 
     def test_new_forced_commands_and_free_ranks(self):
         for script in PLLM:
-            module, path, _ = self.workspace(script)
-            for command, expected in (('31', 'free-go'), ('32', 'free-general'),
-                                      ('41', 'free-go'), ('42', 'free-general'),
+            module, path, catalog = self.workspace(script)
+            catalog['opencode_go']['models'].append(row('free-go-second', free=True))
+            path.write_text(json.dumps(catalog))
+            for command, expected in (('31', 'free-go'), ('32', 'free-go-second'),
+                                      ('41', 'free-go'), ('42', 'free-go-second'),
                                       ('52', 'paid-router')):
                 forced = module.FORCED_COMMANDS[command]
                 data, events, _ = self.run_evaluation(module, path, forced=forced)
@@ -246,6 +248,53 @@ class PllmSixModesTests(unittest.TestCase):
                 data, events, _ = self.run_evaluation(module, path, forced=module.FORCED_COMMANDS[command])
                 self.assertIsNone(data['selected_mode'])
                 self.assertFalse(any(event[0] == 'benchmark' for event in events))
+
+    def test_old_general_catalog_never_supplies_modes_one_to_four(self):
+        for script in PLLM:
+            for mode in ('mode1', 'mode2', 'mode3', 'mode4'):
+                for empty_go in (False, True):
+                    for force_rank in (False, True):
+                        with self.subTest(script=script, mode=mode, empty_go=empty_go,
+                                          force_rank=force_rank):
+                            module, path, catalog = self.workspace(script)
+                            catalog['opencode']['models'].append(row('paid-general', 'opencode'))
+                            if empty_go:
+                                catalog['opencode_go']['models'] = []
+                            path.write_text(json.dumps(catalog))
+                            historical = module.load_current()
+                            historical['models'][int(mode[-1]) - 1].update(
+                                provider='opencode', model_id='paid-general' if mode in ('mode1', 'mode2')
+                                else 'free-general', state='Valide')
+                            current = module.ROOT / 'data/pllm-current.json'
+                            current.parent.mkdir()
+                            current.write_text(json.dumps(historical))
+                            forced = {'mode': mode}
+                            if force_rank:
+                                forced['rank'] = 2 if mode in ('mode1', 'mode2') else 1
+                            data, events, _ = self.run_evaluation(module, path, forced=forced)
+                            calls = [event for event in events if event[0] == 'benchmark']
+                            self.assertTrue(all(event[-1] == 'opencodego' for event in calls))
+                            self.assertFalse(any('general' in event[2] for event in events))
+                            if empty_go:
+                                self.assertIsNone(data['selected_mode'])
+                                self.assertEqual(calls, [])
+                            else:
+                                self.assertEqual(data['selected_mode'], mode)
+                                self.assertEqual(len(calls), 1)
+
+    def test_general_section_absent_or_malformed_is_ignored(self):
+        for script in PLLM:
+            for general in (None, [], {'models': 'invalid'}):
+                module, path, catalog = self.workspace(script)
+                if general is None:
+                    catalog.pop('opencode')
+                else:
+                    catalog['opencode'] = general
+                path.write_text(json.dumps(catalog))
+                data, events, _ = self.run_evaluation(module, path)
+                self.assertEqual(data['selected_mode'], 'mode1')
+                self.assertTrue(all(event[-1] != 'opencode' for event in events
+                                    if event[0] == 'benchmark'))
 
     def test_free_color_marks_exact_rejection_limits_red(self):
         for script in PLLM:

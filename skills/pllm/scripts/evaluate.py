@@ -798,14 +798,11 @@ def candidates_for(model, category, catalog_path, forced=None):
         return [candidate]
     catalog = load_tfl_catalog(catalog_path)
     go = model['mode'] in ('mode1', 'mode2', *FREE_MODES)
-    sections = ('opencode_go', 'opencode') if model['mode'] in FREE_MODES else (
-        ('opencode_go',) if go else ('openrouter',))
+    sections = ('opencode_go',) if go else ('openrouter',)
     candidates = []
     exchange_rates = performance.fetch_eur_rates() if not go else None
     for section in sections:
         source = catalog.get(section)
-        if section == 'opencode' and source is None:
-            continue
         rows = source.get('models') if isinstance(source, dict) else None
         if not isinstance(rows, list):
             raise RuntimeError('Section TFL absente ou invalide : ' + section)

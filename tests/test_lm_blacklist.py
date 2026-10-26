@@ -298,7 +298,7 @@ class LmBlacklistTests(unittest.TestCase):
                 self.assertEqual(module.main(),0)
                 generation.assert_not_called()
             data=json.loads((output/'tfl.json').read_text())
-            for section in ('opencode_go','opencode','openrouter'):
+            for section in ('opencode_go','openrouter'):
                 self.assertEqual(len(data[section]['models']),1)
                 self.assertTrue(any('LM' in item['reason'] for item in data[section]['excluded_models']))
             self.assertEqual(data['free_performance_results'],[])
@@ -446,7 +446,7 @@ class LmBlacklistTests(unittest.TestCase):
         self.assertIn('lm',{item['name'] for item in plugins})
         for item in plugins:
             manifest = json.loads((ROOT/item['source']['path']/'.codex-plugin/plugin.json').read_text())
-            self.assertEqual(manifest['version'],'0.7.11')
+            self.assertEqual(manifest['version'],'0.7.12')
 
 
 if __name__ == '__main__':

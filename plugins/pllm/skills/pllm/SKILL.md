@@ -10,8 +10,9 @@ Présenter les entrées dans un tableau unique multi-colonnes avec cet ordre : P
 ## Six politiques et catégories
 
 Évaluer par priorité 1 à 6 : Go payant compte 1, Go payant compte 2,
-gratuits Go et OpenCode général compte 1, mêmes gratuits compte 2,
-OpenRouter, puis DeepSeek direct. Les modes 1/2 ne contiennent aucun gratuit :
+gratuits Go compte 1, mêmes gratuits compte 2,
+OpenRouter, puis DeepSeek direct. Les modes 1/2 ne contiennent aucun gratuit et ignorent OpenCode général,
+y compris dans les anciens catalogues :
 un quota épuisé les rend `🔴 Invalide — Quota épuisé`, sans génération.
 Les modes 3/4 n'appellent jamais de quota ni de solde, y compris entre paliers.
 Ils restent gratuits indépendamment des ressources des comptes associés.
@@ -26,7 +27,7 @@ Hors forçage, essayer les payants 1/2/5 par coût moyen TFL croissant, avec ord
 stable TFL à prix égal. Utiliser la moyenne des prix d'entrée/sortie de
 référence : hors pointe Go, prix de base OpenRouter. Conserver le coût vérifié
 dans average_price_usd_per_million_tokens et prix/provenances dans model_source.
-Essayer les gratuits 3/4 dans l'ordre TFL Go puis OpenCode général, sans tri
+Essayer les gratuits 3/4 dans l'ordre TFL Go, sans tri
 par performances historiques. Dans chaque mode, retenir le premier candidat
 qui réussit les tests actuels et ne pas tester les suivants. Après un échec,
 essayer le suivant sous réserve des contrôles bloquants. Le mode6 conserve
@@ -38,7 +39,7 @@ refus d'authentification ne prouve jamais un épuisement. Les modes 3/4 restent
 gratuits : prix d'entrée et de sortie vérifiés nuls avec variantes compatibles,
 jamais un nom free seul. Conserver modalités, blacklist et transport.
 
-Go et général utilisent le débit raisonnement+réponse ; OpenRouter et DeepSeek
+Go utilise le débit raisonnement+réponse ; OpenRouter et DeepSeek
 le débit réponse seule. Les priorités 1 à 6 priment sur les performances entre
 modes. L'invocation normale passe à la politique suivante après sélection ;
 active s'arrête à la première politique valide. Le JSON conserve catégories,
@@ -96,7 +97,7 @@ OpenCode Go exige l’en-tête `x-opencode-session` sur chaque requête de
 complétion. Le testeur doit générer un identifiant stable par
 évaluation de politique et le réutiliser pour tous les paliers et reprises de
 cette évaluation. Cette règle s’applique aux modes 1 à 4, avec leurs fournisseurs effectifs
-`opencodego` ou `opencode`. Ne jamais publier la valeur de session.
+`opencodego`. Les anciens candidats `opencode` ne sont jamais repris. Ne jamais publier la valeur de session.
 Sans cet en-tête, l’API renvoie `HTTP 400` avec le type `MissingSessionID` avant
 l’appel au modèle ; cette réponse ne doit pas être interprétée comme une panne
 du modèle ou un quota épuisé.
@@ -113,7 +114,7 @@ Les modèles Muse Spark 1.3, Muse Spark 1.2, GPT 5.6 Luna et Grok 4.6 utilisent
 `POST /chat/completions` avec `messages` et `max_tokens`. Les modèles déclarés
 `messages` utilisent `POST /messages`; ce protocole est documenté par TFL mais
 est benchmarké par PLLM avec le parseur SSE Anthropic dédié.
-Pour `chat_completions` OpenCode Go et général, HIGH est envoyé uniquement via
+Pour `chat_completions` OpenCode Go, HIGH est envoyé uniquement via
 `reasoning_effort=high`, sans `thinking`. Ce paramètre reste réservé aux
 contrats qui le requièrent : thinking adaptatif et output_config.effort de Messages et activation
 thinking pour DeepSeek direct. Responses et OpenRouter gardent leurs propres
@@ -123,7 +124,7 @@ Pour Muse, ne jamais envoyer une requête vers `/chat/completions` : le contrôl
 réalisé renvoie HTTP 500, alors que `/responses` fonctionne. Une route absente
 ou inconnue invalide le test avec une cause explicite. Les candidats sont résolus depuis
 `../tfl/data/tfl.json` relatif au dossier de ce skill, sections
-`opencode_go.models` et, pour les gratuits 3/4, `opencode.models`, sauf chemin
+`opencode_go.models` exclusivement pour 1 à 4, sauf chemin
 fourni par `--tfl-catalog CHEMIN`. Le mode détermine une catégorie fixe : payante en 1/2/5/6, gratuite en 3/4.
 Les détails du contrat, les champs récupérables et les routes de lecture
 observées en 404 sont documentés dans
@@ -142,9 +143,9 @@ connu refusé lorsqu'il est identifiable ; ne pas assimiler ce refus à un éche
 de débit ou de budget de sortie.
 Chaque candidat utilise le protocole et l'endpoint TFL. Les modèles `messages`
 sont benchmarkés avec `x-api-key` et le parseur SSE Anthropic dédié.
-Les deux catalogues OpenCode conservent `x-opencode-session`, une session stable
+Les candidats OpenCode Go conservent `x-opencode-session`, une session stable
 par évaluation de politique et le User-Agent propre à PLLM. Le compte du mode
-reste la source d'authentification, même pour un gagnant `opencode`.
+reste la source d'authentification pour sa destination `opencodego`.
 Le contrôle Go est réservé aux modes 1/2 ; aucun appel usage en 3/4.
 La même clé du compte est utilisée seulement sur l'origine HTTPS OpenCode
 validée. Un refus de cette clé ne crée ni nouveau secret ni configuration privée.
@@ -158,7 +159,7 @@ sans remplacement automatique ni évaluation d'une autre politique.
 - `11`, `12`, `13` et `21`, `22`, `23` gardent les rangs bruts TFL Go.
   Un rang gratuit est incompatible avec ces modes payants et échoue.
 - `31`, `32`, `33` et `41`, `42`, `43` ciblent les rangs de la liste gratuite
-  admissible Go puis OpenCode général des modes 3 et 4 respectivement.
+  admissible Go des modes 3 et 4 respectivement.
 - Les anciens rangs OpenRouter `31`, `32`, `33` deviennent `51`, `52`, `53`,
   avec les rangs bruts TFL OpenRouter, exclusivement payants.
 - `6` conserve DeepSeek V4 Flash direct.
@@ -180,7 +181,7 @@ performance restent obligatoires partout.
 
 ### Mode 3 — priorité 3 — gratuits du compte 1
 
-- Tous les gratuits vérifiés TFL `opencode_go` puis `opencode`, HIGH.
+- Tous les gratuits vérifiés TFL `opencode_go` exclusivement, HIGH.
 - Utiliser exactement la référence de secret du mode 1, sans nouveau secret.
 - Aucun appel de quota ou de solde. Quotas JSON `null`,
   `quota_status=not_applicable` et affichage `Non applicable`.
@@ -240,7 +241,7 @@ corriger l’en-tête ou le transmettre avant de conclure sur la validité du
 modèle. Conserver dans `performance_test` le nom de l’en-tête et le motif d’un
 échec, sans conserver sa valeur.
 
-Pour 1/2, le test de génération ne suffit pas à établir les utilisations sur 5 heures, une semaine et un mois : obtenir ces valeurs de quotas avant de conclure. Ce contrôle ne s’applique jamais aux gratuits 3/4. Les modes 1/2 utilisent les payants Go ; les modes 3/4 les gratuits Go et OpenCode général du catalogue TFL actualisé.
+Pour 1/2, le test de génération ne suffit pas à établir les utilisations sur 5 heures, une semaine et un mois : obtenir ces valeurs de quotas avant de conclure. Ce contrôle ne s’applique jamais aux gratuits 3/4. Les modes 1/2 utilisent les payants Go ; les modes 3/4 les gratuits Go du catalogue TFL actualisé.
 
 Chaque invocation de `/pllm` déclenche une nouvelle évaluation réelle des modèles définis, authentifiée auprès de leur fournisseur. Ne pas se limiter à afficher la politique, proposer un test ultérieur ou réutiliser des résultats précédents comme mesures actuelles. L’invocation autorise les requêtes de test nécessaires ; ne pas redemander une confirmation de principe pour lancer le test.
 
@@ -323,7 +324,7 @@ l’agent doit appliquer cette séquence avant de changer les agents `plan` et
 
 1. Résoudre le secret du mode sélectionné depuis le trousseau avec ses
    attributs PLLM historiques : 1/3 utilisent policy=mode1, 2/4 policy=mode2,
-   avec provider=opencodego même pour une destination opencode ; 5 conserve
+   avec provider=opencodego ; 5 conserve
    policy=mode3/provider=openrouter et 6 policy=mode4/provider=deepseek. Utiliser son identifiant
    fournisseur effectif pour la destination, puis l’envoyer directement à `PUT /auth/<provider-id>` de
    l’API locale OpenCode, avec le schéma d’authentification API. La valeur ne
@@ -367,7 +368,7 @@ python3 scripts/evaluate.py active --tfl-catalog /chemin/vers/tfl.json
 python3 scripts/evaluate.py 3 --tfl-catalog /chemin/vers/tfl.json
 ```
 
-Le chemin explicite est utilisé pour Go, les gratuits Go/général 3/4 et OpenRouter 5.
+Le chemin explicite est utilisé pour Go, les gratuits Go 3/4 et OpenRouter 5.
 TFL retire désormais de models les gratuits échoués à ses tests HIGH/XHIGH,
 avec leurs preuves dans excluded_models. Le catalogue dépend du compte TFL
 utilisé ; un échec avec ce compte peut rendre un candidat absent pour un autre
@@ -420,7 +421,7 @@ La TTFT porte toujours sur le premier contenu visible ; le premier raisonnement
 est chronométré séparément. Le protocole 8 mesure un débit moyen côté client
 sur la requête complète, attente et TTFT inclus :
 
-- Go et OpenCode général : completion_tokens / request_seconds, raisonnement
+- Go : completion_tokens / request_seconds, raisonnement
   et réponse compris ; throughput_scope=reasoning_and_response.
 - OpenRouter et DeepSeek : (completion_tokens - reasoning_tokens) /
   request_seconds, réponse seule au numérateur ; throughput_scope=response_only.
@@ -525,7 +526,7 @@ aucun endpoint et ne constitue pas une preuve de performance.
 ## Investigation obligatoire des métadonnées inconnues
 
 Un effort ou contexte non vérifiable impose une analyse et une recherche du
-LLM, pour Go, OpenCode général et OpenRouter. Suivre
+LLM, pour Go et OpenRouter. Suivre
 [le protocole de preuve](references/model-evidence.md). Rechercher les sources
 officielles applicables au fournisseur, à l'ID et au protocole exacts ; tracer
 sources, dates et conclusion. Un contexte encore invérifiable après
@@ -545,4 +546,6 @@ USD du catalogue, y compris ancien ou forcé. Les moyennes EUR historiques ne
 font pas preuve. Source, date et récupération du taux sont conservées. Une
 conversion non vérifiable empêche l’admission ; les règles Go, catégories,
 contrôles de ressources et seuils de performance restent inchangés. Le retrait
-du tableau général TFL conserve la section JSON opencode pour les modes 3/4.
+du catalogue général TFL supprime la section JSON opencode ; les modes 1/2
+restent exclusivement payants Go et 3/4 exclusivement gratuits Go, même avec
+un ancien catalogue contenant opencode.
