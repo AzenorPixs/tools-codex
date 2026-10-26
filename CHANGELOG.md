@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Exiger une preuve publiée HIGH/XHIGH pour tout modèle gratuit ou payant TFL/PLLM ; exclure avant génération, sélection et affichage, y compris anciens catalogues, historiques, forçages et DeepSeek direct sans preuve. Garder les motifs dans les audits JSON ; un budget seul ne suffit plus.
+- Retirer le tableau fournisseur général OpenCode de TFL tout en préservant sa collecte et sa section JSON pour PLLM 3/4. Afficher Go puis OpenRouter et les essais gratuits admissibles à l’effort.
+- Appliquer à OpenRouter la moyenne de base ≤0,20 EUR/M après conversion non arrondie au dernier taux BCE publié ; afficher les prix en EUR, tracer taux/source/dates et prix USD, recontrôler dans PLLM et préserver les rapports si la conversion est invérifiable.
+- Aligner la release locale, pyproject.toml, README et les six plugins sur 0.7.9 ; qualifier hors ligne sans installation de profil, activation du planning ou publication distante. Les métadonnées d’effort absentes peuvent vider un catalogue et bloquer sa nouvelle publication.
+
+- Ajouter un planning systemd utilisateur TFL puis PLLM normal à 00 h et 12 h Europe/Paris, bootstrap idempotent des six plugins et de TCU, avec confiance native des hooks conservée et aucun rattrapage.
+- Exiger Codex ouvert et un quota Codex frais non épuisé avant chaque étape ; ignorer les quotas nuls ou inconnus, arrêter après échec TFL et conserver les seuils, secrets et exclusions LM. Qualifier en profils isolés et aligner la release locale et les six plugins sur 0.7.8, sans activation utilisateur ni publication distante.
+
 - Accepter les identifiants OpenRouter à préfixe `~` valide dans les six modules LM/TFL/PLLM, sans modifier leur identité canonique, les exclusions par défaut/personnalisées/permanentes ni les validations strictes.
 - Qualifier les préfixes marqués, la persistance canonique et les gardes TFL/PLLM ; aligner VERSION, pyproject.toml, README et les six manifestes sur 0.7.7. La relance TFL depuis les sources corrigées est distincte de la mise à jour des sources installées dans le profil.
 

@@ -22,7 +22,7 @@ installé. Ne simule pas la pastille avec un emoji.
 |---|---|---|
 | CM | `$cm` | Affiche le catalogue des commandes maison disponibles. |
 | PLLM | `$pllm [active\|MODE] [--tfl-catalog CHEMIN]` | Évalue les politiques LLM ; accepte un mode forcé documenté et un catalogue TFL explicite. |
-| TFL | `$tfl [auto\|mode1\|mode2]` | Compare Go, OpenCode général puis OpenRouter ; qualifie les gratuits en HIGH/XHIGH et exclut les échecs. |
+| TFL | `$tfl [auto\|mode1\|mode2]` | Compare Go puis OpenRouter (≤0,20 €/M) ; exige HIGH/XHIGH vérifiable et conserve le général dans le JSON. |
 | TCU | `$tcu [check]` | Met à jour les briques installées et installe prompt si absent ; déclencheur `/TCU`, sans enregistrement d’une slash native. |
 | LM | `$lm [LIST\|ADD identifiant\|REMOVE identifiant]` | Gère les modèles exclus des listes et tests TFL/PLLM ; déclencheur `/LM`, mimo-v2.5 par défaut. |
 | Prompt | `$prompt LIST\|CODE` | Liste ou lance un prompt du projet ; arguments en MAJUSCULE, dont 1CISMP1 à 1CISMP8 ; déclencheur `/prompt`. |

@@ -79,8 +79,8 @@ plugins/<NOM_DU_PLUGIN>/.codex-plugin/plugin.json
 Le manifeste déclare le nom, la version, la présentation et le répertoire de
 skills embarqués. Les six plugins embarquent chacun le skill du même nom.
 PLLM et TFL incluent les scripts, références et données nécessaires à leur
-exécution. CM contient uniquement son manifeste et `skills/cm/SKILL.md` ; il
-ne déclare ni script, ni serveur MCP, ni application ou service externe.
+exécution. CM conserve son catalogue et embarque aussi le bootstrap du planning
+commun, comme les cinq autres plugins. Il ne déclare ni serveur MCP ni application.
 
 TCU embarque `skills/tcu/SKILL.md` et `skills/tcu/scripts/update.py`. Les deux
 copies autonomes et embarquées sont identiques. Le lien relatif
@@ -172,6 +172,7 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 | `$cm` | Skill découvert dans le projet ou installé dans un emplacement reconnu. | Aucun. |
 | `$prompt` | Python 3.13/3.14, DEVOPS.md du projet courant et référentiel déclaré lisibles. | Aucun pour résoudre ; dépend ensuite du prompt choisi. |
 | `$tcu` | Python 3.13/3.14, CLI Codex, racines identifiées inscriptibles pour appliquer. | GitHub public HTTPS et marketplace officielle. |
+| Planning commun des six plugins | Python 3.13/3.14, CLI Codex, gestionnaire systemd utilisateur, TFL/PLLM installés et accès au trousseau de la session pour l'exécution. | Lecture des quotas Codex, puis services TFL/PLLM seulement si les conditions sont satisfaites. |
 
 Les plugins `pllm` et `tfl` écrivent leurs rapports dans leur répertoire
 `data/`. TFL accepte une redirection par `--output-dir` ; PLLM ne propose pas
@@ -252,8 +253,7 @@ Tous les benchmarks PLLM et les gratuits TFL demandent HIGH, avec le seul
 repli XHIGH si HIGH est indisponible et XHIGH pris en charge. Chat Completions
 utilise reasoning_effort ; Responses reasoning.effort ; Messages thinking
 adaptive et output_config.effort ; DeepSeek thinking activé et reasoning_effort.
-OpenRouter suit les métadonnées ou le budget HIGH de 80 % lorsque seul
-max_tokens est disponible. Aucun niveau inférieur n'est utilisé. Le niveau
+OpenRouter exige une déclaration vérifiable de HIGH ou XHIGH ; un budget seul est exclu. Aucun niveau inférieur n'est utilisé. Le niveau
 effectif est tracé et participe à l'identité de mémoire ; une réussite Low
 n'amorce pas un test HIGH. Un refus 400 propre à l'effort permet au plus un
 repli XHIGH annoncé avec ses propres paliers ; 401/403/429 ne le déclenchent pas.
@@ -270,7 +270,7 @@ pour Go/général et la clé OpenRouter existante (environnement, sinon troussea
 historique du mode 5). Les valeurs restent en mémoire et hors des sorties.
 Les gratuits échoués sont retirés de models et conservés dans excluded_models
 et free_performance_results avec critères, dates, niveaux et tentatives.
-Les trois tableaux fournisseurs conservent leurs huit colonnes ; un tableau
+Les deux tableaux fournisseurs Go puis OpenRouter conservent huit colonnes ; un tableau
 commun des essais gratuits est ajouté. Une section vide après qualification
 arrête la publication et préserve les rapports. Le filtre dépend du compte
 TFL utilisé : un autre compte peut avoir un accès différent, sans que PLLM
@@ -393,7 +393,7 @@ du fournisseur models.dev `opencode`. Les collecteurs communs reçoivent
 explicitement le catalogue, son API et ses sources ; les deux sections ne
 partagent jamais leurs prix, contextes ou routes pour un même ID.
 La section JSON `opencode` s'ajoute à `opencode_go` et `openrouter`, dans cet
-ordre de restitution, avec les huit mêmes colonnes. Contexte ≥ 1M, moyenne
+ordre JSON ; le rapport affiche seulement Go puis OpenRouter, huit colonnes chacun. Contexte ≥ 1M, moyenne
 entre zéro et 0,50 USD/M inclus, modalités et blacklist sont conservés. Pour
 le catalogue général, la moyenne maximale des variantes publiées sert de
 référence ; Go garde le hors pointe. Les prix généraux portent les champs
@@ -402,7 +402,7 @@ Les sources, dates, variantes et exclusions restent auditables. L'échec d'une
 collecte indispensable bloque toute publication partielle. Les consommateurs
 PLLM lisent leurs sections Go/OpenRouter et utilisent `opencode` pour les
 gratuits des modes 3/4, sans emprunt de tarif ni de route entre sections.
-`tests/test_tfl_opencode_catalog.py` vérifie séparation, bornes, trois tableaux,
+`tests/test_tfl_opencode_catalog.py` vérifie séparation, bornes, deux tableaux fournisseurs,
 exclusions des variantes gratuites 200K, erreurs et compatibilité.
 
 OpenRouter conserve la collecte `pricing.prompt/completion` et le classement
@@ -412,7 +412,7 @@ conditions de contexte et les jours/horaires UTC publiés. Aucun seuil de
 contexte n'est inventé pour une variante temporelle. La requête modèles
 interroge tout le catalogue sans filtre de catégorie, modalité ni limite
 artificielle de nombre. La sélection est dynamique, sans liste d'identifiants :
-contexte ≥ 1M, moyenne API de base entre zéro et 0,50 USD/M inclus, modalités
+contexte ≥ 1M, HIGH/XHIGH vérifiable, moyenne API de base ≤0,20 EUR/M au taux BCE vérifié, modalités
 de sortie et blacklist. Les prix négatifs, non finis ou débordants
 sont non exploitables. La provenance tarifaire des deux fournisseurs est
 horodatée. Une source indispensable invalide ou des tarifs Go contradictoires
@@ -569,3 +569,95 @@ installer LM absent. Le fichier utilisateur hors cache reste préservé.
 Les tests test_lm_blacklist.py et les cas TCU utilisent des profils isolés,
 sans accès fournisseur ni installation réelle. Un retour vers 0.7.5 ignore
 la politique LM et ne conserve donc pas sa garantie d'exclusion.
+
+## Planning utilisateur TFL puis PLLM
+
+Chaque plugin déclare `hooks: ./hooks/hooks.json`. Son SessionStart lance
+`python3 "${PLUGIN_ROOT}/skills/<nom>/scripts/scheduler.py" install --hook`,
+en arrière-plan, avec délai de 60 s. Les six modules autonomes et leurs six
+copies embarquées sont identiques et sans effet à l'import. La confiance du
+hook est une décision native Codex, jamais ajoutée ou contournée par le code.
+Un bootstrap concurrent déjà occupé reste silencieux ; les autres erreurs
+conservent un diagnostic filtré. Aucun modèle n'est appelé à l'installation.
+
+TCU valide les déclarations et ressources des hooks dans l'instantané, sans
+exécuter le code téléchargé. `--apply` utilise son module local chargé pour
+le bootstrap ; `check` décrit seulement l'opération. Le bilan ajoute
+`llm-refresh`, canal `session_utilisateur`, sans version de plugin inventée.
+Des composants manquants restent en attente sans installation implicite.
+Un conflit local sur TFL ou PLLM préserve aussi le planning sans l'armer.
+Une erreur du planning produit un échec visible, même après une mise à jour
+de sources réussie. Le CLI continue à gérer lui-même le cache des plugins.
+
+Le timer `tools-codex-llm-refresh.timer` et son service sont dans
+`XDG_CONFIG_HOME/systemd/user` (repli `~/.config/systemd/user`). Le calendrier
+est `*-*-* 00,12:00:00 Europe/Paris`, `Persistent=false`, précision 1 s.
+Le runner stable, sa configuration, son reçu et son état sont conservés sous
+`CODEX_HOME/llm-refresh`. Les fichiers cibles ne sont remplacés que si leur
+empreinte correspond au reçu ; les liens et propriétaires étrangers sont
+refusés. Le retrait explicite ne touche que les fichiers reconnus et conserve
+les rapports. Les erreurs d'installation restaurent les fichiers précédents,
+sans promettre une transaction globale avec systemd.
+
+À chaque échéance : détecter l'application ou un CLI interactif Codex du même
+UID, lire le bucket `codex`, exécuter TFL, vérifier son nouveau catalogue,
+relire présence et quota, puis lancer PLLM normal avec `--tfl-catalog`.
+L'interface unifiée ChatGPT est reconnue seulement avec son backend Codex
+enfant vivant ; l'application générique seule ne prouve pas Codex ouvert.
+Les daemons, `codex exec`, helpers Electron et autres utilisateurs ne prouvent
+pas cette présence. Le runner ne démarre pas Codex et ne rattrape pas les
+passages manqués. Un verrou exclusif interdit deux séquences ; un verrou
+partagé `tcu.lock` empêche une application TCU pendant les deux étapes.
+
+Le quota est lu avec un client JSONL dédié : `initialize`, `initialized`, puis
+`account/rateLimits/read` sur `codex app-server --stdio`. Aucun appel de
+conversation, génération, connexion, achat ou réinitialisation n'est effectué.
+Le processus natif accède à ses propres identifiants ; le runner ne lit pas
+leur stockage. `rateLimitsByLimitId.codex` prime sur la vue historique ;
+Spark et les observations anciennes ne le remplacent pas. Une fenêtre à
+100 % utilisés ou plus bloque ; une fenêtre non exploitable produit un état
+inconnu et bloque aussi. Le processus de lecture est borné à 30 s et 1 Mio.
+
+Les étapes TFL et PLLM sont bornées à 3 600 s chacune, avec un budget service
+de 7 500 s. Leurs sorties brutes ne vont pas au journal ; les rapports usuels
+restent produits par leurs générateurs. `state.json` conserve seulement
+statut, date, étape et code/diagnostic fixe. Un catalogue absent, invalide ou
+non actualisé empêche PLLM. Les modes, seuils, paliers, transports et LM
+manuels restent inchangés. Les tests `test_llm_schedule.py` isolent profils,
+processus et fournisseurs et vérifient les unités avec les outils systemd.
+
+Références officielles : [paquets et hooks](https://developers.openai.com/plugins/build/plugins),
+[cycle des hooks](https://learn.chatgpt.com/docs/hooks),
+[lecture des quotas](https://learn.chatgpt.com/docs/app-server).
+
+
+## Admission stricte HIGH/XHIGH
+
+Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
+vérifiable avant test, sélection et affichage. Une liste supported_efforts
+contenant high/xhigh ou un null explicitement publié (tous les efforts) est
+admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
+budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
+Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide bloque
+la publication et préserve les rapports existants.
+
+
+## Contrat TFL/PLLM 0.7.9 et conversion OpenRouter
+
+La section JSON opencode reste collectée pour PLLM 3/4 ; son tableau est retiré.
+Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
+puis les essais gratuits ayant une preuve HIGH/XHIGH. Aucun modèle exclu
+pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
+Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
+https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
+le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
+prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
+publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
+et à la frontière de génération, y compris pour les anciens catalogues et
+les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
+Go et général gardent 0,50 USD/M. Les capacités absentes peuvent vider une
+section et bloquer le nouveau TFL ; ce résultat préserve les anciens fichiers
+sans les qualifier à nouveau. Les tests de cette release sont hors ligne,
+sans mise à jour de profil, activation du planning ni benchmark réel.

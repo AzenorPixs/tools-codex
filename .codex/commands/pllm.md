@@ -47,3 +47,8 @@ interne du contexte préserve le processus et l’interface ; réconcilie MCP et
 CAB avant la reprise.
 
 Argument reçu : `$ARGUMENTS`
+
+Exclure gratuits et payants sans preuve publiée HIGH/XHIGH avant test et
+affichage, y compris dans les essais gratuits ; garder les motifs JSON.
+OpenRouter applique la moyenne de base ≤0,20 EUR/M au dernier taux BCE
+publié vérifié ; aucune conversion historique implicite.

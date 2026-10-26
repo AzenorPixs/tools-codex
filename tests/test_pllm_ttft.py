@@ -60,7 +60,7 @@ class PllmTtftTests(unittest.TestCase):
                 returncode=0, stdout=b"offline-fixture"
             )),
             patch.object(module, "candidates_for", return_value=[
-                {"model_id": "fixture-model", "model": "fixture-model", "provider": "opencodego",
+                {"reasoning_capabilities": {"supported_efforts": ["high"]}, "model_id": "fixture-model", "model": "fixture-model", "provider": "opencodego",
                  "is_free": False, "average_price_usd_per_million_tokens": 0.15,
                  "api_endpoint": "https://opencode.ai/zen/go/v1/messages", "api_protocol": "messages"}
             ]),

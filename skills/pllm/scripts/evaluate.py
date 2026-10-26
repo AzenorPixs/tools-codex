@@ -397,6 +397,8 @@ def policy_table(models):
         '|' + '|'.join('---' for _ in headers) + '|',
     ]
     for model in models:
+        if model.get('model_id', model.get('model')) != 'Non évalué' and not performance.effort_allowed(model):
+            continue
         values = [
             model['mode'],
             model.get('model_id', model['model']),
@@ -456,8 +458,31 @@ def sanitize_blacklisted_history(data, configured):
     data['lm_blacklist'] = {'model_ids': list(configured), 'permanent_model_ids': list(blacklist.PERMANENT_MODELS)}
 
 
+def sanitize_reasoning_history(data):
+    """Conserver les motifs sans publier un modèle à effort invérifiable."""
+    for model in data['models']:
+        exclusions = model.setdefault('candidate_exclusions', [])
+        retained = []
+        for candidate in model.get('candidate_results', []):
+            if performance.effort_allowed(candidate):
+                retained.append(candidate)
+            else:
+                exclusions.append({'model_id': candidate.get('model_id'),
+                                   'cause': 'HIGH/XHIGH non vérifiable ou non pris en charge'})
+        if 'candidate_results' in model:
+            model['candidate_results'] = retained
+        identifier = model.get('model_id', model.get('model'))
+        if identifier and identifier != 'Non évalué' and not performance.effort_allowed(model):
+            exclusions.append({'model_id': identifier, 'cause': 'HIGH/XHIGH non vérifiable ou non pris en charge'})
+            model.update(state='Invalide', selected=False, model='Non évalué', model_id='Non évalué',
+                         cause='Aucun candidat avec HIGH/XHIGH vérifiable',
+                         ttft_seconds=None, tokens_per_second=None, last_successful_max_tokens=None,
+                         performance_test={'status': 'not_run', 'reason': 'HIGH/XHIGH non vérifiable'})
+
+
 def publish(d, active=False, forced_mode=None):
     sanitize_blacklisted_history(d, blacklist.load_models())
+    sanitize_reasoning_history(d)
     try:
         fx = exchange_rates()
     except Exception as error:
@@ -518,6 +543,7 @@ def tfl_opencode_model_at(rank, catalog_path=None):
     if not isinstance(model_id, str) or not model_id:
         raise RuntimeError('Identifiant du modèle OpenCode Go TFL absent')
     blacklist.require_allowed(model_id)
+    performance.verified_effort(model)
     endpoint, protocol = model.get('api_endpoint'), model.get('api_protocol')
     if not endpoint or not protocol:
         endpoint, protocol = OPENCODE_GO_ROUTE_BY_MODEL.get(model_id, (None, None))
@@ -552,6 +578,8 @@ def next_tfl_opencode_model(current_id, catalog_path=None):
         if not found or candidate.get('available') is not True:
             continue
         if blacklist.is_blocked(candidate['id']):
+            continue
+        if not performance.effort_allowed(candidate):
             continue
         endpoint = candidate.get('api_endpoint')
         protocol = candidate.get('api_protocol')
@@ -702,7 +730,7 @@ def check_category(model, key, category):
         raise CategoryChanged(current)
 
 
-def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=True):
+def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=True, exchange_rates=None):
     if not isinstance(row, dict) or not isinstance(row.get('id'), str) or not row['id']:
         raise RuntimeError('Candidat TFL sans identifiant vérifiable')
     if row.get('context_length', 0) < 1_000_000:
@@ -711,8 +739,11 @@ def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=Tru
         raise RuntimeError('Sortie TFL non admissible')
     if enforce_blacklist:
         blacklist.require_allowed(row['id'])
+    effort = performance.verified_effort(row)
     if section == 'openrouter':
         prices = (finite(row['input_price']), finite(row['output_price']))
+        exact_prices = performance.native_openrouter_prices(row)
+        eur_prices = performance.openrouter_eur_prices(*exact_prices, exchange_rates)
         provider = 'openrouter'
         endpoint, protocol = 'https://openrouter.ai/api/v1/chat/completions', 'chat_completions'
     else:
@@ -729,11 +760,15 @@ def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=Tru
         if (url.scheme != 'https' or url.hostname != 'opencode.ai' or url.port not in (None, 443)
                 or url.username or url.password or url.query or url.fragment):
             raise RuntimeError('Origine du routage TFL non autorisée')
-    if any(price < 0 for price in prices) or not math.isfinite(sum(prices)) or sum(prices) / 2 > 0.5:
+    if any(price < 0 for price in prices) or not math.isfinite(sum(prices)) or (section != 'openrouter' and sum(prices) / 2 > 0.5):
         raise RuntimeError('Prix TFL hors critères ou non vérifiable')
     free = performance.is_free(row, section)
     average_price = float(sum(Decimal(str(price)) for price in prices) / 2)
     return {'model_id': row['id'], 'model': row.get('name') or row['id'], 'provider': provider,
+            'reasoning': effort,
+            **({'average_price_eur_per_million_tokens': eur_prices['average_eur'],
+                'cost_exchange_rates': copy.deepcopy(exchange_rates),
+                'base_pricing_usd_per_million_tokens': dict(zip(('input', 'output'), map(str, exact_prices)))} if section == 'openrouter' else {}),
             'api_endpoint': endpoint, 'api_protocol': protocol,
             'throughput_scope': 'reasoning_and_response' if section != 'openrouter' else 'response_only',
             'average_price_usd_per_million_tokens': average_price,
@@ -749,15 +784,18 @@ def candidates_for(model, category, catalog_path, forced=None):
         raise RuntimeError('Catégorie incompatible avec la politique PLLM')
     if model['mode'] == 'mode6':
         blacklist.require_allowed('deepseek-v4-flash')
-        return [{'model_id': 'deepseek-v4-flash', 'model': 'deepseek-v4-flash',
+        candidate = {'model_id': 'deepseek-v4-flash', 'model': 'deepseek-v4-flash',
                  'provider': 'deepseek', 'throughput_scope': 'response_only',
                  'api_protocol': 'chat_completions', 'api_endpoint': 'https://api.deepseek.com/chat/completions',
-                 'is_free': False}]
+                 'is_free': False}
+        performance.verified_effort(candidate)
+        return [candidate]
     catalog = load_tfl_catalog(catalog_path)
     go = model['mode'] in ('mode1', 'mode2', *FREE_MODES)
     sections = ('opencode_go', 'opencode') if model['mode'] in FREE_MODES else (
         ('opencode_go',) if go else ('openrouter',))
     candidates = []
+    exchange_rates = performance.fetch_eur_rates() if not go else None
     for section in sections:
         source = catalog.get(section)
         if section == 'opencode' and source is None:
@@ -773,7 +811,8 @@ def candidates_for(model, category, catalog_path, forced=None):
                 continue
             try:
                 candidate = catalog_candidate(row, section, rank, catalog.get('generated_at'),
-                                              enforce_blacklist=not (forced and model['mode'] in FREE_MODES))
+                                              enforce_blacklist=not (forced and model['mode'] in FREE_MODES),
+                                              exchange_rates=exchange_rates)
             except (KeyError, TypeError, ValueError, RuntimeError) as error:
                 if forced and requested is not None:
                     raise RuntimeError('Candidat forcé non admissible : ' + error_message(error)) from error
@@ -808,6 +847,17 @@ def evaluate_candidate(model, key, category, memory, session_id):
                              if item['id'] == model['model_id']), None)
             if metadata is None:
                 raise RuntimeError('Modèle absent des métadonnées OpenRouter actuelles')
+        model['reasoning_capabilities'] = performance.capabilities(metadata)
+        performance.verified_effort(metadata)
+        if model['provider'] == 'openrouter':
+            # Réappliquer le plafond à la frontière de génération, même pour un appel direct.
+            source = model.get('model_source') or {}
+            native = {'input_price': source.get('input_price_usd_per_million_tokens'),
+                      'output_price': source.get('output_price_usd_per_million_tokens'),
+                      'base_pricing_usd_per_million_tokens': model.get('base_pricing_usd_per_million_tokens')}
+            eur = performance.openrouter_eur_prices(*performance.native_openrouter_prices(native),
+                                                    model.get('cost_exchange_rates'))
+            model['average_price_eur_per_million_tokens'] = eur['average_eur']
         performance.reasoning(model, BUDGETS[0], metadata)
         ttft_limit, throughput_limit = performance_limits(model)
         model['performance_criteria'] = {'ttft_lt_seconds': ttft_limit, 'tokens_per_second_gt': throughput_limit}
@@ -884,6 +934,7 @@ def main(active=False, forced=None, tfl_catalog=None):
     data = load_current()
     memory = load_memory()
     sanitize_blacklisted_history(data, configured)
+    sanitize_reasoning_history(data)
     data['models'].sort(key=lambda model: model['priority'])
     if [model['mode'] for model in data['models']] != [f'mode{i}' for i in range(1, 7)]:
         raise RuntimeError('Ce protocole attend les six modes définis')
@@ -910,7 +961,8 @@ def main(active=False, forced=None, tfl_catalog=None):
                      quota_status='not_applicable' if model['mode'] in FREE_MODES else 'not_evaluated',
                      performance_test={'status': 'not_run', 'reason': 'Contrôle des ressources requis'})
         for field in ('quotas_evaluated_at', 'quota_provider', 'api_endpoint', 'api_protocol', 'model_source', 'is_free',
-                      'average_price_usd_per_million_tokens'):
+                      'average_price_usd_per_million_tokens', 'average_price_eur_per_million_tokens',
+                      'cost_exchange_rates', 'base_pricing_usd_per_million_tokens'):
             model.pop(field, None)
         key = ''
         try:

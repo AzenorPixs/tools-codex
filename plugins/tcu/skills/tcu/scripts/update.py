@@ -6,6 +6,7 @@ from contextlib import contextmanager
 import fcntl
 import hashlib
 import io
+import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -31,6 +32,10 @@ PROMPT_RECEIPT = '.tools-codex-prompt-origin.json'
 SUFFIXES = {'.py', '.md', '.json', '.yaml', '.yml', '.txt', '.svg', '.png', '.webp'}
 EXCLUDED = {'data', '__pycache__', 'node_modules', '.git', 'logs', 'secrets.json',
             'secrets.yaml', 'credentials.json', 'credentials.yaml'}
+
+_SCHEDULE_SPEC = importlib.util.spec_from_file_location('tcu_schedule', Path(__file__).with_name('scheduler.py'))
+scheduler = importlib.util.module_from_spec(_SCHEDULE_SPEC)
+_SCHEDULE_SPEC.loader.exec_module(scheduler)
 
 
 class UpdateError(Exception):
@@ -147,6 +152,7 @@ def snapshot(fetcher=fetch) -> dict:
                 p = PurePosixPath(name)
                 selected = (name in {'VERSION', '.agents/plugins/marketplace.json'}
                             or re.fullmatch(r'plugins/[a-z0-9-]+/\.codex-plugin/plugin\.json', name)
+                            or re.fullmatch(r'plugins/[a-z0-9-]+/hooks/hooks\.json', name)
                             or (len(p.parts) >= 3 and p.parts[0] == 'skills'
                                 and re.fullmatch('[a-z0-9-]+', p.parts[1])
                                 and source_file(PurePosixPath(*p.parts[2:])))
@@ -184,6 +190,16 @@ def snapshot(fetcher=fetch) -> dict:
                 raise UpdateError('Releases des manifestes divergentes')
             if f'skills/{name}/SKILL.md' not in files:
                 raise UpdateError('Skill du catalogue absent')
+            if 'hooks' in manifest:
+                if manifest['hooks'] != './hooks/hooks.json':
+                    raise UpdateError('Chemin de hooks non pris en charge')
+                hooks = decode_json(files[f'plugins/{name}/hooks/hooks.json'])
+                expected = 'python3 "${PLUGIN_ROOT}/skills/' + name + '/scripts/scheduler.py" install --hook'
+                expected_hooks = {'hooks': {'SessionStart': [{'hooks': [
+                    {'type': 'command', 'command': expected, 'timeout': 60, 'async': True}]}]}}
+                if (hooks != expected_hooks
+                        or f'skills/{name}/scripts/scheduler.py' not in files):
+                    raise UpdateError('Bootstrap de planning incomplet ou non conforme')
         if 'prompt' in names:
             for resource in (PROMPT_COMMAND, PROMPT_SKILL, PROMPT_RESOLVER):
                 if resource not in files or not files[resource].strip():
@@ -567,6 +583,29 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
     public_keys = {'brique', 'canal', 'avant', 'apres', 'cible', 'status', 'cause',
                    'composant', 'ressource', 'operation'}
 
+    def register_schedule():
+        if any(item['status'] == 'conflit' and Path(item['brique']).name in {'tfl', 'pllm'}
+               for item in plans):
+            report['briques'].append({'brique': 'llm-refresh', 'canal': 'session_utilisateur',
+                                      'ressource': 'planification', 'avant': None, 'apres': None,
+                                      'cible': None, 'status': 'conflit',
+                                      'cause': 'Source TFL ou PLLM en conflit ; planning inchangé'})
+            return
+        def schedule_runner(arguments, **kwargs):
+            if arguments[1:3] == ['plugin', 'list']:
+                return subprocess.CompletedProcess(arguments, 0, json.dumps(runner(arguments[2:])))
+            return scheduler.command(arguments, **kwargs)
+        try:
+            state = scheduler.install(home, [p for kind, p in roots if kind == 'skills'],
+                                      apply=apply, runner=schedule_runner)
+        except (scheduler.ScheduleError, OSError) as error:
+            state = {'status': 'incomplet', 'cause': str(error) if isinstance(error, scheduler.ScheduleError)
+                     else 'Installation du planning impossible'}
+            report['erreur'] = 'Planning utilisateur non installé ou non vérifiable'
+        report['briques'].append({'brique': 'llm-refresh', 'canal': 'session_utilisateur',
+                                  'ressource': 'planification', 'avant': None, 'apres': None,
+                                  'cible': None, **state})
+
     def mark_unapplied():
         for item in plans:
             if item['status'] == 'pret':
@@ -612,6 +651,7 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
                 raise UpdateError('Composant prompt installé incomplet ; wrapper non appliqué')
 
     if not apply:
+        register_schedule()
         return finish()
     with application_lock(home):
         backup = home / 'tcu-backups' / uuid.uuid4().hex
@@ -671,6 +711,7 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
                     raise UpdateError(failure)
             verify(after, require_prompt=True)
             apply_local(plans, remote, backup)
+            register_schedule()
         except (UpdateError, OSError) as exc:
             report['erreur'] = str(exc) if isinstance(exc, UpdateError) else 'Écriture impossible ; sauvegarde conservée'
             mark_unapplied()

@@ -3,6 +3,7 @@ from contextlib import ExitStack
 import copy
 import io
 import json
+from eur_fixtures import FX
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -118,9 +119,9 @@ class FreePerformanceTests(unittest.TestCase):
                 options=engine.reasoning(model,1024,{'reasoning':{'supported_efforts':['xhigh']}})
                 self.assertEqual(model['reasoning'],'xhigh')
                 self.assertEqual(options[field],'xhigh' if field=='reasoning_effort' else {'effort':'xhigh'})
-            self.assertEqual(engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supports_max_tokens':True}}),
-                             {'reasoning':{'max_tokens':819}})
-            self.assertEqual(engine.reasoning({'provider':'deepseek'},1024,{}),
+            with self.assertRaisesRegex(RuntimeError, 'HIGH/XHIGH'):
+                engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supports_max_tokens':True}})
+            self.assertEqual(engine.reasoning({'provider':'deepseek'},1024,{'reasoning': {'supported_efforts': ['high']}}),
                              {'reasoning_effort':'high','thinking':{'type':'enabled'}})
             with self.assertRaisesRegex(RuntimeError,'HIGH et XHIGH'):
                 engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supported_efforts':['low']}})
@@ -197,6 +198,7 @@ class FreePerformanceTests(unittest.TestCase):
                 general=[candidate('fail','opencode'),candidate('paid-general','opencode',False)]
                 router=[candidate('router','openrouter')]
                 with ExitStack() as stack:
+                    stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
                     stack.enter_context(patch.object(module,'parse_args',return_value=SimpleNamespace(policy_option=None,policy='auto',timeout=1,output_dir=output)))
                     stack.enter_context(patch.dict(module.os.environ,{'CODEX_HOME':str(output/'codex-profile')},clear=True))
                     stack.enter_context(patch.object(module,'select_secret',return_value=('mode2','go-offline')))
@@ -289,6 +291,7 @@ class FreePerformanceTests(unittest.TestCase):
                 for name in ('tfl.json','tfl.md'):
                     (output/name).write_text('preserved')
                 with ExitStack() as stack:
+                    stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
                     stack.enter_context(patch.object(module,'parse_args',return_value=SimpleNamespace(policy_option=None,policy='auto',timeout=1,output_dir=output)))
                     stack.enter_context(patch.dict(module.os.environ,{'CODEX_HOME':str(output/'codex-profile')},clear=True))
                     stack.enter_context(patch.object(module,'select_secret',return_value=('mode1','offline-key')))

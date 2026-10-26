@@ -157,7 +157,7 @@ class ThroughputMeasurementTests(unittest.TestCase):
                 with patch.object(module.performance,'request',return_value=stream(response_events(100 if burst else 400),False)), \
                      patch.object(module.performance.time,'monotonic',side_effect=ticks), \
                      patch.object(module.performance.signal,'alarm'):
-                    return module.performance.benchmark(model,'offline-fixture',budget,{},session_id='fixture')
+                    return module.performance.benchmark(model,'offline-fixture',budget,{'reasoning': {'supported_efforts': ['high']}},session_id='fixture')
             data,_,_=self.run_evaluation(module,path,benchmark_behavior=behavior,active=True)
             self.assertEqual(data['models'][0]['model_id'],'paid-b')
             self.assertEqual(data['models'][0]['tokens_per_second'],400)

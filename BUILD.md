@@ -190,9 +190,9 @@ n'est pas une qualification de génération. Les tests de compatibilité avec
 PLLM ne lancent ni quotas ni benchmarks ; aucune dépendance SDK n'est installée.
 Le catalogue général ajoute un accès public à `https://opencode.ai/zen/v1/models`
 et à ses tarifs Console officiels, sans secret Go ni nouvelle dépendance.
-Les métadonnées proviennent de `opencode` dans models.dev. Les trois tableaux
-s'affichent dans l'ordre Go, OpenCode général, OpenRouter, avec mêmes colonnes
-et seuils 1M/0,50 USD/M. Une source indispensable en échec empêche la publication.
+Les métadonnées proviennent de `opencode` dans models.dev. Les deux tableaux fournisseurs s’affichent Go puis OpenRouter, avec huit
+colonnes ; le général reste dans le JSON. Contexte ≥1M et HIGH/XHIGH vérifiable
+partout ; Go/général ≤0,50 USD/M, OpenRouter ≤0,20 EUR/M au taux BCE vérifié. Une source indispensable en échec empêche la publication.
 La section JSON `opencode` est additive ; PLLM l'utilise pour les gratuits autonomes 3/4, sans changer le classement tarifaire de TFL.
 
 Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
@@ -425,3 +425,94 @@ TCU préserve le fichier utilisateur et ne crée pas un composant LM absent.
 Les tests isolés ne prouvent ni chargement dans une nouvelle session ni
 performance fournisseur. Pour revenir à une ancienne release, tenir compte
 du fait que 0.7.5 ignore la politique LM.
+
+## Planning utilisateur TFL puis PLLM
+
+Depuis 0.7.8, les plugins proposent un hook SessionStart. Codex demande de revoir et
+d'approuver sa définition avant de l'exécuter ; l'installation du plugin
+seule ne prouve donc pas que le timer est actif. Après cette approbation, le
+bootstrap enregistre le planning à l'ouverture d'une session. TCU depuis 0.7.8 et
+les releases suivantes exécutent le même bootstrap lors de `--apply`, sans lancer TFL/PLLM.
+Une première mise à jour lancée avec un ancien TCU ne possède pas ce nouveau
+code : utiliser ensuite le hook approuvé ou le TCU actualisé.
+
+TFL et PLLM doivent déjà être présents, sous forme autonome ou comme plugins
+activés de la marketplace. Le bootstrap ne les installe pas et ignore les
+checkouts de développement. Pour une installation autonome copiée, exécuter
+une fois depuis le skill installé, dans la session de l'utilisateur :
+
+```bash
+python3 -B scripts/scheduler.py install
+python3 -B scripts/scheduler.py check
+```
+
+`--skills-root CHEMIN` permet d'indiquer une racine autonome spécifique, sans
+figer une version de cache. Les paquets présents restent résolus à chaque
+passage. Les hooks de plusieurs plugins et les mises à jour partagent une
+installation, avec reçu et empreintes ; aucun autre planning n'est modifié.
+Python 3.13/3.14, le CLI Codex, un gestionnaire systemd utilisateur actif et
+les accès fournisseur existants de la session sont nécessaires. Aucune
+connexion fournisseur ni secret supplémentaire n'est créé.
+
+Le timer utilisateur exécute la chaîne à **00 h et 12 h Europe/Paris**,
+sans rattrapage. Codex doit être ouvert pour ce même utilisateur. Une lecture
+fraîche des quotas Codex précède chaque étape ; un restant nul ou un quota
+inconnu empêche son démarrage. Aucun quota Spark ou historique n'est utilisé
+comme remplacement. Si TFL échoue ou ne publie pas de catalogue frais, PLLM
+ne démarre pas. PLLM est exécuté sans `active`, avec les six modes habituels
+et le catalogue TFL explicite. Les invocations manuelles restent inchangées.
+
+Contrôler l'activation réelle avec :
+
+```bash
+systemctl --user status tools-codex-llm-refresh.timer
+systemctl --user list-timers tools-codex-llm-refresh.timer
+```
+
+Le dernier état filtré est `CODEX_HOME/llm-refresh/state.json`. Les rapports
+restent dans les dossiers `data/` des skills effectivement utilisés. L'absence
+de session systemd ou une cible modifiée produit un diagnostic, sans faux
+succès d'activation. Pour retirer uniquement le planning reconnu, depuis le
+skill installé :
+
+```bash
+python3 -B scripts/scheduler.py remove
+```
+
+Les rapports et les autres unités sont conservés. Un hook toujours approuvé
+ou une nouvelle application TCU peut réinstaller le planning ; désactiver ce
+hook dans Codex si ce retrait doit durer. Une livraison locale et ses profils
+de test ne prouvent ni approbation des hooks, ni activation du profil réel,
+ni exécution observée à une échéance. Ces preuves restent distinctes.
+
+
+## Admission stricte HIGH/XHIGH
+
+Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
+vérifiable avant test, sélection et affichage. Une liste supported_efforts
+contenant high/xhigh ou un null explicitement publié (tous les efforts) est
+admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
+budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
+Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide bloque
+la publication et préserve les rapports existants.
+
+
+## Contrat TFL/PLLM 0.7.9 et conversion OpenRouter
+
+La section JSON opencode reste collectée pour PLLM 3/4 ; son tableau est retiré.
+Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
+puis les essais gratuits ayant une preuve HIGH/XHIGH. Aucun modèle exclu
+pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
+Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
+https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
+le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
+prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
+publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
+et à la frontière de génération, y compris pour les anciens catalogues et
+les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
+Go et général gardent 0,50 USD/M. Les capacités absentes peuvent vider une
+section et bloquer le nouveau TFL ; ce résultat préserve les anciens fichiers
+sans les qualifier à nouveau. Les tests de cette release sont hors ligne,
+sans mise à jour de profil, activation du planning ni benchmark réel.

@@ -474,7 +474,16 @@ Actualiser `pllm-current.json` et `pllm-current.md` sans sortie console ni table
 
 Le JSON conserve les lignes historiques des politiques non visitées, avec leur ancien horodatage et `evaluated_this_run=false`. Elles ne représentent pas des contrôles actuels et ne doivent jamais être sélectionnées sur cette base. Les politiques visitées ont `evaluated_this_run=true`. `evaluation_mode` distingue `active` et `all`. L’invocation sans argument continue à contrôler tous les modes et afficher le tableau unique, ses six lignes de ressources (non applicables en 3/4) et l’encart de la PLLM active.
 
-L’exécution planifiée demandée est quotidienne à 00:00, 06:00, 12:00 et 18:00, heure de Paris. Elle doit utiliser le skill actif, sans figer un ancien nom d’utilisateur Unix, et rester silencieuse en fonctionnement normal.
+L'exécution planifiée est quotidienne à 00:00 et 12:00 Europe/Paris via le
+timer utilisateur commun. Elle exécute TFL puis PLLM normal avec le catalogue
+frais, uniquement si l'application ou un CLI interactif Codex est ouvert
+pour l'utilisateur et si le quota Codex relu avant chaque étape est disponible.
+Quota nul ou inconnu, Codex fermé ou échec TFL : ne pas lancer l'étape suivante.
+Aucun rattrapage, reset de quota ou changement de seuil n'est effectué.
+Le bootstrap est fourni par le hook SessionStart approuvé et TCU --apply.
+Pour une installation autonome explicitement demandée, utiliser
+`python3 -B scripts/scheduler.py install`. Ne pas installer le planning pour
+une simple évaluation manuelle. Une invocation PLLM manuelle ne lance pas TFL.
 
 
 ## Liste noire partagée LM
@@ -490,3 +499,27 @@ Les modèles interdits sont absents des listes retenues et des tests ; seules
 les traces d'exclusion les mentionnent. Un ancien catalogue ou historique ne
 valide pas un modèle interdit et une cible forcée interdite reste refusée.
 Maintenir ce module identique dans les six distributions LM/TFL/PLLM.
+
+
+## Admission stricte HIGH/XHIGH
+
+Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
+vérifiable avant test, sélection et affichage. Une liste supported_efforts
+contenant high/xhigh ou un null explicitement publié (tous les efforts) est
+admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
+budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
+Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide bloque
+la publication et préserve les rapports existants.
+
+
+## Coût OpenRouter admissible
+
+Le mode5 réapplique le plafond de moyenne entrée/sortie de base <= 0,20 EUR/M.
+Collecter le dernier taux BCE USD par EUR publié et recalculer depuis les prix
+USD du catalogue, y compris ancien ou forcé. Les moyennes EUR historiques ne
+font pas preuve. Source, date et récupération du taux sont conservées. Une
+conversion non vérifiable empêche l’admission ; les règles Go, catégories,
+contrôles de ressources et seuils de performance restent inchangés. Le retrait
+du tableau général TFL conserve la section JSON opencode pour les modes 3/4.

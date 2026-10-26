@@ -1,6 +1,6 @@
 {
   "name": "lm",
-  "version": "0.7.7",
+  "version": "0.7.9",
   "description": "Gère la liste noire commune des modèles exclus de TFL et PLLM.",
   "author": {
     "name": "AzenorPixs"
@@ -16,5 +16,6 @@
     "category": "Productivity",
     "capabilities": [],
     "defaultPrompt": "Utilise $lm pour afficher la liste noire commune des modèles LLM."
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

@@ -1,5 +1,7 @@
 """Qualification tarifaire TFL déterministe, sans réseau ni trousseau."""
 
+from eur_fixtures import FX
+
 import importlib.util
 import io
 import json
@@ -39,7 +41,7 @@ def document(rows):
 def general_fixture(module):
     return (
         {'retrieved_at': '2026-10-25T01:00:00+02:00',
-         'data': [{'id': 'general-model', 'context_length': 1_000_000}]},
+         'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'general-model', 'context_length': 1_000_000}]},
         {'source': module.CONTEXT_METADATA_URL, 'provider_id': 'opencode',
          'models_api': module.OPENCODE_API_URL, 'retrieved_at': '2026-10-25T01:00:00+02:00',
          'provider': {'api': 'https://opencode.ai/general-fixture/v1', 'npm': '@ai-sdk/openai-compatible'},
@@ -50,6 +52,7 @@ def general_fixture(module):
 
 
 def mock_general_collection(module, stack):
+    stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
     payload, metadata, pricing = general_fixture(module)
     stack.enter_context(patch.object(module, 'fetch_opencode_models', return_value=payload))
     stack.enter_context(patch.object(module, 'fetch_opencode_metadata', return_value=metadata))
@@ -67,12 +70,12 @@ class PricingTests(unittest.TestCase):
                 'models': module.parse_go_pricing(document(rows))}
 
     def payload(self, model_id='minimax-m3.1-flash'):
-        return {'data': [{'id': model_id, 'context_length': 1_000_000}]}
+        return {'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': model_id, 'context_length': 1_000_000}]}
 
     def openrouter(self, module):
         return {'pricing_source': module.OPENROUTER_API_URL,
                 'pricing_retrieved_at': '2026-10-25T01:00:01+02:00',
-                'data': [{'id': model_id, 'context_length': 1_000_000,
+                'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': model_id, 'context_length': 1_000_000,
                           'architecture': {'output_modalities': ['text']},
                           'pricing': {'prompt': '0.00000003', 'completion': '0.00000013',
                                       'input_cache_read': '0.000000006'}}
@@ -188,7 +191,7 @@ class PricingTests(unittest.TestCase):
                     self.pricing(module, [('Model X', '$0.1', '$0.2', '-', '-'),
                                           ('Model-X', '$0.1', '$0.2', '-', '-')])
                 payload = self.payload()
-                payload['data'].append({'id': 'minimax_m3.1_flash', 'context_length': 1_000_000})
+                payload['data'].append({'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'minimax_m3.1_flash', 'context_length': 1_000_000})
                 with self.assertRaisesRegex(RuntimeError, 'plusieurs identifiants'):
                     module.build_rows(payload, {}, self.pricing(module))
 
@@ -217,14 +220,14 @@ class PricingTests(unittest.TestCase):
                 payload['data'][0]['pricing']['overrides'] = [{
                     'min_prompt_tokens': 32_000, 'prompt': '0.0000001',
                     'completion': '0.0000004', 'input_cache_write': '0.000000125'}]
-                rows, _ = module.build_openrouter_rows(payload)
+                rows, _ = module.build_openrouter_rows(payload, exchange_rates=FX)
                 first = next(r for r in rows if r['id'] == OPENROUTER_FIXTURE_IDS[0])
                 self.assertAlmostEqual(first['average'], 0.08)
                 self.assertEqual(first['pricing_retrieved_at'], payload['pricing_retrieved_at'])
                 self.assertAlmostEqual(first['pricing_details']['base']['input_cache_read'], 0.006)
                 self.assertAlmostEqual(first['pricing_details']['overrides'][0]['completion'], 0.4)
                 payload['data'][0]['pricing']['completion'] = '0.00000023'
-                rows, _ = module.build_openrouter_rows(payload)
+                rows, _ = module.build_openrouter_rows(payload, exchange_rates=FX)
                 first = next(r for r in rows if r['id'] == OPENROUTER_FIXTURE_IDS[0])
                 self.assertAlmostEqual(first['average'], 0.13)
 
@@ -234,12 +237,12 @@ class PricingTests(unittest.TestCase):
                 with self.subTest(path=path, value=value):
                     payload = self.openrouter(module)
                     payload['data'][0]['pricing']['prompt'] = value
-                    rows, excluded = module.build_openrouter_rows(payload)
+                    rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                     self.assertEqual(len(rows), 2)
                     self.assertIn('non vérifiable', excluded[0]['reason'])
             payload = self.openrouter(module)
             payload['data'][0]['pricing']['input_cache_read'] = 'NaN'
-            rows, _ = module.build_openrouter_rows(payload)
+            rows, _ = module.build_openrouter_rows(payload, exchange_rates=FX)
             row = next(r for r in rows if r['id'] == OPENROUTER_FIXTURE_IDS[0])
             self.assertIsNone(row['pricing_details']['base']['input_cache_read'])
             self.assertIn('input_cache_read', row['pricing_details']['unverified_fields'])
@@ -264,10 +267,10 @@ class PricingTests(unittest.TestCase):
                     payload = self.openrouter(module)
                     payload['data'][0]['pricing']['overrides'] = override
                     with self.assertRaisesRegex(RuntimeError, 'tarifaire'):
-                        module.build_openrouter_rows(payload)
+                        module.build_openrouter_rows(payload, exchange_rates=FX)
             payload = self.openrouter(module)
             payload['data'].pop()
-            rows, excluded = module.build_openrouter_rows(payload)
+            rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
             self.assertEqual(len(rows), 2)
             self.assertEqual(excluded, [])
 
@@ -283,7 +286,7 @@ class PricingTests(unittest.TestCase):
                         {'utc_days': ['monday'], 'utc_start': 100, 'utc_end': 400,
                          'prompt': '0.0000003', 'completion': '0.0000012'},
                     ]}
-                rows, excluded = module.build_openrouter_rows(payload)
+                rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 selected = next(r for r in rows if r['id'] == OPENROUTER_FIXTURE_IDS[0])
                 self.assertEqual(excluded, [])
                 self.assertEqual(selected['average'], 0.375)
@@ -297,7 +300,7 @@ class PricingTests(unittest.TestCase):
 
     def test_dynamic_catalog_keeps_new_free_and_boundary_models_with_audited_exclusions(self):
         def model(model_id, **changes):
-            value = {'id': model_id, 'context_length': 1_000_000,
+            value = {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': model_id, 'context_length': 1_000_000,
                      'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
                      'architecture': {'input_modalities': ['text'], 'output_modalities': ['text']}}
             value.update(changes)
@@ -319,7 +322,7 @@ class PricingTests(unittest.TestCase):
                     *[model('new/' + modality, architecture={'output_modalities': [modality]})
                       for modality in ('audio', 'video', 'speech', 'sound')],
                 ]}
-                rows, excluded = module.build_openrouter_rows(payload)
+                rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual([r['id'] for r in rows],
                                  ['new/free', 'new/multimodal', 'new/unknown-output', 'new/boundary'])
                 self.assertEqual([r['rank'] for r in rows], [1, 2, 3, 4])
@@ -334,7 +337,7 @@ class PricingTests(unittest.TestCase):
                 self.assertEqual(reasons['meta/muse-spark-1.2-contributor'], 'blacklist permanente')
                 for modality in ('audio', 'video', 'speech', 'sound'):
                     self.assertIn('sortie', reasons['new/' + modality])
-                reversed_rows, _ = module.build_openrouter_rows({'data': list(reversed(payload['data']))})
+                reversed_rows, _ = module.build_openrouter_rows({'data': list(reversed(payload['data']))}, exchange_rates=FX)
                 self.assertEqual([r['id'] for r in reversed_rows], [r['id'] for r in rows])
 
     def test_entire_catalog_is_examined_beyond_one_thousand_models(self):
@@ -342,7 +345,7 @@ class PricingTests(unittest.TestCase):
             with self.subTest(path=path):
                 prototype = self.openrouter(module)['data'][0]
                 payload = {'data': [{**prototype, 'id': f'new/model-{index:04}'} for index in range(1005)]}
-                rows, excluded = module.build_openrouter_rows(payload)
+                rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 1005)
                 self.assertEqual(rows[-1]['id'], 'new/model-1004')
                 self.assertEqual(rows[-1]['rank'], 1005)
@@ -352,12 +355,12 @@ class PricingTests(unittest.TestCase):
         for path, module in self.modules():
             with self.subTest(path=path):
                 payload = self.openrouter(module)
-                before, _ = module.build_openrouter_rows(payload)
+                before, _ = module.build_openrouter_rows(payload, exchange_rates=FX)
                 old_id = before[0]['id']
                 payload['data'] = [m for m in payload['data'] if m['id'] != old_id]
                 payload['data'].append({**payload['data'][0], 'id': 'new/cheaper',
                                         'pricing': {'prompt': '0', 'completion': '0'}})
-                after, _ = module.build_openrouter_rows(payload)
+                after, _ = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(after[0]['id'], 'new/cheaper')
                 self.assertNotIn(old_id, [r['id'] for r in after])
 

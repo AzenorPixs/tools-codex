@@ -1,6 +1,6 @@
 {
   "name": "tfl",
-  "version": "0.7.7",
+  "version": "0.7.9",
   "description": "Compare les catalogues et qualifie les modèles gratuits en HIGH/XHIGH.",
   "author": {
     "name": "AzenorPixs"
@@ -10,11 +10,12 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "TFL",
-    "shortDescription": "Compare Go, OpenCode général et OpenRouter.",
-    "longDescription": "TFL collecte Go, OpenCode général et OpenRouter, puis exclut les gratuits échoués aux seuils de contexte, TTFT et débit.",
+    "shortDescription": "Compare Go puis OpenRouter, HIGH/XHIGH vérifiable.",
+    "longDescription": "TFL exige HIGH/XHIGH pour gratuits et payants, affiche Go puis OpenRouter à 0,20 EUR/M maximum et conserve le général dans le JSON.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Utilise le plugin TFL pour générer les rapports OpenCode Go, catalogue général OpenCode puis OpenRouter, toujours hors sandbox."
-  }
+    "defaultPrompt": "Utilise le plugin TFL pour générer les tableaux Go puis OpenRouter avec HIGH/XHIGH vérifiable et OpenRouter à 0,20 EUR/M maximum, toujours hors sandbox."
+  },
+  "hooks": "./hooks/hooks.json"
 }

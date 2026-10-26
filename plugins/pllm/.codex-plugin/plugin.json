@@ -1,6 +1,6 @@
 {
   "name": "pllm",
-  "version": "0.7.7",
+  "version": "0.7.9",
   "description": "Évalue la PLLM et applique de façon sûre sa sélection aux sessions OpenCode.",
   "author": {
     "name": "AzenorPixs"
@@ -16,5 +16,6 @@
     "category": "Productivity",
     "capabilities": [],
     "defaultPrompt": "Évalue la PLLM puis applique la politique sélectionnée à une session OpenCode autorisée."
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

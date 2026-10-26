@@ -60,3 +60,24 @@ Codex charge les skills actualisés.
 fichier ne crée pas une slash native. `$tcu` est l'invocation directement
 prise en charge. Maintenir SKILL.md et scripts/update.py identiques dans les
 distributions autonome et embarquée.
+
+## Planning utilisateur TFL puis PLLM
+
+Après vérification des sources, `--apply` enregistre aussi le planning avec
+le module local `scripts/scheduler.py`, sans exécuter de code téléchargé ni
+de modèle. `check` décrit seulement cette opération. Restituer la ligne
+`llm-refresh` du bilan : installation, état courant, composants absents ou
+échec ; aucune version de plugin n'est inventée pour ce planning.
+
+Les deux composants TFL/PLLM doivent déjà être installés. Les six plugins
+proposent le même bootstrap par hook SessionStart, soumis à la confiance
+native Codex. L'installateur autonome est `python3 -B scripts/scheduler.py install`,
+à utiliser seulement pour une installation demandée. Une mise à jour lancée
+avec un ancien TCU n'exécute pas rétroactivement le nouveau bootstrap.
+
+Le timer systemd utilisateur déclenche à 00 h et 12 h Europe/Paris, sans
+rattrapage, si l'application ou un CLI interactif Codex est ouvert. Il lit
+le quota Codex avant TFL puis avant PLLM : quota nul ou inconnu, aucun appel
+de l'étape. Un échec TFL empêche PLLM. La séquence ne modifie ni LM ni les
+seuils et n'exécute aucun achat, connexion ou reset de quota. TCU n'installe
+pas les composants absents et ne déclenche pas la séquence pendant son apply.

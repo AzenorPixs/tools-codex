@@ -630,10 +630,19 @@ def build_rows(payload: dict, metadata: dict, pricing: dict, *, general_catalog:
             })
             continue
         transport = go_transport(model, metadata, payload.get("retrieved_at"))
+        reasoning_capabilities = performance.capabilities(model, go_model_metadata(model, metadata))
+        try:
+            effort = performance.verified_effort({'reasoning_capabilities': reasoning_capabilities})
+        except RuntimeError as error:
+            excluded.append({'id': model_id, 'reason': str(error),
+                             'reasoning_capabilities': reasoning_capabilities, 'exclusion_type': 'reasoning_effort'})
+            continue
         row = {
             "id": model_id,
             "name": model.get("name") or model_id,
             "available": True,
+            "reasoning_capabilities": reasoning_capabilities,
+            "reasoning": effort,
             "api_metadata": {key: model.get(key) for key in ("object", "owned_by", "created") if key in model},
             **transport,
             "context_length": context,
@@ -667,6 +676,8 @@ def format_opencode_table(rows: list[dict], policy: str | None, generated_at: st
         "|---:|---|---:|---|---:|---:|:---:|:---:|",
     ]
     for row in rows:
+        if not performance.effort_allowed(row):
+            continue
         prices = row["reference_pricing_usd_per_million_tokens"] or {}
         input_key, output_key, average_key = ("input", "output", "average") if general_catalog else ("input_off_peak", "output_off_peak", "average_off_peak")
         lines.append("| " + " | ".join(escape(value) for value in (
@@ -794,7 +805,8 @@ def openrouter_output_label(modalities: list[str]) -> str:
     return ", ".join(modalities) if modalities else "Non vérifié"
 
 
-def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | None = None) -> tuple[list[dict], list[dict]]:
+def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | None = None, *, exchange_rates: dict | None = None) -> tuple[list[dict], list[dict]]:
+    performance.verified_usd_rate(exchange_rates)
     blacklisted_models = blacklist.load_models() if blacklisted_models is None else blacklisted_models
     rows = []
     excluded = []
@@ -830,10 +842,22 @@ def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | N
         if not all(math.isfinite(value) for value in (input_price, output_price, average)):
             excluded.append({"id": model_id, "name": model.get("name") or model_id, "reason": "coût moyen non vérifiable : débordement numérique"})
             continue
-        if average > MAX_REFERENCE_AVERAGE_USD_PER_MILLION:
-            excluded.append({"id": model_id, "name": model.get("name") or model_id, "context_length": context, "reference_average_usd_per_million_tokens": average, "reason": "coût moyen supérieur au seuil maximal de 0.5 $/M"})
+        try:
+            exact_prices = tuple(Decimal(str(pricing[field])) * 1_000_000 for field in ('prompt', 'completion'))
+            eur_prices = performance.openrouter_eur_prices(*exact_prices, exchange_rates)
+        except RuntimeError as error:
+            excluded.append({'id': model_id, 'context_length': context,
+                             'reference_average_usd_per_million_tokens': average,
+                             'exchange_rates': exchange_rates, 'reason': str(error)})
             continue
         supported = set(model.get("supported_parameters") or [])
+        reasoning_capabilities = performance.capabilities(model)
+        try:
+            effort = performance.verified_effort({'reasoning_capabilities': reasoning_capabilities})
+        except RuntimeError as error:
+            excluded.append({'id': model_id, 'reason': str(error),
+                             'reasoning_capabilities': reasoning_capabilities, 'exclusion_type': 'reasoning_effort'})
+            continue
         capabilities = []
         if "tools" in supported:
             capabilities.append("tools")
@@ -850,6 +874,11 @@ def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | N
             "input_price": input_price,
             "output_price": output_price,
             "average": average,
+            "base_pricing_usd_per_million_tokens": dict(zip(('input', 'output'), map(str, exact_prices))),
+            **eur_prices,
+            "exchange_rates": exchange_rates,
+            "reasoning_capabilities": reasoning_capabilities,
+            "reasoning": effort,
             "pricing_source": payload.get("pricing_source", OPENROUTER_API_URL),
             "pricing_retrieved_at": payload.get("pricing_retrieved_at"),
             "pricing_details": openrouter_pricing_details(pricing),
@@ -870,24 +899,33 @@ def format_openrouter_table(rows: list[dict], generated_at: str) -> str:
     lines = [
         "## Rapports des LMM OpenRouter les moins onéreux",
         "",
-        "Code couleur : 🟢 ≤ 0.20 $/M · 🟡 > 0.20 à 0.40 $/M · 🟠 > 0.40 à 0.50 $/M.",
+        "Code couleur : 🟢 coût moyen ≤ 0.20 €/M ; montants convertis au taux BCE publié.",
         "",
-        "| Rang | Modèle / ID | Contexte | Sortie | Entrée $/M | Sortie $/M | Coût moyen $/M | Code couleur |",
+        "| Rang | Modèle / ID | Contexte | Sortie | Entrée €/M | Sortie €/M | Coût moyen €/M | Code couleur |",
         "|---:|---|---:|---|---:|---:|:---:|:---:|",
     ]
     for row in rows:
+        if not performance.effort_allowed(row):
+            continue
+        try:
+            prices = performance.openrouter_eur_prices(*performance.native_openrouter_prices(row), row.get('exchange_rates'))
+        except (KeyError, RuntimeError):
+            continue
         lines.append("| " + " | ".join(escape(value) for value in (
             row["rank"],
             f"{row['name']} ({row['id']})",
             context_label(row["context_length"]),
             row["output_label"],
-            openrouter_money(row["input_price"]),
-            openrouter_money(row["output_price"]),
-            openrouter_money(row["average"]),
-            cost_color(row["average"]),
+            openrouter_money(prices['input_price_eur']).replace('$', '€'),
+            openrouter_money(prices['output_price_eur']).replace('$', '€'),
+            openrouter_money(prices['average_eur']).replace('$', '€'),
+            cost_color(prices['average_eur']),
         )) + " |")
     lines.append("")
-    lines.append(f"Actualisé le {generated_at}; classement par coût moyen entrée/sortie croissant, après filtres contexte ≥ 1M et coût moyen ≤ 0.5 $/M.")
+    lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, HIGH/XHIGH vérifiable, coût moyen ≤ 0.20 €/M, classement croissant.")
+    rates = next((row.get('exchange_rates') for row in rows if row.get('exchange_rates')), None)
+    if rates:
+        lines.append(f"Taux BCE du {rates['date']} : 1 EUR = {rates['rates']['USD']} USD ; source : {performance.ECB_RATES_URL}.")
     lines.append("Les modèles multimodaux en entrée sont conservés; les métadonnées et capacités OpenRouter restent disponibles dans le catalogue JSON TFL.")
     lines.append("Sélection dynamique sur tout le catalogue API, sans liste prédéfinie; les modèles gratuits vérifiés sont admissibles et les exclusions restent auditables dans le JSON.")
     return "\n".join(lines) + "\n"
@@ -987,6 +1025,10 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
         if blacklist.is_blocked(row['id'], blacklisted_models):
             excluded.append({**row, 'reason': 'liste noire LM ou permanente'})
             continue
+        if not performance.effort_allowed(row):
+            excluded.append({**row, 'reason': 'HIGH/XHIGH non vérifiable ou non pris en charge',
+                             'exclusion_type': 'reasoning_effort'})
+            continue
         row['is_free'] = performance.is_free(row, section)
         if not row['is_free']:
             retained.append(row)
@@ -995,7 +1037,8 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
         model = {'model_id': row['id'], 'provider': provider,
                  'api_protocol': row.get('api_protocol', 'chat_completions'),
                  'api_endpoint': row.get('api_endpoint') if section != 'openrouter' else 'https://openrouter.ai/api/v1/chat/completions',
-                 'is_free': True, 'section': section, 'context_length': row.get('context_length')}
+                 'is_free': True, 'section': section, 'context_length': row.get('context_length'),
+                 'reasoning_capabilities': row['reasoning_capabilities']}
         evaluate_free(model, key, {'reasoning_capabilities': row.get('reasoning_capabilities', {})})
         audit.append(copy.deepcopy(model))
         row.update({field: copy.deepcopy(model[field]) for field in (
@@ -1020,6 +1063,8 @@ def format_free_performance(audit: list[dict]) -> str:
              '| Fournisseur | Modèle / ID | TTFT (s) | Tokens/s | Raisonnement | État / cause |',
              '|---|---|---:|---:|---|---|']
     for model in audit:
+        if not performance.effort_allowed(model):
+            continue
         value = lambda field: '-' if model.get(field) is None else f'{model[field]:.4f}'
         state = ('🟢 Valide' if model['state'] == 'Valide' else '🔴 Exclu') + ' — ' + model['cause']
         lines.append('| ' + ' | '.join(escape(item) for item in (
@@ -1051,7 +1096,8 @@ def main() -> int:
         if not general_rows:
             raise RuntimeError("aucun modèle du catalogue général OpenCode ne satisfait les filtres TFL")
         openrouter_payload = fetch_openrouter_models(openrouter_key, args.timeout)
-        openrouter_rows, openrouter_excluded = build_openrouter_rows(openrouter_payload, blacklisted_models)
+        cost_exchange_rates = performance.fetch_eur_rates(timeout=args.timeout)
+        openrouter_rows, openrouter_excluded = build_openrouter_rows(openrouter_payload, blacklisted_models, exchange_rates=cost_exchange_rates)
         audit = []
         for rows, payload, metadata in ((opencode_rows, opencode_payload, go_metadata),
                                         (general_rows, general_payload, general_metadata),
@@ -1093,6 +1139,8 @@ def main() -> int:
         "models": opencode_rows,
     }
     openrouter_catalog = {
+        "cost_exchange_rates": cost_exchange_rates,
+        "maximum_average_eur_per_million_tokens": 0.20,
         "source_api": OPENROUTER_API_URL,
         "pricing_source": openrouter_payload.get("pricing_source", OPENROUTER_API_URL),
         "pricing_retrieved_at": openrouter_payload.get("pricing_retrieved_at"),
@@ -1126,8 +1174,12 @@ def main() -> int:
         "free_performance_results": audit,
         "generated_at": generated_at,
         "order": ["opencode_go", "opencode", "openrouter"],
+        "report_order": ["opencode_go", "openrouter"],
         "common_columns": ["rank", "model_id", "context", "output", "input_price", "output_price", "average_cost", "cost_color"],
-        "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS, "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION},
+        "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS,
+                    "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION,
+                    "openrouter_maximum_average_eur_per_million_tokens": 0.20,
+                    "required_reasoning_efforts": ["high", "xhigh"]},
         "lm_blacklist": {"model_ids": list(blacklisted_models), "permanent_model_ids": list(blacklist.PERMANENT_MODELS)},
         "blacklists": {"opencode_go": sorted(BLACKLISTED_MODEL_IDS), "opencode": sorted(BLACKLISTED_MODEL_IDS), "openrouter": sorted(OPENROUTER_BLACKLIST)},
         "opencode_go": opencode_catalog,
@@ -1139,7 +1191,6 @@ def main() -> int:
     json_path = output_dir / "tfl.json"
     markdown_path = output_dir / "tfl.md"
     markdown = ("# TFL — Test Fournisseur LLM\n\n" + format_opencode_table(opencode_rows, policy, generated_at)
-                + "\n" + format_opencode_table(general_rows, None, generated_at, general_catalog=True)
                 + "\n" + format_openrouter_table(openrouter_rows, generated_at)
                 + "\n" + format_free_performance(audit))
     try:

@@ -153,10 +153,8 @@ class PllmPricePriorityTests(unittest.TestCase):
             data, events, _ = self.run_evaluation(module, path)
             for model in data['models'][:2]:
                 self.assertEqual(model['model_id'], 'expensive')
-                rejected = model['candidate_results'][0]
-                self.assertEqual(rejected['model_id'], 'cheap')
-                self.assertEqual(rejected['state'], 'Invalide')
-                self.assertIn('HIGH et XHIGH', rejected['cause'])
+                self.assertEqual([c['model_id'] for c in model['candidate_results']], ['expensive'])
+                self.assertIn('HIGH et XHIGH', model['candidate_exclusions'][0]['cause'])
                 self.assertEqual([e[2] for e in events if e[0] == 'benchmark' and e[1] == model['mode']],
                                  ['expensive'])
 

@@ -69,7 +69,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Plugin | `tcu` | Met à jour les briques installées depuis marketplace et GitHub. |
 | Plugin | `cm` | Distribue le catalogue des commandes maison, invocable avec `$cm`. |
 | Plugin | `pllm` | Évalue une politique de modèles LLM et l'applique à une session OpenCode autorisée. |
-| Plugin | `tfl` | Compare OpenCode Go, le catalogue général OpenCode et OpenRouter. |
+| Plugin | `tfl` | Compare Go puis OpenRouter ; conserve le catalogue général dans le JSON. |
 | Skill | `cgpt` | Affiche les quotas Codex disponibles. |
 | Skill | `coding-session-statistics` | Produit un bilan auditable d'une session de codage ou de pilotage. |
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
@@ -132,3 +132,15 @@ création de fichier ; une liste vide explicite permet son retrait. TFL et
 PLLM filtrent avant classement, sélection et génération, indépendamment des
 anciens catalogues ou succès mémorisés. Le stockage hors cache est conservé
 par TCU. Les exclusions permanentes historiques restent distinctes.
+
+## Rafraîchissement utilisateur planifié
+
+Les six plugins embarquent un bootstrap SessionStart soumis à la confiance
+native de Codex. TCU applique le même bootstrap après vérification des sources ;
+les copies autonomes fournissent aussi l'installateur. Une seule installation
+utilisateur déclenche TFL puis PLLM normal à 00 h et 12 h Europe/Paris.
+L'application ou un CLI interactif Codex doit être ouvert pour cet utilisateur.
+Un quota Codex épuisé ou inconnu empêche TFL et PLLM ; le quota est relu avant
+PLLM. Les passages manqués ne sont pas rattrapés. L'installation n'exécute
+aucun LLM ; un échec TFL empêche PLLM et la réutilisation d'un ancien catalogue.
+La qualification des sources reste distincte de l'activation du timer réel.

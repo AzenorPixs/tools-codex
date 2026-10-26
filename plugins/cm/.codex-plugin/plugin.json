@@ -1,6 +1,6 @@
 {
   "name": "cm",
-  "version": "0.7.7",
+  "version": "0.7.9",
   "description": "Affiche le catalogue des commandes maison Tools Codex et leurs syntaxes.",
   "author": {
     "name": "AzenorPixs"
@@ -16,5 +16,6 @@
     "category": "Productivity",
     "capabilities": [],
     "defaultPrompt": "Utilise $cm pour afficher le catalogue des commandes maison Tools Codex."
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

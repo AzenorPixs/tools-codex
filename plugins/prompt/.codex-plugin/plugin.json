@@ -1,6 +1,6 @@
 {
   "name": "prompt",
-  "version": "0.7.7",
+  "version": "0.7.9",
   "description": "Liste et lance les prompts du projet courant depuis son référentiel DEVOPS.md.",
   "author": {
     "name": "AzenorPixs"
@@ -16,5 +16,6 @@
     "category": "Productivity",
     "capabilities": [],
     "defaultPrompt": "Utilise $prompt LIST pour afficher les prompts du projet courant."
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

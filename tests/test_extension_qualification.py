@@ -1,5 +1,7 @@
 """Qualification hors ligne des correctifs CGP dans les deux distributions."""
 
+from eur_fixtures import FX
+
 from contextlib import ExitStack
 import importlib.util
 import io
@@ -31,7 +33,7 @@ def load_script(path):
 
 
 def candidate(name):
-    return {'id': name, 'available': True, 'api_endpoint': 'https://opencode.ai/zen/go/v1/responses',
+    return {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': name, 'available': True, 'api_endpoint': 'https://opencode.ai/zen/go/v1/responses',
             'api_protocol': 'responses', 'context_length': 1_000_000,
             'reference_pricing_usd_per_million_tokens': {'input_off_peak': 0.1, 'output_off_peak': 0.2}}
 
@@ -59,7 +61,7 @@ class ExtensionQualificationTests(unittest.TestCase):
         catalog.parent.mkdir(parents=True)
         catalog.write_text(json.dumps({'generated_at': 'fixture-date',
                                       'opencode_go': {'models': [candidate('first'), candidate('second')]},
-                                      'openrouter': {'models': [{'id': 'router-fixture', 'context_length': 1_000_000,
+                                      'openrouter': {'models': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'router-fixture', 'context_length': 1_000_000,
                                                                  'input_price': 0.1, 'output_price': 0.2}]}}), encoding='utf-8')
         return module, catalog
 
@@ -83,6 +85,7 @@ class ExtensionQualificationTests(unittest.TestCase):
             return True
 
         with ExitStack() as stack:
+            stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
             stack.enter_context(patch.object(module.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout=b'offline-fixture')))
             stack.enter_context(patch.object(module, 'quota', side_effect=quota))
             stack.enter_context(patch.object(module, 'benchmark', side_effect=benchmark))
@@ -182,10 +185,14 @@ class ExtensionQualificationTests(unittest.TestCase):
                 payload['opencode_go']['models'].append(free)
                 catalog.write_text(json.dumps(payload))
                 result, calls = self.run_evaluation(module, catalog)
-                self.assertTrue(all(m['evaluated_this_run'] and m['state'] == 'Valide' for m in result['models']))
-                self.assertEqual(len(calls), 14)
-                self.assertTrue(all(len(m['candidate_results']) == 1 for m in result['models']))
-                self.assertEqual(result['models'][5]['model'], 'deepseek-v4-flash')
+                self.assertTrue(all(m['evaluated_this_run'] for m in result['models']))
+                self.assertTrue(all(m['state'] == 'Valide' for m in result['models'][:5]))
+                self.assertEqual(result['models'][5]['state'], 'Invalide')
+                self.assertEqual(len(calls), 12)
+                self.assertTrue(all(len(m['candidate_results']) == 1 for m in result['models'][:5]))
+                self.assertEqual(result['models'][5]['candidate_results'], [])
+                self.assertEqual(result['models'][5]['model'], 'Non évalué')
+                self.assertIn('HIGH/XHIGH', result['models'][5]['cause'])
 
     def test_last_tier_fallback_requires_its_own_measurements(self):
         for script in PLLM:
@@ -247,7 +254,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 self.assertEqual(output.getvalue(), '')
 
     def tfl_payload(self, module):
-        return {'data': [{'id': name, 'context_length': 1_000_000,
+        return {'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': name, 'context_length': 1_000_000,
                           'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
                           'architecture': {'output_modalities': ['text']}}
                          for name in OPENROUTER_FIXTURE_IDS]}
@@ -266,7 +273,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 with self.subTest(script=script, price=str(price)[:20]):
                     payload = self.tfl_payload(module)
                     payload['data'][0]['pricing'] = {'prompt': price, 'completion': price}
-                    rows, excluded = module.build_openrouter_rows(payload)
+                    rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                     self.assertEqual(len(rows), 2)
                     self.assertIn('coût moyen non vérifiable', excluded[0]['reason'])
                     json.dumps({'rows': rows, 'excluded': excluded}, allow_nan=False)
@@ -277,12 +284,12 @@ class ExtensionQualificationTests(unittest.TestCase):
                 module = load_script(script)
                 payload = self.tfl_payload(module)
                 payload['data'][0]['pricing'] = {'prompt': '0.0000005', 'completion': '0.0000005'}
-                rows, excluded = module.build_openrouter_rows(payload)
+                rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 3)
                 self.assertEqual(rows[-1]['average'], 0.5)
                 self.assertEqual(excluded, [])
                 payload['data'][0]['pricing']['completion'] = '0.0000006'
-                rows, excluded = module.build_openrouter_rows(payload)
+                rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 2)
                 self.assertIn('seuil maximal', excluded[0]['reason'])
 
@@ -305,7 +312,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                     stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     mock_general_collection(module, stack)
-                    stack.enter_context(patch.object(module, 'build_rows', return_value=([{'id': 'nan-fixture', 'fixture': float('nan')}], [])))
+                    stack.enter_context(patch.object(module, 'build_rows', return_value=([{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'nan-fixture', 'fixture': float('nan')}], [])))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=self.tfl_payload(module)))
                     stack.enter_context(patch.object(module, 'format_opencode_table', return_value='fixture'))
                     write = stack.enter_context(patch.object(module, 'atomic_write'))
@@ -332,7 +339,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                         policy_option=None, policy='auto', timeout=1, output_dir=output)))
                     stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={
-                        'data': [{'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
+                        'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
                     stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     mock_general_collection(module, stack)

@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.7`.
+Version de release : `0.7.9`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -65,7 +65,7 @@ officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,
 la date et les variantes tarifaires. Une collecte indispensable en échec
 préserve les rapports précédents sans reprendre silencieusement leurs prix.
 La sélection OpenRouter examine tout le catalogue API sans liste prédéfinie :
-contexte ≥ 1M, coût moyen de base ≤ 0,50 USD/M, sorties admissibles et blacklist.
+contexte ≥ 1M, coût moyen de base ≤0,20 EUR/M au taux BCE vérifié, HIGH/XHIGH vérifiable, sorties admissibles et blacklist.
 Les gratuits vérifiés doivent aussi réussir les tests HIGH/XHIGH : réponse
 complète, TTFT <30 s et débit >20 tokens/s. Les échecs sont retirés de models
 et leurs preuves sont conservées dans les exclusions JSON. Un nouveau modèle admissible apparaît sans modification du code.
@@ -75,10 +75,12 @@ conserve les sources et dates ; une information absente reste non vérifiée,
 une contradiction ou une URL de routage non sûre bloque la publication.
 Une route documentée reste distincte d'un test réel de génération : les
 gratuits TFL sont désormais testés, les payants restent un catalogue tarifaire.
-Le rapport comprend trois tableaux fournisseurs : OpenCode Go, catalogue général OpenCode,
-puis OpenRouter, suivis du tableau détaillé des tests gratuits. Le catalogue général est collecté publiquement et conserve
+Le rapport comprend deux tableaux fournisseurs : OpenCode Go puis OpenRouter,
+suivis du tableau détaillé des tests gratuits admissibles à HIGH/XHIGH. Le catalogue général est collecté publiquement et conserve
 ses propres tarifs et métadonnées `opencode`, indépendants de `opencode-go`.
-Les trois catalogues exigent contexte ≥ 1M et coût moyen ≤ 0,50 USD/M ; une
+Les trois catalogues exigent contexte ≥ 1M et HIGH/XHIGH vérifiable. Go et
+général gardent coût moyen ≤0,50 USD/M ; OpenRouter exige ≤0,20 EUR/M converti
+au dernier taux BCE publié ; une
 variante gratuite à 200K reste exclue. La section JSON supplémentaire
 `opencode` fournit également les gratuits PLLM des modes 3/4 décrits plus haut.
 TFL ne consulte aucun quota pour ses tests gratuits. Une section devenue vide
@@ -136,3 +138,15 @@ les modifications. Le [skill LM](skills/lm/SKILL.md), son
 [plugin](plugins/lm/.codex-plugin/plugin.json) et la commande source /LM sont
 livrés localement ; une slash native n'est pas automatiquement enregistrée.
 La publication et l'installation dans le profil sont des étapes distinctes.
+
+## TFL puis PLLM à 00 h et 12 h
+
+Les plugins proposent un hook de démarrage à approuver dans Codex ; TCU
+installe aussi le planning lors d'une application réussie. Un unique timer
+systemd utilisateur déclenche TFL puis PLLM normal à 00 h et 12 h Paris,
+uniquement si l'application ou un CLI interactif Codex est ouvert et si les
+quotas Codex sont vérifiables et non épuisés. Le quota est relu avant PLLM.
+Quota nul/inconnu, Codex fermé ou échec TFL : PLLM ne démarre pas. Aucun
+rattrapage ni changement des seuils ou exclusions LM n'est ajouté.
+TFL et PLLM doivent déjà être installés ; leur absence ne les installe pas.
+Voir [installation et contrôle](BUILD.md#planning-utilisateur-tfl-puis-pllm).

@@ -194,6 +194,8 @@ class TcuUpdateTests(unittest.TestCase):
         files = {name:(ROOT/name).read_bytes() for name in ('VERSION','.agents/plugins/marketplace.json')}
         for path in (ROOT/'plugins').glob('*/.codex-plugin/plugin.json'):
             files[str(path.relative_to(ROOT))] = path.read_bytes()
+        for path in (ROOT/'plugins').glob('*/hooks/hooks.json'):
+            files[str(path.relative_to(ROOT))] = path.read_bytes()
         for path in (ROOT/'skills').rglob('*'):
             relative = path.relative_to(ROOT)
             if path.is_file() and self.m.source_file(self.m.PurePosixPath(*relative.parts[2:])):
@@ -203,7 +205,7 @@ class TcuUpdateTests(unittest.TestCase):
         def fetch(url):
             return json.dumps({'sha':'a'*40}).encode() if url.endswith('/commits/HEAD') else zip_bytes(files)
         remote = self.m.snapshot(fetch)
-        self.assertEqual(remote['version'],'0.7.7')
+        self.assertEqual(remote['version'],'0.7.9')
         self.assertEqual(remote['plugins'], {'cm','lm','tfl','pllm','prompt','tcu'})
         for name in ('lm','tfl','pllm'):
             self.assertIn('skills/'+name+'/scripts/model_blacklist.py',remote['files'])
@@ -269,8 +271,60 @@ class TcuUpdateTests(unittest.TestCase):
         result = self.execute(apply=True)
         self.assertTrue(result['succes'])
         self.assertEqual(list(self.skills.iterdir()), [])
-        self.assertTrue(all(r['status'] == 'absent' for r in result['briques']))
+        self.assertTrue(all(r['status'] == 'absent' for r in result['briques']
+                            if r.get('ressource') != 'planification'))
+        schedule = next(r for r in result['briques'] if r.get('ressource') == 'planification')
+        self.assertEqual(schedule['status'], 'composants_absents')
         self.assertFalse(any(c[0] == 'add' for c in self.calls))
+
+    def test_schedule_check_is_planned_without_mutation_or_generation(self):
+        with patch.object(self.m.scheduler, 'install', return_value={'status': 'a_installer'}) as install:
+            report = self.execute()
+        self.assertTrue(report['succes'])
+        install.assert_called_once()
+        self.assertFalse(install.call_args.kwargs['apply'])
+        self.assertFalse(self.home.exists())
+        self.assertEqual(next(r for r in report['briques'] if r['brique'] == 'llm-refresh')['status'], 'a_installer')
+
+    def test_schedule_apply_reports_bootstrap_separately(self):
+        with patch.object(self.m.scheduler, 'install', return_value={'status': 'installe'}) as install:
+            report = self.execute(apply=True)
+        self.assertTrue(report['succes'])
+        install.assert_called_once()
+        self.assertTrue(install.call_args.kwargs['apply'])
+        self.assertEqual(next(r for r in report['briques'] if r['brique'] == 'llm-refresh')['status'], 'installe')
+
+    def test_schedule_failure_keeps_partial_update_and_returns_failure(self):
+        with patch.object(self.m.scheduler, 'install', side_effect=self.m.scheduler.ScheduleError('Session indisponible')):
+            report = self.execute(apply=True)
+        self.assertFalse(report['succes'])
+        self.assertTrue(self.upgraded)
+        self.assertIn('Planning utilisateur', report['erreur'])
+        self.assertEqual(next(r for r in report['briques'] if r['brique'] == 'llm-refresh')['status'], 'incomplet')
+
+    def test_schedule_does_not_arm_a_conflicting_tfl_or_pllm_source(self):
+        for name in ('tfl', 'pllm'):
+            plan = {'brique': str(self.skills / name), 'canal': 'github', 'status': 'conflit'}
+            with patch.object(self.m, 'local_plan', return_value=[plan]):
+                with patch.object(self.m.scheduler, 'install') as install:
+                    report = self.execute(apply=True)
+            install.assert_not_called()
+            self.assertFalse(report['succes'])
+            self.assertEqual(next(r for r in report['briques'] if r['brique'] == 'llm-refresh')['status'], 'conflit')
+
+    def test_unverified_hook_command_blocks_before_any_mutation(self):
+        manifest = 'plugins/cm/.codex-plugin/plugin.json'
+        data = json.loads(self.files[manifest])
+        data['hooks'] = './hooks/hooks.json'
+        self.files[manifest] = json.dumps(data).encode()
+        self.files['skills/cm/scripts/scheduler.py'] = b'# fixture\n'
+        for hooks in ({'hooks': {'SessionStart': [{'hooks': [{'type': 'command', 'command': 'fixture-untrusted'}]}]}},
+                      {'hooks': []}):
+            self.files['plugins/cm/hooks/hooks.json'] = json.dumps(hooks).encode()
+            with self.assertRaises(self.m.UpdateError):
+                self.m.snapshot(self.fetcher)
+        self.assertFalse(self.home.exists())
+        self.assertEqual(self.calls, [])
 
     def test_existing_commands_only_are_updated(self):
         commands = self.base / 'commands'

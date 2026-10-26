@@ -1,5 +1,7 @@
 """Sélection PLLM et diagnostics observables, sans réseau ni trousseau réel."""
 
+from eur_fixtures import FX
+
 from contextlib import ExitStack
 import io
 import json
@@ -15,7 +17,7 @@ from test_extension_qualification import load_script, ROOT, PLLM
 
 def row(name, section='opencode_go', free=False):
     price = 0 if free else 0.1
-    result = {'id': name, 'context_length': 1_000_000, 'output_modalities': ['text']}
+    result = {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': name, 'context_length': 1_000_000, 'output_modalities': ['text']}
     if section == 'openrouter':
         result.update(input_price=price, output_price=price)
     else:
@@ -89,6 +91,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
         metadata = [{'id': item['id'], 'reasoning': {'supported_efforts': ['high']}}
                     for item in json.loads(path.read_text())['openrouter']['models']]
         with ExitStack() as stack:
+            stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
             stack.enter_context(patch.object(module.subprocess, 'run', side_effect=secret_lookup, return_value=SimpleNamespace(
                 returncode=0 if secret_ok else 1, stdout=b'offline-fixture' if secret_ok else b'')))
             stack.enter_context(patch.object(module, 'quota', side_effect=quota))
@@ -332,12 +335,12 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 candidate = row('looks-free', free=True)
                 candidate.update(update)
                 with self.assertRaises((ValueError, RuntimeError)):
-                    module.catalog_candidate(candidate, 'opencode_go', 1, 'fixture')
+                    module.catalog_candidate(candidate, 'opencode_go', 1, 'fixture', exchange_rates=FX)
             paid = row('looks-free')
-            self.assertFalse(module.catalog_candidate(paid, 'opencode_go', 1, 'fixture')['is_free'])
+            self.assertFalse(module.catalog_candidate(paid, 'opencode_go', 1, 'fixture', exchange_rates=FX)['is_free'])
             variant = row('off-peak-free', free=True)
             variant['pricing_variants'] = [{'input': 0.1, 'output': 0.1}]
-            self.assertFalse(module.catalog_candidate(variant, 'opencode_go', 1, 'fixture')['is_free'])
+            self.assertFalse(module.catalog_candidate(variant, 'opencode_go', 1, 'fixture', exchange_rates=FX)['is_free'])
 
     def test_real_quota_parser_distinguishes_exhaustion_from_unknown_status(self):
         for script in PLLM:
@@ -358,7 +361,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             model = {'mode': 'mode1', 'model_id': 'fixture', 'provider': 'opencode',
                      'api_protocol': 'responses', 'api_endpoint': 'https://opencode.ai/zen/v1/responses'}
             with patch.object(module, 'request', return_value=stream), self.assertRaises(module.AuthenticationFailure) as error:
-                module.benchmark(model, 'offline-fixture', 1024, {}, session_id='fixture')
+                module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['high']}}, session_id='fixture')
             self.assertIn('HTTP 401', str(error.exception))
             self.assertNotIn('private-message', str(error.exception))
 
@@ -397,7 +400,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                          'api_protocol': 'responses', 'api_endpoint': 'https://opencode.ai/zen/v1/responses'}
                 with patch.object(module, 'request', return_value=stream) as request, \
                         patch.object(module.time, 'monotonic', side_effect=(0, 1, 2, 3, 4, 5)):
-                    self.assertTrue(module.benchmark(model, 'offline-fixture', 1024, {}, session_id='stable-fixture'))
+                    self.assertTrue(module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['high']}}, session_id='stable-fixture'))
                 self.assertEqual(model['ttft_seconds'], 2)
                 self.assertEqual(model['tokens_per_second'], 20.2)
                 self.assertEqual(model['throughput_scope'], 'reasoning_and_response')

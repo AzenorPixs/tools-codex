@@ -163,7 +163,8 @@ class PllmSixModesTests(unittest.TestCase):
                                 for m in migrated['models'][2:4]))
             data, _, _ = self.run_evaluation(module, path, secret_ok=False, forced={'mode': 'mode3'})
             self.assertIsNone(data['selected_mode'])
-            self.assertEqual(data['models'][4]['model_id'], 'old-3')
+            self.assertEqual(data['models'][4]['model_id'], 'Non évalué')
+            self.assertTrue(data['models'][4]['candidate_exclusions'])
             self.assertFalse(data['models'][4]['evaluated_this_run'])
 
     def test_old_free_go_winner_cannot_remain_a_paid_winner(self):
@@ -234,14 +235,14 @@ class PllmSixModesTests(unittest.TestCase):
             module, path, _ = self.workspace(script)
             for command, expected in (('31', 'free-go'), ('32', 'free-general'),
                                       ('41', 'free-go'), ('42', 'free-general'),
-                                      ('52', 'paid-router'), ('6', 'deepseek-v4-flash')):
+                                      ('52', 'paid-router')):
                 forced = module.FORCED_COMMANDS[command]
                 data, events, _ = self.run_evaluation(module, path, forced=forced)
                 selected = next(model for model in data['models'] if model['selected'])
                 self.assertEqual(selected['mode'], forced['mode'])
                 self.assertEqual(selected['model_id'], expected)
                 self.assertEqual(sum(event[0] == 'benchmark' for event in events), 1)
-            for command in ('33', '43', '51'):
+            for command in ('33', '43', '51', '6'):
                 data, events, _ = self.run_evaluation(module, path, forced=module.FORCED_COMMANDS[command])
                 self.assertIsNone(data['selected_mode'])
                 self.assertFalse(any(event[0] == 'benchmark' for event in events))

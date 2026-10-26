@@ -1,16 +1,13 @@
 ---
 name: tfl
-description: Générer un rapport autonome et unifié des LLM OpenCode Go, du catalogue général OpenCode puis OpenRouter, avec filtres de contexte, coût, multimédia, blacklist et code couleur communs. Utiliser pour /tfl, TFL ou « Test Fournisseur LLM ».
+description: Générer un rapport autonome des LLM OpenCode Go puis OpenRouter, avec collecte générale conservée dans le JSON, avec filtres de contexte, coût, multimédia, blacklist et code couleur communs. Utiliser pour /tfl, TFL ou « Test Fournisseur LLM ».
 ---
 
 # TFL — Test Fournisseur LLM
 
-Produire un rapport unifié, en français, des modèles LLM retenus dans trois
-catalogues. L’ordre est obligatoire :
-
-1. OpenCode Go ;
-2. catalogue général OpenCode ;
-3. OpenRouter.
+Produire un rapport unifié en français avec deux tableaux fournisseurs,
+OpenCode Go puis OpenRouter. Collecter aussi le catalogue général OpenCode
+dans le JSON pour les modes gratuits PLLM 3/4, sans tableau fournisseur général.
 
 TFL est autonome : il interroge directement les catalogues et sources officielles, applique ses propres
 règles et ne dépend pas des skills ou plugins TOCG/TLOLC.
@@ -38,7 +35,7 @@ Lorsqu’une demande `/TFL`, `/tfl` ou « Test Fournisseur LLM » est exécutée
 depuis la console, la sortie non sensible de la commande doit toujours être
 restituée dans le message final visible de l’interface Codex, et pas seulement
 dans la sortie technique d’un outil ou dans un message de progression :
-les trois tableaux, date d’actualisation, chemins des fichiers et messages d’erreur
+les deux tableaux fournisseurs, les essais gratuits, la date d’actualisation, chemins des fichiers et messages d’erreur
 éventuels. Ne pas exécuter silencieusement la commande ni renvoyer uniquement
 les liens vers les fichiers. Les clés et toute autre donnée sensible restent
 exclues de la restitution.
@@ -53,19 +50,20 @@ la sortie, les fichiers ou les journaux.
 La commande écrit atomiquement :
 
 - `data/tfl.json`, catalogue unifié et audit détaillé ;
-- `data/tfl.md`, rapport complet dans l’ordre Go, OpenCode général, OpenRouter.
+- `data/tfl.md`, rapport complet dans l’ordre Go, OpenRouter, puis essais gratuits.
 
 ## Colonnes communes
 
-Les trois tableaux utilisent exactement les mêmes colonnes : `Rang`, `Modèle /
+Les deux tableaux fournisseurs gardent les huit colonnes suivantes : `Rang`, `Modèle /
 ID`, `Contexte`, `Sortie`, `Entrée $/M`, `Sortie $/M`, `Coût moyen $/M` et `Code
 couleur`. Les métadonnées propres à un fournisseur restent dans le JSON, mais
 ne sont jamais ajoutées à un seul des tableaux.
 
-Le coût moyen est `(prix d'entrée + prix de sortie) / 2`, en USD par million de
-tokens, et le classement est croissant sur cette valeur.
+Le coût moyen est `(prix d'entrée + prix de sortie) / 2`. Go affiche USD/M ;
+OpenRouter affiche EUR/M après conversion BCE vérifiée. Le classement est
+croissant. Les libellés tarifaires du tableau OpenRouter utilisent €/M.
 
-Code couleur commun : 🟢 jusqu’à 0.20 $/M inclus, 🟡 au-delà de 0.20 jusqu’à
+Code couleur dans la devise affichée : 🟢 jusqu’à 0.20 $/M inclus, 🟡 au-delà de 0.20 jusqu’à
 0.40 $/M inclus, 🟠 au-delà de 0.40 jusqu’à 0.50 $/M inclus, ⚪ coût non
 vérifié, 🔴 au-delà du seuil.
 
@@ -152,7 +150,7 @@ doit pas être remplacée silencieusement par une autre.
   propres dans chaque section, sans emprunt de prix, contexte ou route.
 
 Les variantes gratuites de contexte inférieur à 1M restent exclues. Le
-catalogue général possède son propre classement et les mêmes huit colonnes.
+catalogue général possède son propre classement dans le JSON, sans tableau fournisseur.
 Les sections `opencode_go` et `openrouter` restent compatibles avec PLLM ;
 l'ajout du catalogue général ne change pas ses politiques de sélection.
 
@@ -166,7 +164,7 @@ l'ajout du catalogue général ne change pas ses politiques de sélection.
   uniquement la modalité de sortie. Les sorties non textuelles audio, vidéo,
   speech ou sound sont exclues.
 - Le contexte doit être au moins de 1M et le coût moyen compris entre zéro et
-  0.5 $/M inclus. Un modèle gratuit vérifié reste admissible.
+  0.20 €/M inclus après conversion BCE vérifiée. Un gratuit vérifié reste admissible.
 - `meta/muse-spark-1.2-contributor` est une blacklist permanente.
 - Les modalités d’entrée/sortie, capacités (`tools`, `reasoning`, `JSON`),
   paramètres API et motifs d’exclusion restent dans la section OpenRouter du
@@ -184,7 +182,7 @@ finis ou débordants ne sont pas exploitables.
 
 ## Robustesse et présentation
 
-TFL affiche OpenCode Go, puis le catalogue général OpenCode, puis OpenRouter. Une
+TFL affiche OpenCode Go puis OpenRouter ; le général reste dans le JSON. Une
 erreur d’authentification, de réseau, de JSON ou de filtre fait échouer la
 génération plutôt que de produire un classement partiel silencieux.
 
@@ -195,8 +193,7 @@ rapports précédents. Aucun prix historique n'est réutilisé silencieusement.
 Une route de génération Go inconnue reste signalée sans protocole inventé.
 
 Le rapport commence par `# TFL — Test Fournisseur LLM`, puis affiche les titres
-`Rapport des LMM OpenCode Go les moins onéreux`, `Rapport des LMM du catalogue
-général OpenCode les moins onéreux` et `Rapports des LMM OpenRouter les moins
+`Rapport des LMM OpenCode Go les moins onéreux` et `Rapports des LMM OpenRouter les moins
 onéreux`. Il restitue la date de récupération, les filtres appliqués,
 les chemins des fichiers et les exclusions dans le JSON.
 
@@ -221,8 +218,7 @@ la collecte courante.
 Tous les tests demandent HIGH ; XHIGH est le seul repli autorisé si HIGH est
 indisponible et XHIGH publié. Chat Completions utilise reasoning_effort,
 Responses reasoning.effort, Messages thinking adaptive et output_config.effort.
-OpenRouter utilise ses métadonnées, ou un budget HIGH de 80 % lorsque seul
-max_tokens est disponible. Aucun repli Low/Medium. Un refus 400 propre à l'effort
+OpenRouter exige une déclaration vérifiable de HIGH ou XHIGH ; un budget seul est exclu. Aucun repli Low/Medium. Un refus 400 propre à l'effort
 permet au plus un passage XHIGH annoncé, avec recalcul des paliers ; 401/403/429
 arrêtent le candidat. Les paliers sont 1024, 2048, 4096, 8192, 120 s par requête,
 arrêt au premier succès. Le niveau effectif et les paramètres sont tracés.
@@ -239,7 +235,7 @@ leurs critères, dates, niveaux, tentatives, mesures disponibles et causes
 filtrées dans excluded_models et free_performance_results. Une limitation
 HTTP est un échec d'accès, jamais une mesure de TTFT/débit inventée. Recalculer
 les rangs après exclusion, sans modifier le classement des payants.
-Ajouter après les trois tableaux fournisseurs un tableau commun des essais
+Ajouter après les deux tableaux fournisseurs un tableau commun des essais
 gratuits, avec fournisseur, modèle, TTFT, débit, raisonnement et état/cause.
 Si une section devient vide après qualification, arrêter avant publication et
 préserver les rapports existants. Ne pas confondre ce résultat daté et lié au
@@ -278,3 +274,42 @@ Les modèles interdits sont absents des listes retenues et des tests ; seules
 les traces d'exclusion les mentionnent. Un ancien catalogue ou historique ne
 valide pas un modèle interdit et une cible forcée interdite reste refusée.
 Maintenir ce module identique dans les six distributions LM/TFL/PLLM.
+
+## Planning utilisateur TFL puis PLLM
+
+Le hook SessionStart approuvé et TCU --apply peuvent enregistrer le timer
+utilisateur à 00 h et 12 h Europe/Paris. Pour une installation autonome
+explicitement demandée, utiliser `python3 -B scripts/scheduler.py install`.
+Une simple invocation TFL ne demande pas l'installation d'un planning.
+Le runner exige Codex ouvert et un quota Codex frais disponible avant TFL
+puis PLLM normal ; un quota nul ou inconnu bloque l'étape. PLLM reçoit le
+catalogue fraîchement publié, sans repli sur un ancien fichier en cas d'échec.
+Les passages manqués ne sont pas rattrapés. Cette coordination ne change ni
+les filtres TFL, ni les seuils gratuits, ni LM, ni les invocations manuelles.
+
+
+## Admission stricte HIGH/XHIGH
+
+Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
+vérifiable avant test, sélection et affichage. Une liste supported_efforts
+contenant high/xhigh ou un null explicitement publié (tous les efforts) est
+admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
+budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
+Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide bloque
+la publication et préserve les rapports existants.
+
+
+## Plafond OpenRouter en euros
+
+Collecter le dernier taux USD par EUR publié par la BCE à
+https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml à chaque invocation.
+Calculer EUR = USD / taux et comparer la moyenne non arrondie à 0,20 EUR/M
+inclus. Une source, une date ou un taux absent, invalide ou inaccessible bloque
+la publication sans repli historique. Conserver prix natifs USD, prix EUR,
+source, date de publication et date de récupération dans le JSON. Les prix
+OpenRouter affichés sont en €/M ; le taux daté accompagne le tableau.
+Go et général gardent le plafond 0,50 USD/M. Le filtre HIGH/XHIGH s’applique
+avant benchmark aux gratuits et payants ; les exclus d’effort sont absents
+de tous les tableaux mais restent dans les audits JSON.

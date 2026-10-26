@@ -6,6 +6,8 @@ import signal
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from http.client import HTTPException
@@ -16,8 +18,87 @@ BUDGETS = (1024, 2048, 4096, 8192)
 MEASUREMENT_PROTOCOL_VERSION = 8
 THROUGHPUT_METRIC = 'request_average_v1'
 THROUGHPUT_WINDOW = 'request_total'
+ECB_RATES_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
+OPENROUTER_MAX_AVERAGE_EUR = Decimal('0.20')
 
 FREE_CRITERIA = {'minimum_context_tokens': 1_000_000, 'ttft_lt_seconds': 30, 'tokens_per_second_gt': 20}
+
+
+def verified_usd_rate(exchange_rates):
+    """Valider la provenance et les dates, sans taux implicite ou historique."""
+    try:
+        if not isinstance(exchange_rates, dict) or exchange_rates.get('source') != ECB_RATES_URL:
+            raise ValueError('source')
+        date = datetime.strptime(exchange_rates['date'], '%Y-%m-%d').date()
+        retrieved = datetime.fromisoformat(exchange_rates['retrieved_at'])
+        if retrieved.tzinfo is None or date > retrieved.date():
+            raise ValueError('dates')
+        value = exchange_rates['rates']['USD']
+        if isinstance(value, bool):
+            raise ValueError('taux')
+        rate = Decimal(str(value))
+        if not rate.is_finite() or rate <= 0 or not math.isfinite(float(rate)) or float(rate) <= 0:
+            raise ValueError('taux')
+    except (KeyError, TypeError, ValueError, InvalidOperation, OverflowError) as error:
+        raise RuntimeError('Conversion EUR OpenRouter non vérifiable : taux BCE invalide') from error
+    return rate
+
+
+def native_openrouter_prices(row):
+    prices = (row['input_price'], row['output_price'])
+    if any(isinstance(value, bool) for value in prices):
+        raise RuntimeError('Prix OpenRouter natif invalide')
+    exact = row.get('base_pricing_usd_per_million_tokens')
+    if exact is None:
+        return prices
+    try:
+        values = (exact['input'], exact['output'])
+        if any(isinstance(value, bool) for value in values) or any(
+                not Decimal(str(value)).is_finite() or Decimal(str(value)) < 0
+                or float(value) != float(price) for value, price in zip(values, prices)):
+            raise ValueError('prix contradictoires')
+    except (KeyError, TypeError, ValueError, InvalidOperation, OverflowError) as error:
+        raise RuntimeError('Prix OpenRouter natifs contradictoires ou invalides') from error
+    return values
+
+
+def fetch_eur_rates(timeout=15):
+    with urllib.request.urlopen(ECB_RATES_URL, timeout=timeout) as response:
+        raw = response.read(1_048_577)
+    if len(raw) > 1_048_576:
+        raise RuntimeError('Conversion EUR OpenRouter : réponse BCE trop volumineuse')
+    try:
+        root = ET.fromstring(raw)
+        dates = [element.attrib['time'] for element in root.iter() if 'time' in element.attrib]
+        values = [element.attrib['rate'] for element in root.iter() if element.attrib.get('currency') == 'USD']
+        if len(dates) != 1 or len(values) != 1:
+            raise ValueError('cours BCE ambigu ou absent')
+        result = {'source': ECB_RATES_URL, 'date': dates[0],
+                  'retrieved_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+                  'rates': {'USD': values[0]}}
+        verified_usd_rate(result)
+    except (ET.ParseError, KeyError, ValueError) as error:
+        raise RuntimeError('Conversion EUR OpenRouter : réponse BCE invalide') from error
+    return result
+
+
+def openrouter_eur_prices(input_price, output_price, exchange_rates):
+    rate = verified_usd_rate(exchange_rates)
+    try:
+        if any(isinstance(price, bool) for price in (input_price, output_price)):
+            raise ValueError('prix')
+        prices = tuple(Decimal(str(price)) for price in (input_price, output_price))
+        if any(not price.is_finite() or price < 0 for price in prices):
+            raise ValueError('prix')
+        # Comparer avant division et arrondi pour préserver la frontière inclusive.
+        if sum(prices) > 2 * OPENROUTER_MAX_AVERAGE_EUR * rate:
+            raise RuntimeError('coût moyen supérieur au seuil maximal de 0.20 €/M')
+        converted = (prices[0] / rate, prices[1] / rate, sum(prices) / (2 * rate))
+        if any(not math.isfinite(float(value)) for value in converted):
+            raise ValueError('débordement')
+    except (InvalidOperation, ValueError, OverflowError, ZeroDivisionError) as error:
+        raise RuntimeError('Prix OpenRouter EUR non vérifiable') from error
+    return dict(zip(('input_price_eur', 'output_price_eur', 'average_eur'), map(float, converted)))
 
 class AuthenticationFailure(RuntimeError):
     """Authentication failed; do not hide it behind another candidate."""
@@ -228,6 +309,7 @@ def capabilities(*records):
 
 def choose_effort(model, metadata):
     options = capabilities(metadata)
+    verified = verified_effort(metadata)
     efforts = options.get('supported_efforts')
     if (efforts is not None and (not isinstance(efforts, list) or any(not isinstance(value, str) for value in efforts))
             or ('supports_max_tokens' in options and not isinstance(options['supports_max_tokens'], bool))):
@@ -238,10 +320,39 @@ def choose_effort(model, metadata):
     if isinstance(efforts, list) and requested not in efforts:
         if requested == 'high' and 'xhigh' in efforts:
             requested = 'xhigh'
-        elif not options.get('supports_max_tokens'):
+        else:
             raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées')
+    if requested == 'high':
+        requested = verified
     model.update(requested_reasoning='high', reasoning=requested)
     return requested
+
+
+def verified_effort(*records):
+    """Exiger une déclaration d'effort ; un budget seul n'en prouve aucun."""
+    options = capabilities(*records)
+    if 'supports_max_tokens' in options and not isinstance(options['supports_max_tokens'], bool):
+        raise RuntimeError('Métadonnées de raisonnement invalides')
+    if 'supported_efforts' not in options:
+        raise RuntimeError('HIGH/XHIGH non vérifiable : métadonnées d’effort absentes')
+    efforts = options['supported_efforts']
+    if efforts is None:
+        return 'high'
+    if not isinstance(efforts, list) or any(not isinstance(value, str) for value in efforts):
+        raise RuntimeError('Métadonnées de raisonnement invalides')
+    if 'high' in efforts:
+        return 'high'
+    if 'xhigh' in efforts:
+        return 'xhigh'
+    raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées')
+
+
+def effort_allowed(record):
+    try:
+        verified_effort(record)
+    except RuntimeError:
+        return False
+    return True
 
 
 def reasoning(model, budget, metadata):
@@ -261,8 +372,6 @@ def reasoning(model, budget, metadata):
     efforts = options.get('supported_efforts')
     if (isinstance(efforts, list) and effort in efforts) or ('supported_efforts' in options and efforts is None):
         return {'reasoning': {'effort': effort}}
-    if options.get('supports_max_tokens') is True:
-        return {'reasoning': {'max_tokens': budget * (95 if effort == 'xhigh' else 80) // 100}}
     raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées OpenRouter')
 
 
@@ -275,6 +384,7 @@ def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, reque
     m.update(ttft_seconds=None, tokens_per_second=None, throughput_metric=THROUGHPUT_METRIC,
              throughput_window=THROUGHPUT_WINDOW, measurement_protocol_version=MEASUREMENT_PROTOCOL_VERSION)
     options = reasoning(m, budget, metadata)
+    m['reasoning_capabilities'] = capabilities(metadata)
     protocol = m.get('api_protocol', 'chat_completions')
     result = {'status': 'running', 'prompt': PROMPT, 'max_tokens': budget, 'reasoning_request': options,
               'started_at': now(), 'ttft_target': 'content (hors raisonnement)', 'requests': 1,
