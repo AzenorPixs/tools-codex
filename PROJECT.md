@@ -31,7 +31,7 @@ constituent ni des changes actifs ni une liste de fonctionnalités à réimplém
 
 ## Organisation
 
-Les commandes sources CM/PLLM/TFL/TCU/prompt sont conservées dans :
+Les commandes sources CM/PLLM/TFL/TCU/LM/prompt sont conservées dans :
 
 ```text
 .codex/commands/
@@ -64,6 +64,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 
 | Type | Nom | Rôle |
 |---|---|---|
+| Plugin | `lm` | Gère la liste noire partagée, appliquée avant sélection et tests TFL/PLLM. |
 | Plugin | `prompt` | Liste et lance les prompts du projet depuis son DEVOPS et son index. |
 | Plugin | `tcu` | Met à jour les briques installées depuis marketplace et GitHub. |
 | Plugin | `cm` | Distribue le catalogue des commandes maison, invocable avec `$cm`. |
@@ -73,8 +74,10 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Skill | `coding-session-statistics` | Produit un bilan auditable d'une session de codage ou de pilotage. |
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
 | Skill | `tfl` | Expose le rapport TFL également en dehors du plugin. |
-| Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm`, `$tfl`, `$tcu` et `$prompt`. |
+| Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm`, `$tfl`, `$tcu`, `$lm` et `$prompt`. |
 | Skill | `prompt` (`$prompt`) | LIST et 38 actions en MAJUSCULE, dont les huit variantes à un change. |
+| Skill | `lm` (`$lm`) | LIST, ADD et REMOVE ; mimo-v2.5 exclu par défaut. |
+| Commande source | `/LM` | Délègue au skill LM sans enregistrer automatiquement une slash native. |
 | Commande source | `/cm` | Délègue au catalogue CM, avec une seule entrée prompt et sans exécution. |
 | Commande source | `/prompt` | Délègue au skill prompt avec LIST ou CODE ; ne crée pas une slash native. |
 | Skill | `tcu` (`$tcu`) | Met à jour les briques présentes ; `check` contrôle sans écriture. |
@@ -82,7 +85,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Commande source | `/pllm` | Instructions historiques de lancement de l'évaluation PLLM ; skill invocable avec `$pllm`. |
 | Commande source | `/tfl` | Instructions historiques de lancement du rapport TFL ; skill invocable avec `$tfl`. |
 
-Les skills `cm`, `pllm`, `tfl`, `tcu` et `prompt` sont volontairement fournis sous forme autonome et
+Les skills `cm`, `pllm`, `tfl`, `tcu`, `lm` et `prompt` sont volontairement fournis sous forme autonome et
 embarquée afin de couvrir les deux modes de distribution. Le skill
 `coding-session-statistics` s'appuie sur `cgpt` pour les relevés de quota
 hebdomadaires lorsqu'ils sont demandés.
@@ -120,3 +123,12 @@ GCM et GCMP sont les alias validés de GSCM.md et GSCMP.md. CISMP1 à CISMP8
 conservent le RUN demandé et le cycle normal de CISMP.md. Les variantes
 1CISMP1 à 1CISMP8 bornent le même RUN à un change complet, suivi de
 l'archivage, des statistiques puis de l'arrêt de la session de codage.
+
+## Liste noire des modèles
+
+LM partage CODEX_HOME/lm/blacklist.json entre toutes les installations TFL/PLLM,
+avec ~/.codex par défaut. La valeur initiale mimo-v2.5 est appliquée sans
+création de fichier ; une liste vide explicite permet son retrait. TFL et
+PLLM filtrent avant classement, sélection et génération, indépendamment des
+anciens catalogues ou succès mémorisés. Le stockage hors cache est conservé
+par TCU. Les exclusions permanentes historiques restent distinctes.

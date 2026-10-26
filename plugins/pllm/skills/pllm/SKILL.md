@@ -475,3 +475,18 @@ Actualiser `pllm-current.json` et `pllm-current.md` sans sortie console ni table
 Le JSON conserve les lignes historiques des politiques non visitées, avec leur ancien horodatage et `evaluated_this_run=false`. Elles ne représentent pas des contrôles actuels et ne doivent jamais être sélectionnées sur cette base. Les politiques visitées ont `evaluated_this_run=true`. `evaluation_mode` distingue `active` et `all`. L’invocation sans argument continue à contrôler tous les modes et afficher le tableau unique, ses six lignes de ressources (non applicables en 3/4) et l’encart de la PLLM active.
 
 L’exécution planifiée demandée est quotidienne à 00:00, 06:00, 12:00 et 18:00, heure de Paris. Elle doit utiliser le skill actif, sans figer un ancien nom d’utilisateur Unix, et rester silencieuse en fonctionnement normal.
+
+
+## Liste noire partagée LM
+
+Charger scripts/model_blacklist.py, embarqué dans ce paquet, avant les appels
+fournisseur. Le script applique la liste CODEX_HOME/lm/blacklist.json,
+avec ~/.codex comme CODEX_HOME par défaut. Sans fichier, mimo-v2.5 est exclu.
+Une liste invalide bloque sans écrasement. Utiliser $lm ou /LM pour LIST,
+ADD identifiant ou REMOVE identifiant ; ce stockage reste hors des caches.
+Les préfixes fournisseur, la casse et les suffixes :free/-free ne permettent
+pas de contourner une exclusion. Les exclusions permanentes restent en vigueur.
+Les modèles interdits sont absents des listes retenues et des tests ; seules
+les traces d'exclusion les mentionnent. Un ancien catalogue ou historique ne
+valide pas un modèle interdit et une cible forcée interdite reste refusée.
+Maintenir ce module identique dans les six distributions LM/TFL/PLLM.

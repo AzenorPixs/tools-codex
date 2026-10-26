@@ -26,7 +26,7 @@ reprend exactement la release de `VERSION`, qui reste la source de vérité.
 
 ## Arborescence
 
-Les commandes sources CM/PLLM/TFL/TCU/prompt sont conservées dans :
+Les commandes sources CM/PLLM/TFL/TCU/LM/prompt sont conservées dans :
 
 ```text
 .codex/commands/
@@ -69,7 +69,7 @@ exactement cette version.
 
 ## Structure des plugins actuels
 
-Les plugins `cm`, `pllm`, `tfl`, `tcu` et `prompt` possèdent un identifiant stable en kebab-case et
+Les plugins `cm`, `pllm`, `tfl`, `tcu`, `lm` et `prompt` possèdent un identifiant stable en kebab-case et
 utilisent actuellement le manifeste de compatibilité Codex suivant :
 
 ```text
@@ -77,7 +77,7 @@ plugins/<NOM_DU_PLUGIN>/.codex-plugin/plugin.json
 ```
 
 Le manifeste déclare le nom, la version, la présentation et le répertoire de
-skills embarqués. Les cinq plugins embarquent chacun le skill du même nom.
+skills embarqués. Les six plugins embarquent chacun le skill du même nom.
 PLLM et TFL incluent les scripts, références et données nécessaires à leur
 exécution. CM contient uniquement son manifeste et `skills/cm/SKILL.md` ; il
 ne déclare ni script, ni serveur MCP, ni application ou service externe.
@@ -137,13 +137,14 @@ Les correspondances actuellement publiées sont :
 | `$pllm` | `skills/pllm/` | `plugins/pllm/` |
 | `$tfl` | `skills/tfl/` | `plugins/tfl/` |
 | `$tcu` (déclencheur `/TCU`) | `skills/tcu/` | `plugins/tcu/` |
+| `$lm` (déclencheur `/LM`) | `skills/lm/` | `plugins/lm/` |
 | `$prompt` (déclencheur `/prompt`) | `skills/prompt/` | `plugins/prompt/` |
 | `$cgpt` | `skills/cgpt/` | — |
 | `$coding-session-statistics` | `skills/coding-session-statistics/` | — |
 
 Le catalogue de `$cm` doit rester synchronisé avec les noms, syntaxes et
 responsabilités des entrées maison publiées. Sa consultation n'exécute pas
-PLLM, TFL, TCU ou un prompt. Elle ne vérifie pas que ces skills sont installés localement.
+PLLM, TFL, TCU, LM ou un prompt. Elle ne vérifie pas que ces skills sont installés localement.
 La colonne `Commande` référence les skills disponibles avec leurs noms
 lisibles, dont `TCU`, pour permettre leur présentation native dans Codex ;
 les syntaxes `$…` restent dans `Utilisation`.
@@ -527,3 +528,39 @@ temporaires. Elle couvre les 38 correspondances, l'isolation des projets,
 les variantes de RUN, LIST, les liens lus sans modification et les erreurs.
 Les paquets isolés et LIST réel sont contrôlés séparément ; aucun RUN piloté
 ou prompt à effets réels n'est lancé pendant cette qualification.
+
+## Liste noire LM
+
+LM fournit un skill autonome et embarqué, le même module model_blacklist.py
+que TFL/PLLM, la commande source .codex/commands/LM.md et la découverte
+.agents/skills/lm -> ../../skills/lm. CM présente LM avec LIST, ADD et REMOVE.
+Le nom d'affichage est LM ; aucune slash native n'est automatiquement créée.
+
+Le fichier commun CODEX_HOME/lm/blacklist.json (repli ~/.codex) porte
+schema_version=1 et models, liste d'identifiants canoniques uniques.
+Sans fichier, mimo-v2.5 est exclu en mémoire, sans écriture ; une liste vide
+valide reste vide. LIST ne modifie rien. ADD/REMOVE utilisent un verrou
+fcntl non bloquant et un remplacement atomique en UTF-8/LF. Les identifiants
+ASCII sont bornés à 256 caractères ; la casse, le préfixe fournisseur et
+les seuls suffixes :free/-free sont normalisés. Pas de rapprochement par
+sous-chaîne : mimo-v2.5-pro et mimo-v2.50 restent distincts.
+Une politique illisible, dupliquée ou de schéma invalide bloque avant appel
+fournisseur et reste préservée. Les exclusions permanentes muse-spark restent
+applicables indépendamment des retraits LM. Le module est identique dans
+les six distributions LM/TFL/PLLM, sans dépendance entre plugins installés.
+
+TFL retire les interdits avant tri et tests gratuits dans ses trois sections,
+avec cause dans excluded_models et politique dans lm_blacklist.
+PLLM filtre aussi ses sélecteurs, replis, mode6 et frontières de génération,
+y compris un catalogue ancien ou un succès mémorisé. Les forçages interdits
+restent invalides sans remplacement ; les historiques interdits sont invalidés
+avant publication et absents des listes de candidats. La mémoire historique
+n'est pas détruite. LM ne réécrit pas les anciens rapports : l'effet concerne
+les prochaines invocations. Les priorités, ressources, seuils et protocole 8
+restent inchangés.
+
+TCU découvre LM via le catalogue et actualise ses copies présentes sans
+installer LM absent. Le fichier utilisateur hors cache reste préservé.
+Les tests test_lm_blacklist.py et les cas TCU utilisent des profils isolés,
+sans accès fournisseur ni installation réelle. Un retour vers 0.7.5 ignore
+la politique LM et ne conserve donc pas sa garantie d'exclusion.

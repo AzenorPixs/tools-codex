@@ -33,6 +33,9 @@ ROOT = Path(__file__).resolve().parent.parent
 _PERFORMANCE_SPEC = importlib.util.spec_from_file_location('tfl_performance', Path(__file__).with_name('performance.py'))
 performance = importlib.util.module_from_spec(_PERFORMANCE_SPEC)
 _PERFORMANCE_SPEC.loader.exec_module(performance)
+_BLACKLIST_SPEC = importlib.util.spec_from_file_location('tfl_blacklist', Path(__file__).with_name('model_blacklist.py'))
+blacklist = importlib.util.module_from_spec(_BLACKLIST_SPEC)
+_BLACKLIST_SPEC.loader.exec_module(blacklist)
 
 MIN_CONTEXT_TOKENS = 1_000_000
 MAX_REFERENCE_AVERAGE_USD_PER_MILLION = 0.5
@@ -557,7 +560,8 @@ def context_label(tokens: int | None) -> str:
     return str(tokens)
 
 
-def build_rows(payload: dict, metadata: dict, pricing: dict, *, general_catalog: bool = False) -> tuple[list[dict], list[dict]]:
+def build_rows(payload: dict, metadata: dict, pricing: dict, *, general_catalog: bool = False, blacklisted_models: tuple[str, ...] | None = None) -> tuple[list[dict], list[dict]]:
+    blacklisted_models = blacklist.load_models() if blacklisted_models is None else blacklisted_models
     if general_catalog and metadata.get("provider_id") != "opencode":
         raise RuntimeError("métadonnées du catalogue général OpenCode : fournisseur incorrect")
     known = []
@@ -567,11 +571,11 @@ def build_rows(payload: dict, metadata: dict, pricing: dict, *, general_catalog:
         if not isinstance(model, dict) or not model.get("id"):
             continue
         model_id = model["id"]
-        if model_id in BLACKLISTED_MODEL_IDS:
+        if blacklist.is_blocked(model_id, blacklisted_models):
             excluded.append({
                 "id": model_id,
                 "name": model.get("name") or model_id,
-                "reason": "blacklist permanente",
+                "reason": "blacklist permanente" if model_id in BLACKLISTED_MODEL_IDS else "liste noire LM",
             })
             continue
         context, context_source = context_info(model, metadata)
@@ -790,15 +794,16 @@ def openrouter_output_label(modalities: list[str]) -> str:
     return ", ".join(modalities) if modalities else "Non vérifié"
 
 
-def build_openrouter_rows(payload: dict) -> tuple[list[dict], list[dict]]:
+def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | None = None) -> tuple[list[dict], list[dict]]:
+    blacklisted_models = blacklist.load_models() if blacklisted_models is None else blacklisted_models
     rows = []
     excluded = []
     for model in payload["data"]:
         if not isinstance(model, dict) or not model.get("id"):
             continue
         model_id = model["id"]
-        if model_id in OPENROUTER_BLACKLIST:
-            excluded.append({"id": model_id, "name": model.get("name") or model_id, "reason": "blacklist permanente"})
+        if blacklist.is_blocked(model_id, blacklisted_models):
+            excluded.append({"id": model_id, "name": model.get("name") or model_id, "reason": "blacklist permanente" if model_id in OPENROUTER_BLACKLIST else "liste noire LM"})
             continue
         pricing = model.get("pricing") or {}
         architecture = model.get("architecture") or {}
@@ -898,6 +903,7 @@ def openrouter_secret() -> str:
 
 
 def evaluate_free(model: dict, key: str, metadata: dict) -> dict:
+    blacklist.require_allowed(model["model_id"])
     model.update(state='Invalide', cause='', reasoning='high', requested_reasoning='high',
                  evaluated_at=performance.now(), ttft_seconds=None, tokens_per_second=None,
                  performance_criteria=dict(performance.FREE_CRITERIA), quota_status='not_applicable',
@@ -976,7 +982,11 @@ def evaluate_free(model: dict, key: str, metadata: dict) -> dict:
 def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
                         key: str, audit: list[dict]) -> list[dict]:
     retained = []
+    blacklisted_models = blacklist.load_models()
     for row in rows:
+        if blacklist.is_blocked(row['id'], blacklisted_models):
+            excluded.append({**row, 'reason': 'liste noire LM ou permanente'})
+            continue
         row['is_free'] = performance.is_free(row, section)
         if not row['is_free']:
             retained.append(row)
@@ -1026,21 +1036,22 @@ def main() -> int:
     openrouter_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENROUTER_KEY")
     api_key = ""
     try:
+        blacklisted_models = blacklist.load_models()
         policy, api_key = select_secret(requested_policy)
         opencode_payload = fetch_models(api_key, args.timeout)
         go_metadata = fetch_go_metadata(args.timeout)
         go_pricing = fetch_go_pricing(args.timeout)
-        opencode_rows, opencode_excluded = build_rows(opencode_payload, go_metadata, go_pricing)
+        opencode_rows, opencode_excluded = build_rows(opencode_payload, go_metadata, go_pricing, blacklisted_models=blacklisted_models)
         if not opencode_rows:
             raise RuntimeError("aucun modèle OpenCode Go ne satisfait les filtres TFL")
         general_payload = fetch_opencode_models(args.timeout)
         general_metadata = fetch_opencode_metadata(args.timeout)
         general_pricing = fetch_opencode_pricing(args.timeout)
-        general_rows, general_excluded = build_rows(general_payload, general_metadata, general_pricing, general_catalog=True)
+        general_rows, general_excluded = build_rows(general_payload, general_metadata, general_pricing, general_catalog=True, blacklisted_models=blacklisted_models)
         if not general_rows:
             raise RuntimeError("aucun modèle du catalogue général OpenCode ne satisfait les filtres TFL")
         openrouter_payload = fetch_openrouter_models(openrouter_key, args.timeout)
-        openrouter_rows, openrouter_excluded = build_openrouter_rows(openrouter_payload)
+        openrouter_rows, openrouter_excluded = build_openrouter_rows(openrouter_payload, blacklisted_models)
         audit = []
         for rows, payload, metadata in ((opencode_rows, opencode_payload, go_metadata),
                                         (general_rows, general_payload, general_metadata),
@@ -1117,6 +1128,7 @@ def main() -> int:
         "order": ["opencode_go", "opencode", "openrouter"],
         "common_columns": ["rank", "model_id", "context", "output", "input_price", "output_price", "average_cost", "cost_color"],
         "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS, "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION},
+        "lm_blacklist": {"model_ids": list(blacklisted_models), "permanent_model_ids": list(blacklist.PERMANENT_MODELS)},
         "blacklists": {"opencode_go": sorted(BLACKLISTED_MODEL_IDS), "opencode": sorted(BLACKLISTED_MODEL_IDS), "openrouter": sorted(OPENROUTER_BLACKLIST)},
         "opencode_go": opencode_catalog,
         "opencode": general_catalog,

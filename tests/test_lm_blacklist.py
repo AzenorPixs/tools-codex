@@ -1,0 +1,338 @@
+"""Gestion LM et exclusion avant génération ; profils et fournisseurs isolés."""
+
+from contextlib import ExitStack
+import io
+import json
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+import test_extension_qualification as qualification
+from test_extension_qualification import load_script, ROOT, PLLM, TFL
+from test_pllm_free_fallback import row
+
+
+HELPERS = tuple(ROOT / path / 'scripts/model_blacklist.py' for path in (
+    'skills/lm', 'plugins/lm/skills/lm', 'skills/tfl', 'plugins/tfl/skills/tfl',
+    'skills/pllm', 'plugins/pllm/skills/pllm'))
+
+
+class LmBlacklistTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix='lm-', dir=ROOT / 'tests')
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name)
+        self.home = self.base / 'codex profile'
+        environment = patch.dict(os.environ, {'CODEX_HOME': str(self.home)})
+        environment.start()
+        self.addCleanup(environment.stop)
+        self.m = load_script(HELPERS[0])
+        self.path = self.m.policy_path()
+
+    def write(self, value):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(value, encoding='utf-8')
+
+    def catalog(self):
+        path = self.base / 'catalog.json'
+        data = {'generated_at': 'fixture',
+                'opencode_go': {'models': [row('mimo-v2.5'), row('allowed'),
+                                            row('mimo-v2.5-free', free=True), row('allowed-free', free=True)]},
+                'opencode': {'models': [row('vendor/mimo-v2.5:free', 'opencode', True),
+                                        row('general-free', 'opencode', True)]},
+                'openrouter': {'models': [row('xiaomi/mimo-v2.5', 'openrouter'), row('router-allowed', 'openrouter')]}}
+        path.write_text(json.dumps(data), encoding='utf-8')
+        return path
+
+    def test_missing_policy_applies_default_without_writing(self):
+        for helper in HELPERS:
+            module = load_script(helper)
+            self.assertEqual(module.load_models(), ('mimo-v2.5',))
+            self.assertTrue(module.is_blocked('xiaomi/mimo-v2.5:free'))
+        self.assertFalse(self.home.exists())
+
+    def test_canonical_identity_and_nearby_names(self):
+        for identifier in ('mimo-v2.5', 'xiaomi/mimo-v2.5', 'MIMO-V2.5-FREE', 'vendor/mimo-v2.5:free'):
+            self.assertTrue(self.m.is_blocked(identifier), identifier)
+        for identifier in ('vendor/mimo-v2.5-free-free', 'vendor/model:extended', 'MIMO-V2.5'):
+            canonical = self.m.canonical_id(identifier)
+            self.assertEqual(self.m.canonical_id(canonical),canonical)
+        for identifier in ('mimo-v2.50', 'mimo-v2.5-pro', 'other'):
+            self.assertFalse(self.m.is_blocked(identifier), identifier)
+        for identifier in ('', '../model', 'bad model', 'bad\nmodel', '$model', 'é', 'x' * 257):
+            with self.assertRaises(self.m.BlacklistError):
+                self.m.canonical_id(identifier)
+
+    def test_add_remove_shared_and_empty_list_persist(self):
+        first, second = (load_script(p) for p in HELPERS[:2])
+        self.assertEqual(first.update_models('ADD', 'vendor/OTHER:free'), ('mimo-v2.5', 'other'))
+        before = self.path.read_bytes(), self.path.stat().st_mtime_ns
+        first.update_models('ADD', 'other')
+        self.assertEqual((self.path.read_bytes(), self.path.stat().st_mtime_ns), before)
+        self.assertEqual(second.load_models(), ('mimo-v2.5', 'other'))
+        second.update_models('REMOVE', 'mimo-v2.5')
+        self.assertFalse(first.is_blocked('xiaomi/mimo-v2.5:free'))
+        first.update_models('REMOVE', 'other')
+        self.assertEqual(second.load_models(), ())
+        second.update_models('REMOVE', 'absent')
+        self.assertEqual(second.load_models(), ())
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
+
+    def test_permanent_exclusions_cannot_be_removed_by_lm(self):
+        self.m.update_models('REMOVE', 'muse-spark-1.2-contributor')
+        self.assertTrue(self.m.is_blocked('meta/muse-spark-1.2-contributor'))
+
+    def test_corrupt_schema_or_duplicates_are_preserved(self):
+        cases = ('{', '[]', '{"schema_version":2,"models":[]}',
+                 '{"schema_version":true,"models":[]}',
+                 '{"schema_version":1,"models":[],"models":[]}',
+                 '{"schema_version":1,"models":["a","vendor/A"]}',
+                 '{"schema_version":1,"models":[null]}',
+                 '{"schema_version":1,"models":["bad model"]}',
+                 '{"schema_version":1,"models":[],"other":NaN}')
+        for raw in cases:
+            with self.subTest(raw=raw):
+                self.write(raw)
+                for operation in (lambda: self.m.load_models(), lambda: self.m.update_models('ADD', 'other')):
+                    with self.assertRaises(self.m.BlacklistError):
+                        operation()
+                self.assertEqual(self.path.read_text(), raw)
+
+    def test_oversized_and_unreadable_policy_block(self):
+        self.write(' ' * (self.m.MAX_BYTES + 1))
+        with self.assertRaises(self.m.BlacklistError):
+            self.m.load_models()
+        with patch.object(Path, 'open', side_effect=PermissionError('private fixture')):
+            with self.assertRaises(self.m.BlacklistError) as caught:
+                self.m.load_models()
+        self.assertNotIn('private fixture', str(caught.exception))
+
+    def test_failed_atomic_replace_preserves_previous_content(self):
+        self.m.update_models('ADD', 'first')
+        before = self.path.read_bytes()
+        with patch.object(self.m.os, 'replace', side_effect=OSError('private fixture')):
+            with self.assertRaises(self.m.BlacklistError):
+                self.m.update_models('ADD', 'second')
+        self.assertEqual(self.path.read_bytes(), before)
+        self.assertEqual(list(self.path.parent.glob('.blacklist-*')), [])
+
+    def test_concurrent_writer_cannot_lose_an_update(self):
+        second = load_script(HELPERS[1])
+        with self.m._writer_lock(self.path):
+            with self.assertRaisesRegex(second.BlacklistError, 'déjà en cours'):
+                second.update_models('ADD', 'other')
+        self.m.update_models('ADD', 'after-lock')
+        self.assertIn('after-lock', self.m.load_models())
+
+    def test_file_symlink_is_never_overwritten(self):
+        destination = self.base / 'other.json'
+        destination.write_text('preserved')
+        self.path.parent.mkdir(parents=True)
+        self.path.symlink_to(destination)
+        with self.assertRaises(self.m.BlacklistError):
+            self.m.update_models('ADD', 'other')
+        self.assertTrue(self.path.is_symlink())
+        self.assertEqual(destination.read_text(), 'preserved')
+
+    def test_cli_list_and_crud_in_both_isolated_packages(self):
+        for index, source in enumerate((ROOT / 'skills/lm', ROOT / 'plugins/lm/skills/lm')):
+            package = self.base / str(index) / 'lm'
+            shutil.copytree(source, package)
+            environment = dict(os.environ, CODEX_HOME=str(self.base / str(index) / 'profile'))
+            script = package / 'scripts/lm.py'
+            def run(*arguments):
+                return subprocess.run([sys.executable, '-B', str(script), *arguments], env=environment,
+                                      capture_output=True, text=True, check=False)
+            result = run()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('mimo-v2.5', result.stdout)
+            self.assertFalse(Path(environment['CODEX_HOME']).exists())
+            self.assertEqual(run('ADD', 'vendor/other:free').returncode, 0)
+            self.assertIn('| other |', run('LIST').stdout)
+            self.assertEqual(run('REMOVE', 'other').returncode, 0)
+            self.assertNotIn('| other |', run('LIST').stdout)
+            for arguments in (('ADD',), ('LIST', 'other'), ('REMOVE', 'bad model'), ('unknown',)):
+                self.assertNotEqual(run(*arguments).returncode, 0)
+
+    def test_tfl_all_three_catalogs_exclude_before_metadata_or_price(self):
+        for script in TFL:
+            module = load_script(script)
+            for general in (False, True):
+                payload = {'data': [{'id': 'vendor/mimo-v2.5:free'}]}
+                rows, excluded = module.build_rows(payload, {'provider_id': 'opencode'} if general else {}, {}, general_catalog=general)
+                self.assertEqual(rows, [])
+                self.assertIn('LM', excluded[0]['reason'])
+            rows, excluded = module.build_openrouter_rows({'data': [{'id': 'xiaomi/mimo-v2.5'},
+                {'id':'allowed','context_length':1_000_000,'pricing':{'prompt':'0.0000001','completion':'0.0000001'}}]})
+            self.assertEqual([item['id'] for item in rows], ['allowed'])
+            self.assertIn('LM', excluded[0]['reason'])
+
+    def test_tfl_free_guard_never_reaches_generation(self):
+        for script in TFL:
+            module = load_script(script)
+            for section in ('opencode_go', 'opencode', 'openrouter'):
+                excluded, audit = [], []
+                with patch.object(module, 'evaluate_free') as evaluate:
+                    self.assertEqual(module.qualify_free_models([row('mimo-v2.5', section, True)], excluded, section, 'offline', audit), [])
+                evaluate.assert_not_called()
+                self.assertEqual(audit, [])
+                self.assertEqual(len(excluded), 1)
+            with patch.object(module.performance, 'run_benchmark') as benchmark:
+                with self.assertRaises(RuntimeError):
+                    module.evaluate_free({'model_id': 'mimo-v2.5'}, 'offline', {})
+            benchmark.assert_not_called()
+
+    def test_tfl_full_collection_publishes_exclusion_without_any_generation(self):
+        from test_tfl_pricing import general_fixture, document
+        from types import SimpleNamespace
+        for index, script in enumerate(TFL):
+            module = load_script(script)
+            output = self.base / ('tfl-output-'+str(index))
+            payload = {'data':[{'id':'qwen3.8-flash','context_length':1_000_000},
+                               {'id':'mimo-v2.5','context_length':1_000_000}]}
+            router = {'data':[{'id':'xiaomi/mimo-v2.5','context_length':1_000_000,
+                               'pricing':{'prompt':'0','completion':'0'}},
+                              {'id':'allowed','context_length':1_000_000,
+                               'pricing':{'prompt':'0.0000001','completion':'0.0000001'}}]}
+            general, metadata, pricing = general_fixture(module)
+            general['data'].append({'id':'mimo-v2.5-free','context_length':1_000_000})
+            with ExitStack() as stack:
+                for name, value in {
+                    'parse_args':SimpleNamespace(policy_option=None,policy='auto',timeout=1,output_dir=output),
+                    'select_secret':('mode1','offline'), 'fetch_models':payload,
+                    'fetch_go_metadata':{},
+                    'fetch_go_pricing':{'source':module.SOURCE_URL,'retrieved_at':'fixture','models':module.parse_go_pricing(document([('Qwen3.8 Flash','$0.1','$0.2','-','-')]))},
+                    'fetch_opencode_models':general, 'fetch_opencode_metadata':metadata,
+                    'fetch_opencode_pricing':pricing, 'fetch_openrouter_models':router,
+                }.items():
+                    stack.enter_context(patch.object(module,name,return_value=value))
+                stack.enter_context(patch.object(module,'urlopen',side_effect=AssertionError('Réseau interdit')))
+                generation = stack.enter_context(patch.object(module,'evaluate_free',side_effect=AssertionError('Génération interdite')))
+                stack.enter_context(patch('sys.stdout',new_callable=io.StringIO))
+                self.assertEqual(module.main(),0)
+                generation.assert_not_called()
+            data=json.loads((output/'tfl.json').read_text())
+            for section in ('opencode_go','opencode','openrouter'):
+                self.assertEqual(len(data[section]['models']),1)
+                self.assertTrue(any('LM' in item['reason'] for item in data[section]['excluded_models']))
+            self.assertEqual(data['free_performance_results'],[])
+            self.assertEqual(data['lm_blacklist']['model_ids'],['mimo-v2.5'])
+            self.assertNotIn('mimo-v2.5',(output/'tfl.md').read_text())
+
+    def test_invalid_lm_stops_tfl_and_pllm_before_any_provider(self):
+        self.write('{')
+        for script in (*TFL, *PLLM):
+            module = load_script(script)
+            with ExitStack() as stack:
+                lookup = stack.enter_context(patch.object(module.subprocess, 'run'))
+                network = stack.enter_context(patch.object(module, 'urlopen' if script in TFL else 'get'))
+                if script in TFL:
+                    stack.enter_context(patch.object(module, 'parse_args', return_value=type('Args', (), {'policy_option':None,'policy':'auto'})()))
+                    stack.enter_context(patch('sys.stderr', new_callable=io.StringIO))
+                    self.assertEqual(module.main(), 1)
+                else:
+                    with self.assertRaises(RuntimeError):
+                        module.main()
+                lookup.assert_not_called()
+                network.assert_not_called()
+        self.assertEqual(self.path.read_text(), '{')
+
+    def test_pllm_old_catalog_is_filtered_in_all_catalog_modes(self):
+        path = self.catalog()
+        for script in PLLM:
+            module = load_script(script)
+            for priority in range(1, 6):
+                model = module.initial_model(priority, module.POLICY_PROVIDERS[priority-1])
+                model['candidate_exclusions'] = []
+                candidates = module.candidates_for(model, 'free' if priority in (3,4) else 'paid', path)
+                self.assertTrue(candidates)
+                self.assertTrue(all(not self.m.is_blocked(item['model_id']) for item in candidates))
+                self.assertTrue(model['candidate_exclusions'])
+
+    def test_pllm_forced_ranks_reject_without_substitution(self):
+        path = self.catalog()
+        for script in PLLM:
+            module = load_script(script)
+            for priority in range(1, 6):
+                model = module.initial_model(priority, module.POLICY_PROVIDERS[priority-1])
+                model['candidate_exclusions'] = []
+                with self.assertRaises(RuntimeError):
+                    module.candidates_for(model, 'free' if priority in (3,4) else 'paid', path,
+                                          forced={'mode':model['mode'],'rank':1})
+            self.assertEqual(module.tfl_opencode_model_at(2,path)[0]['id'], 'allowed')
+            with self.assertRaises(RuntimeError):
+                module.tfl_opencode_model_at(1,path)
+            self.assertEqual(module.next_tfl_opencode_model('allowed',path)['id'], 'allowed-free')
+
+    def test_mode6_and_generation_guards_cannot_use_blacklisted_memory(self):
+        self.m.update_models('ADD', 'deepseek-v4-flash')
+        for script in PLLM:
+            module = load_script(script)
+            model = module.initial_model(6,'deepseek')
+            with self.assertRaises(RuntimeError):
+                module.candidates_for(model,'paid',None)
+            model.update(model_id='mimo-v2.5')
+            with patch.object(module,'benchmark') as benchmark, patch.object(module,'quota') as quota:
+                with self.assertRaises(RuntimeError):
+                    module.evaluate_candidate(model,'offline','paid',{'policies':{'mode6':{'last_successful_max_tokens':8192}}},None)
+            benchmark.assert_not_called()
+            quota.assert_not_called()
+            with patch.object(module.performance,'run_benchmark') as raw:
+                with self.assertRaises(RuntimeError):
+                    module.benchmark(model,'offline',8192,{})
+            raw.assert_not_called()
+
+    def test_unvisited_historical_winner_and_candidates_are_invalidated(self):
+        for script in PLLM:
+            module = load_script(script)
+            state = module.load_current()
+            model = state['models'][4]
+            model.update(model_id='xiaomi/mimo-v2.5', model='MiMo', state='Valide', selected=True,
+                         candidate_results=[{'model_id':'mimo-v2.5'}, {'model_id':'allowed'}],
+                         ttft_seconds=1, tokens_per_second=999, evaluated_this_run=False)
+            module.sanitize_blacklisted_history(state, self.m.load_models())
+            self.assertEqual(model['state'],'Invalide')
+            self.assertFalse(model['selected'])
+            self.assertIsNone(model['ttft_seconds'])
+            self.assertEqual(model['model_id'],'Non évalué')
+            self.assertEqual([item['model_id'] for item in model['candidate_results']], ['allowed'])
+            self.assertTrue(model['candidate_exclusions'])
+
+    def test_actual_pllm_dispatch_never_benchmarks_old_catalog_exclusion(self):
+        fixture = qualification.ExtensionQualificationTests()
+        self.addCleanup(fixture.doCleanups)
+        for script in PLLM:
+            module, path = fixture.workspace(script)
+            content = json.loads(path.read_text())
+            content['opencode_go']['models'].insert(0, row('mimo-v2.5'))
+            path.write_text(json.dumps(content))
+            result, calls = fixture.run_evaluation(module, path, active=True)
+            self.assertEqual(result['selected_mode'],'mode1')
+            self.assertEqual(result['models'][0]['model_id'],'first')
+            self.assertFalse(any(call[:2]==('benchmark','mimo-v2.5') for call in calls))
+
+    def test_distribution_parity_versions_and_cm_entry(self):
+        self.assertEqual(len({path.read_bytes() for path in HELPERS}),1)
+        self.assertEqual((ROOT/'.agents/skills/lm').resolve(), ROOT/'skills/lm')
+        for filename in ('SKILL.md','agents/openai.yaml','scripts/lm.py','scripts/model_blacklist.py'):
+            self.assertEqual((ROOT/'skills/lm'/filename).read_bytes(),(ROOT/'plugins/lm/skills/lm'/filename).read_bytes())
+        cm = (ROOT/'skills/cm/SKILL.md').read_bytes()
+        self.assertEqual(cm,(ROOT/'plugins/cm/skills/cm/SKILL.md').read_bytes())
+        self.assertIn(b'| LM |',cm)
+        self.assertIn(b'/LM',cm)
+        plugins = json.loads((ROOT/'.agents/plugins/marketplace.json').read_text())['plugins']
+        self.assertEqual(len(plugins),6)
+        self.assertIn('lm',{item['name'] for item in plugins})
+        for item in plugins:
+            manifest = json.loads((ROOT/item['source']['path']/'.codex-plugin/plugin.json').read_text())
+            self.assertEqual(manifest['version'],'0.7.6')
+
+
+if __name__ == '__main__':
+    unittest.main()

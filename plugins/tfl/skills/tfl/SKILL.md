@@ -263,3 +263,18 @@ Les seuils 30 s / 20 tokens/s restent stricts, mais le nouveau débit peut
 modifier l'éligibilité. Les valeurs anciennes ne sont pas directement
 comparables et ne sont pas réécrites. Relancer TFL puis PLLM après mise à jour
 pour obtenir de nouvelles qualifications avec le protocole 8.
+
+
+## Liste noire partagée LM
+
+Charger scripts/model_blacklist.py, embarqué dans ce paquet, avant les appels
+fournisseur. Le script applique la liste CODEX_HOME/lm/blacklist.json,
+avec ~/.codex comme CODEX_HOME par défaut. Sans fichier, mimo-v2.5 est exclu.
+Une liste invalide bloque sans écrasement. Utiliser $lm ou /LM pour LIST,
+ADD identifiant ou REMOVE identifiant ; ce stockage reste hors des caches.
+Les préfixes fournisseur, la casse et les suffixes :free/-free ne permettent
+pas de contourner une exclusion. Les exclusions permanentes restent en vigueur.
+Les modèles interdits sont absents des listes retenues et des tests ; seules
+les traces d'exclusion les mentionnent. Un ancien catalogue ou historique ne
+valide pas un modèle interdit et une cible forcée interdite reste refusée.
+Maintenir ce module identique dans les six distributions LM/TFL/PLLM.

@@ -1,0 +1,3 @@
+interface:
+  display_name: "LM"
+  short_description: "Gérer la liste noire commune des modèles LLM"

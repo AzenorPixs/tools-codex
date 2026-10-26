@@ -6,10 +6,10 @@ description: Afficher le catalogue des commandes maison Tools Codex avec leurs s
 Affiche le catalogue ci-dessous en français, sous la forme d'un tableau concis
 avec les colonnes `Commande`, `Utilisation` et `Description`. Conserve les
 syntaxes indiquées et n'invente pas de commande. Cette consultation ne lance
-ni PLLM, ni TFL, ni TCU, ni un prompt et ne charge pas leurs skills pour les exécuter.
+ni PLLM, ni TFL, ni TCU, ni LM, ni un prompt et ne charge pas leurs skills pour les exécuter.
 
 Dans la colonne `Commande`, utilise une référence cliquable vers le skill
-disponible dans la session, avec le libellé CM, PLLM, TFL, TCU ou Prompt,
+disponible dans la session, avec le libellé CM, PLLM, TFL, TCU, LM ou Prompt,
 afin que Codex puisse afficher sa pastille native. Utilise le chemin réel du
 `SKILL.md` fourni par la découverte des skills, sans inventer d'URI ni
 supposer un emplacement d'installation. TCU suit exactement la même règle
@@ -24,6 +24,7 @@ installé. Ne simule pas la pastille avec un emoji.
 | PLLM | `$pllm [active\|MODE] [--tfl-catalog CHEMIN]` | Évalue les politiques LLM ; accepte un mode forcé documenté et un catalogue TFL explicite. |
 | TFL | `$tfl [auto\|mode1\|mode2]` | Compare Go, OpenCode général puis OpenRouter ; qualifie les gratuits en HIGH/XHIGH et exclut les échecs. |
 | TCU | `$tcu [check]` | Met à jour les briques installées et installe prompt si absent ; déclencheur `/TCU`, sans enregistrement d’une slash native. |
+| LM | `$lm [LIST\|ADD identifiant\|REMOVE identifiant]` | Gère les modèles exclus des listes et tests TFL/PLLM ; déclencheur `/LM`, mimo-v2.5 par défaut. |
 | Prompt | `$prompt LIST\|CODE` | Liste ou lance un prompt du projet ; arguments en MAJUSCULE, dont 1CISMP1 à 1CISMP8 ; déclencheur `/prompt`. |
 
 Ces invocations désignent des skills disponibles après leur découverte ou leur

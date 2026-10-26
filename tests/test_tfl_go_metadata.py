@@ -261,7 +261,7 @@ class GoMetadataTests(unittest.TestCase):
                         output = Path(tmp)
                         for name in ('tfl.json', 'tfl.md'):
                             (output / name).write_text('previous-report', encoding='utf-8')
-                        stack.enter_context(patch.dict(module.os.environ, {}, clear=True))
+                        stack.enter_context(patch.dict(module.os.environ, {'CODEX_HOME': str(output / 'codex-profile')}, clear=True))
                         stack.enter_context(patch.object(module, 'parse_args', return_value=SimpleNamespace(
                             policy_option=None, policy='auto', timeout=1, output_dir=output)))
                         stack.enter_context(patch.object(module, 'urlopen', side_effect=AssertionError('réseau interdit')))

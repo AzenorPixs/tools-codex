@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Ajouter LM : plugin, skill autonome et embarqué, commande source /LM, LIST sans écriture, ADD/REMOVE atomiques et catalogue CM actualisé ; mimo-v2.5 exclu par défaut.
+- Partager les exclusions via CODEX_HOME/lm/blacklist.json hors cache ; filtrer TFL/PLLM avant classement, sélection et tests, y compris catalogues anciens, rangs forcés et candidat direct. Préserver les exclusions permanentes et les données utilisateur ; une politique invalide bloque sans écrasement.
+- Aligner VERSION, pyproject.toml, documentation et six manifestes sur 0.7.6. Qualification locale hors ligne ; aucune publication, installation utilisateur ni génération fournisseur réelle. Une ancienne release ignore la nouvelle politique LM.
+
 - Après qualification du correctif de sélection PLLM, incrémenter la release commune de 0.7.4 à 0.7.5 dans VERSION, pyproject.toml, la documentation et les cinq manifestes ; aucune publication distante ni mise à jour de profil utilisateur.
 
 - Arrêter chaque mode PLLM au premier candidat conforme aux tests actuels : payants 1/2/5 par coût moyen TFL croissant et ordre TFL à prix égal ; gratuits 3/4 dans l'ordre TFL Go puis général.

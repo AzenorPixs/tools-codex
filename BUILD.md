@@ -20,6 +20,7 @@ Les plugins destinés à la marketplace sont actuellement :
 
 | Plugin | Skill embarqué | Fonction |
 |---|---|---|
+| `lm` | `lm` | Liste noire partagée des modèles exclus de TFL et PLLM. |
 | `prompt` | `prompt` | Liste et lancement des prompts définis par le DEVOPS du projet. |
 | `cm` | `cm` | Catalogue des commandes maison et de leurs syntaxes. |
 | `tcu` | `tcu` | Mise à jour vérifiée des briques déjà installées. |
@@ -64,7 +65,7 @@ installation existante n'est supprimée ou désactivée automatiquement.
 
 Codex détecte les modifications de skills. Si `cm` n'apparaît pas, démarrez
 une nouvelle session ou redémarrez Codex. Vérifiez alors que `$cm` affiche le
-tableau français avec CM, PLLM, TFL, TCU et Prompt dans `Commande`, sous forme
+tableau français avec CM, PLLM, TFL, TCU, LM et Prompt dans `Commande`, sous forme
 de références aux skills disponibles, et leurs syntaxes `$…` dans `Utilisation`,
 sans lancer les actions listées. Le
 contrôle local du lien ne remplace pas ce test effectif de découverte.
@@ -383,7 +384,7 @@ locale est qualifiée hors ligne et n'exécute aucun benchmark fournisseur réel
 ## Protocole 8 de débit moyen
 
 Distribuer les quatre copies identiques de performance.py avec les scripts
-PLLM/TFL de la même release 0.7.5. Le débit utilise désormais le comptage API
+PLLM/TFL de la même release 0.7.6. Le débit utilise désormais le comptage API
 sur la durée totale non arrondie de la requête, attente et TTFT inclus.
 Les rafales et réponses en un bloc ne sont plus extrapolées sur la fenêtre
 entre fragments. Les durées invalides produisent une mesure indisponible,
@@ -395,3 +396,32 @@ restent présents et ne sont pas utilisés pour amorcer ce profil ; une réussit
 courante est nécessaire. Aucune migration destructive ni réécriture des
 rapports utilisateur pendant cette livraison. Après installation distincte,
 relancer TFL puis PLLM pour obtenir des résultats sous la nouvelle méthode.
+
+## Distribution et utilisation de LM
+
+Le plugin lm est déclaré dans la marketplace. Une fois publié, il peut être
+installé avec `codex plugin add lm@tools-codex`. La copie autonome est
+skills/lm/ ; .agents/skills/lm la découvre dans ce projet. Choisir un mode
+d'installation évite deux entrées LM. Une nouvelle session chargera les
+ressources installées ; cette livraison locale ne réalise pas l'installation.
+
+```text
+/LM
+/LM LIST
+/LM ADD mimo-v2.5
+/LM REMOVE mimo-v2.5
+$lm LIST
+```
+
+Le script équivalent est `python3 -B scripts/lm.py` depuis le skill, suivi
+de ADD ou REMOVE et de l'identifiant si nécessaire. LIST n'écrit rien.
+Le stockage commun est CODEX_HOME/lm/blacklist.json, avec ~/.codex par défaut.
+Sans fichier, mimo-v2.5 est exclu. Les paquets TFL/PLLM embarquent le module
+identique et appliquent cette liste même sans plugin LM installé.
+Une erreur de politique bloque sans réinitialisation. Les anciens rapports
+restent inchangés jusqu'à leur prochaine génération. Les variantes fournisseur
+et gratuites sont normalisées, les exclusions permanentes restent applicables.
+TCU préserve le fichier utilisateur et ne crée pas un composant LM absent.
+Les tests isolés ne prouvent ni chargement dans une nouvelle session ni
+performance fournisseur. Pour revenir à une ancienne release, tenir compte
+du fait que 0.7.5 ignore la politique LM.

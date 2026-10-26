@@ -33,6 +33,9 @@ MEMORY_PATH = ROOT / 'data/pllm-performance-memory.json'
 _PERFORMANCE_SPEC = importlib.util.spec_from_file_location('pllm_performance', Path(__file__).with_name('performance.py'))
 performance = importlib.util.module_from_spec(_PERFORMANCE_SPEC)
 _PERFORMANCE_SPEC.loader.exec_module(performance)
+_BLACKLIST_SPEC = importlib.util.spec_from_file_location('pllm_blacklist', Path(__file__).with_name('model_blacklist.py'))
+blacklist = importlib.util.module_from_spec(_BLACKLIST_SPEC)
+_BLACKLIST_SPEC.loader.exec_module(blacklist)
 
 
 OPENCODE_GO_ROUTE_BY_MODEL = {
@@ -276,6 +279,7 @@ def reasoning(m, budget, metadata):
 
 
 def benchmark(m, key, budget, metadata, session_id=None):
+    blacklist.require_allowed(m['model_id'])
     return performance.run_benchmark(m, key, budget, metadata, session_id,
                                      reasoning=reasoning, request=request, now=now, api_error=api_error,
                                      clock=time.monotonic, alarm=signal.alarm)
@@ -427,7 +431,33 @@ def active_summary(models):
             f'Fournisseur : {selected["provider"]} | Modèle : {model_name}**')
 
 
+def sanitize_blacklisted_history(data, configured):
+    for model in data['models']:
+        exclusions = model.setdefault('candidate_exclusions', [])
+        def forbidden(record):
+            identifier = record.get('model_id')
+            if not identifier or identifier == 'Non évalué':
+                return False
+            return blacklist.is_blocked(identifier, configured)
+        retained = []
+        for candidate in model.get('candidate_results', []):
+            if forbidden(candidate):
+                exclusions.append({'model_id': candidate['model_id'], 'cause': 'liste noire LM ou permanente'})
+            else:
+                retained.append(candidate)
+        if 'candidate_results' in model:
+            model['candidate_results'] = retained
+        if forbidden(model):
+            exclusions.append({'model_id': model['model_id'], 'cause': 'liste noire LM ou permanente'})
+            model.update(state='Invalide', selected=False, model='Non évalué', model_id='Non évalué',
+                         cause='Modèle historique exclu par la liste noire LM ou permanente',
+                         ttft_seconds=None, tokens_per_second=None, last_successful_max_tokens=None,
+                         performance_test={'status': 'not_run', 'reason': 'liste noire LM ou permanente'})
+    data['lm_blacklist'] = {'model_ids': list(configured), 'permanent_model_ids': list(blacklist.PERMANENT_MODELS)}
+
+
 def publish(d, active=False, forced_mode=None):
+    sanitize_blacklisted_history(d, blacklist.load_models())
     try:
         fx = exchange_rates()
     except Exception as error:
@@ -487,6 +517,7 @@ def tfl_opencode_model_at(rank, catalog_path=None):
     model_id = model.get('id')
     if not isinstance(model_id, str) or not model_id:
         raise RuntimeError('Identifiant du modèle OpenCode Go TFL absent')
+    blacklist.require_allowed(model_id)
     endpoint, protocol = model.get('api_endpoint'), model.get('api_protocol')
     if not endpoint or not protocol:
         endpoint, protocol = OPENCODE_GO_ROUTE_BY_MODEL.get(model_id, (None, None))
@@ -519,6 +550,8 @@ def next_tfl_opencode_model(current_id, catalog_path=None):
             found = True
             continue
         if not found or candidate.get('available') is not True:
+            continue
+        if blacklist.is_blocked(candidate['id']):
             continue
         endpoint = candidate.get('api_endpoint')
         protocol = candidate.get('api_protocol')
@@ -669,15 +702,15 @@ def check_category(model, key, category):
         raise CategoryChanged(current)
 
 
-def catalog_candidate(row, section, rank, generated_at):
+def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=True):
     if not isinstance(row, dict) or not isinstance(row.get('id'), str) or not row['id']:
         raise RuntimeError('Candidat TFL sans identifiant vérifiable')
     if row.get('context_length', 0) < 1_000_000:
         raise RuntimeError('Contexte TFL inférieur à 1M ou non vérifiable')
     if set(row.get('output_modalities') or []) & {'audio', 'video', 'speech', 'sound'}:
         raise RuntimeError('Sortie TFL non admissible')
-    if row['id'] in ('muse-spark-1.2-contributor', 'meta/muse-spark-1.2-contributor'):
-        raise RuntimeError('Blacklist TFL permanente')
+    if enforce_blacklist:
+        blacklist.require_allowed(row['id'])
     if section == 'openrouter':
         prices = (finite(row['input_price']), finite(row['output_price']))
         provider = 'openrouter'
@@ -715,6 +748,7 @@ def candidates_for(model, category, catalog_path, forced=None):
             or (model['mode'] in ('mode1', 'mode2', 'mode5', 'mode6') and category != 'paid')):
         raise RuntimeError('Catégorie incompatible avec la politique PLLM')
     if model['mode'] == 'mode6':
+        blacklist.require_allowed('deepseek-v4-flash')
         return [{'model_id': 'deepseek-v4-flash', 'model': 'deepseek-v4-flash',
                  'provider': 'deepseek', 'throughput_scope': 'response_only',
                  'api_protocol': 'chat_completions', 'api_endpoint': 'https://api.deepseek.com/chat/completions',
@@ -738,7 +772,8 @@ def candidates_for(model, category, catalog_path, forced=None):
             if requested is not None and rank != requested:
                 continue
             try:
-                candidate = catalog_candidate(row, section, rank, catalog.get('generated_at'))
+                candidate = catalog_candidate(row, section, rank, catalog.get('generated_at'),
+                                              enforce_blacklist=not (forced and model['mode'] in FREE_MODES))
             except (KeyError, TypeError, ValueError, RuntimeError) as error:
                 if forced and requested is not None:
                     raise RuntimeError('Candidat forcé non admissible : ' + error_message(error)) from error
@@ -753,6 +788,7 @@ def candidates_for(model, category, catalog_path, forced=None):
         rank = forced.get('rank', 1)
         if rank < 1 or rank > len(candidates):
             raise RuntimeError('Rang gratuit TFL indisponible : ' + str(rank))
+        blacklist.require_allowed(candidates[rank - 1]['model_id'])
         return [candidates[rank - 1]]
     if not forced and category == 'paid':
         candidates.sort(key=lambda candidate: candidate['average_price_usd_per_million_tokens'])
@@ -760,6 +796,7 @@ def candidates_for(model, category, catalog_path, forced=None):
 
 
 def evaluate_candidate(model, key, category, memory, session_id):
+    blacklist.require_allowed(model['model_id'])
     attempts = []
     stage = 'configuration du test'
     model.update(throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
@@ -842,9 +879,11 @@ def evaluate_candidate(model, key, category, memory, session_id):
 
 
 def main(active=False, forced=None, tfl_catalog=None):
+    configured = blacklist.load_models()
     signal.signal(signal.SIGALRM, expire)
     data = load_current()
     memory = load_memory()
+    sanitize_blacklisted_history(data, configured)
     data['models'].sort(key=lambda model: model['priority'])
     if [model['mode'] for model in data['models']] != [f'mode{i}' for i in range(1, 7)]:
         raise RuntimeError('Ce protocole attend les six modes définis')

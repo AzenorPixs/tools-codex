@@ -32,7 +32,6 @@ Leurs échecs SHALL rester dans excluded_models avec leurs preuves.
 - **WHEN** le contexte ou le coût d'un modèle examiné ne satisfait pas les seuils vérifiables
 - **THEN** il est exclu avec son motif dans le catalogue JSON
 
-
 #### Scenario: Gratuit échoué ou non mesurable
 - **WHEN** le gratuit échoue sur un seuil, le raisonnement, l'accès, HTTP ou la mesure
 - **THEN** il est exclu de models avec sa cause, ses tentatives et ses mesures disponibles
@@ -109,7 +108,6 @@ inclut l'attente et le TTFT.
 #### Scenario: Consultation du routage d'un modèle OpenCode Go
 - **WHEN** un consommateur examine un modèle retenu du catalogue
 - **THEN** il retrouve les champs de routage et leurs sources sans déduire le protocole du seul nom commercial
-
 
 #### Scenario: Qualification gratuite avec réception en rafale
 - **WHEN** un gratuit fournit sa réponse par fragments groupés
@@ -276,3 +274,20 @@ sections existantes SHALL rester compatibles avec leurs consommateurs.
 - **WHEN** le catalogue général publie plusieurs variantes de contexte ou de période
 - **THEN** son prix de classement est la moyenne maximale des variantes publiées
 - **AND** la référence hors pointe de Go reste inchangée
+
+### Requirement: Exclusion LM avant sélection et test
+TFL SHALL charger la liste commune LM avant tout appel fournisseur et
+l'appliquer à Go, OpenCode général et OpenRouter avant tout classement et
+test gratuit. Les modèles interdits SHALL être absents de models et
+free_performance_results ; excluded_models SHALL conserver leur motif.
+Le JSON SHALL tracer la liste appliquée sans données personnelles.
+Les seuils, prix, transports, ordre et exclusions permanentes SHALL rester inchangés.
+
+#### Scenario: Modèle interdit pourtant admissible
+- **WHEN** mimo-v2.5 satisfait prix, contexte et modalités dans un catalogue
+- **THEN** il est exclu avant tout test gratuit et absent des tableaux retenus
+- **AND** son exclusion est auditée sans requête de génération
+
+#### Scenario: Liste utilisateur modifiée
+- **WHEN** LM ajoute un modèle avant la nouvelle invocation TFL
+- **THEN** les trois catalogues appliquent la liste courante sans mise à jour du code

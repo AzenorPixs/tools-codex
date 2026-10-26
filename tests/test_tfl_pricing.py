@@ -80,7 +80,7 @@ class PricingTests(unittest.TestCase):
 
     def setup_main(self, module, output, stack):
         mock_general_collection(module, stack)
-        stack.enter_context(patch.dict(module.os.environ, {}, clear=True))
+        stack.enter_context(patch.dict(module.os.environ, {'CODEX_HOME': str(output / 'codex-profile')}, clear=True))
         stack.enter_context(patch.object(module, 'urlopen', side_effect=AssertionError('réseau interdit')))
         stack.enter_context(patch.object(module, 'parse_args', return_value=SimpleNamespace(
             policy_option=None, policy='auto', timeout=1, output_dir=output)))

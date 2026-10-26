@@ -1,6 +1,6 @@
 {
   "name": "cm",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "Affiche le catalogue des commandes maison Tools Codex et leurs syntaxes.",
   "author": {
     "name": "AzenorPixs"
@@ -11,7 +11,7 @@
   "interface": {
     "displayName": "CM",
     "shortDescription": "Catalogue des commandes maison Tools Codex.",
-    "longDescription": "Présente les invocations CM, PLLM, TFL, TCU et prompt avec leurs syntaxes, sans les exécuter.",
+    "longDescription": "Présente les invocations CM, PLLM, TFL, TCU, LM et prompt avec leurs syntaxes, sans les exécuter.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],

@@ -152,6 +152,62 @@ class TcuUpdateTests(unittest.TestCase):
         return self.m.execute(self.home, roots or [('skills', self.skills)], apply, adopt,
                               fetcher=self.fetcher, runner=self.runner)
 
+    def enable_lm(self):
+        catalog = json.loads(self.files['.agents/plugins/marketplace.json'])
+        catalog['plugins'].append({'name': 'lm', 'source': {'source': 'local', 'path': './plugins/lm'}})
+        self.files['.agents/plugins/marketplace.json'] = json.dumps(catalog).encode()
+        self.files['plugins/lm/.codex-plugin/plugin.json'] = json.dumps({
+            'name': 'lm', 'version': '0.3.0', 'skills': './skills/'}).encode()
+        for path in (ROOT / 'skills/lm').rglob('*'):
+            if path.is_file() and '__pycache__' not in path.parts:
+                self.files[str(path.relative_to(ROOT))] = path.read_bytes()
+        self.files['.codex/commands/LM.md'] = (ROOT / '.codex/commands/LM.md').read_bytes()
+
+    def test_lm_absent_is_not_installed_and_common_policy_is_preserved(self):
+        self.enable_lm()
+        policy = self.home / 'lm/blacklist.json'
+        policy.parent.mkdir(parents=True)
+        policy.write_bytes(b'{"schema_version":1,"models":["custom"]}\n')
+        content = policy.read_bytes()
+        report = self.execute(apply=True)
+        self.assertTrue(report['succes'])
+        self.assertFalse((self.skills / 'lm').exists())
+        self.assertFalse(any(c[0] == 'add' for c in self.calls))
+        self.assertEqual(policy.read_bytes(), content)
+        self.assertTrue(any(r['brique'] == 'lm' and r['status'] == 'absent' for r in report['briques']))
+
+    def test_lm_existing_autonomous_sources_update_without_changing_common_policy(self):
+        self.enable_lm()
+        target = self.local('lm', tracked=True)
+        policy = self.home / 'lm/blacklist.json'
+        policy.parent.mkdir(parents=True)
+        policy.write_bytes(b'{"schema_version":1,"models":["custom"]}\n')
+        content = policy.read_bytes()
+        report = self.execute(apply=True)
+        self.assertTrue(report['succes'])
+        for name in ('SKILL.md', 'scripts/lm.py', 'scripts/model_blacklist.py', 'agents/openai.yaml'):
+            self.assertEqual((target / name).read_bytes(), self.files['skills/lm/' + name])
+        self.assertEqual(policy.read_bytes(), content)
+        self.assertEqual(json.loads((target / self.m.RECEIPT).read_text())['version'], '0.3.0')
+
+    def test_actual_six_plugin_source_snapshot_includes_lm_and_shared_modules(self):
+        files = {name:(ROOT/name).read_bytes() for name in ('VERSION','.agents/plugins/marketplace.json')}
+        for path in (ROOT/'plugins').glob('*/.codex-plugin/plugin.json'):
+            files[str(path.relative_to(ROOT))] = path.read_bytes()
+        for path in (ROOT/'skills').rglob('*'):
+            relative = path.relative_to(ROOT)
+            if path.is_file() and self.m.source_file(self.m.PurePosixPath(*relative.parts[2:])):
+                files[str(relative)] = path.read_bytes()
+        for path in (ROOT/'.codex/commands').glob('*.md'):
+            files[str(path.relative_to(ROOT))] = path.read_bytes()
+        def fetch(url):
+            return json.dumps({'sha':'a'*40}).encode() if url.endswith('/commits/HEAD') else zip_bytes(files)
+        remote = self.m.snapshot(fetch)
+        self.assertEqual(remote['version'],'0.7.6')
+        self.assertEqual(remote['plugins'], {'cm','lm','tfl','pllm','prompt','tcu'})
+        for name in ('lm','tfl','pllm'):
+            self.assertIn('skills/'+name+'/scripts/model_blacklist.py',remote['files'])
+
     def test_check_has_no_writes_and_does_not_refresh(self):
         target = self.local(tracked=True)
         initial = {str(p): p.read_bytes() for p in self.base.rglob('*') if p.is_file()}

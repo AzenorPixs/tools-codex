@@ -28,7 +28,7 @@ class GeneralOpenCodeTests(unittest.TestCase):
         go_metadata['models'] = {'go-only': {'modalities': {'output': ['text']}}}
         go_pricing = {'source': module.SOURCE_URL, 'retrieved_at': metadata['retrieved_at'],
                       'models': module.parse_go_pricing(document([('Go Only', '$0.1', '$0.2', '-', '-')]))}
-        stack.enter_context(patch.dict(module.os.environ, {}, clear=True))
+        stack.enter_context(patch.dict(module.os.environ, {'CODEX_HOME': str(output / 'codex-profile')}, clear=True))
         stack.enter_context(patch.object(module, 'urlopen', side_effect=AssertionError('réseau interdit')))
         stack.enter_context(patch.object(module, 'parse_args', return_value=SimpleNamespace(
             policy_option=None, policy='auto', timeout=1, output_dir=output)))

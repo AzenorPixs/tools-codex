@@ -1,13 +1,13 @@
 # Tools Codex
 
-Version de release : `0.7.5`.
+Version de release : `0.7.6`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
 supportées sont 3.13 et 3.14 (`>=3.13,<3.15`), avec qualification hors ligne.
 
 Utilisez **`$cm`** pour afficher le catalogue des commandes maison : `$cm`,
-`$pllm`, `$tfl`, `$tcu` et `$prompt`, leurs syntaxes et descriptions. `/cm` délègue au même skill via sa commande source.
+`$pllm`, `$tfl`, `$tcu`, `$lm` et `$prompt`, leurs syntaxes et descriptions. `/cm` délègue au même skill via sa commande source.
 Sa source est [`skills/cm/SKILL.md`](skills/cm/SKILL.md), exposée dans ce
 projet via le lien relatif `.agents/skills/cm`. Le plugin
 [`cm`](plugins/cm/.codex-plugin/plugin.json) est également référencé dans la
@@ -117,3 +117,20 @@ GSCM.md/GSCMP.md. Le skill est directement invocable avec `$prompt CODE`.
 Les sources de prompts restent externes ; les conditions du prompt choisi
 continuent de s'appliquer. Les arguments et l'installation du plugin sont
 décrits dans [BUILD](BUILD.md#utilisation-de-prompt).
+
+## LM — Liste noire des modèles
+
+`/LM` ou `$lm` affiche la liste sans écriture ; `/LM ADD identifiant` ajoute
+une exclusion et `/LM REMOVE identifiant` la retire. `mimo-v2.5` est exclu
+par défaut, y compris avec préfixe fournisseur ou suffixe gratuit.
+LM figure dans le catalogue CM. Les plugins et skills TFL/PLLM appliquent la
+même liste avant classement, sélection et tests, même avec un ancien catalogue
+ou une cible forcée. Les exclusions permanentes historiques restent actives.
+
+Le stockage commun CODEX_HOME/lm/blacklist.json (repli ~/.codex) reste hors
+des caches et est conservé par TCU. Une liste invalide bloque sans écrasement.
+LM ne réécrit pas les anciens rapports ; les prochaines invocations appliquent
+les modifications. Le [skill LM](skills/lm/SKILL.md), son
+[plugin](plugins/lm/.codex-plugin/plugin.json) et la commande source /LM sont
+livrés localement ; une slash native n'est pas automatiquement enregistrée.
+La publication et l'installation dans le profil sont des étapes distinctes.

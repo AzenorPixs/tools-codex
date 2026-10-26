@@ -52,6 +52,7 @@ class ExtensionQualificationTests(unittest.TestCase):
         installed.parent.mkdir(parents=True)
         installed.write_bytes(script.read_bytes())
         installed.with_name('performance.py').write_bytes(script.with_name('performance.py').read_bytes())
+        installed.with_name('model_blacklist.py').write_bytes(script.with_name('model_blacklist.py').read_bytes())
         module = load_script(installed)
         module.MEMORY_PATH = module.ROOT / 'data/pllm-performance-memory.json'
         catalog = base / 'tfl' / 'version-b' / 'skills' / 'tfl' / 'data' / 'tfl.json'
@@ -295,7 +296,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 for name in ('tfl.json', 'tfl.md'):
                     (output / name).write_text('preserved-fixture', encoding='utf-8')
                 with ExitStack() as stack:
-                    stack.enter_context(patch.dict(module.os.environ, {}, clear=True))
+                    stack.enter_context(patch.dict(module.os.environ, {'CODEX_HOME': str(output / 'codex-profile')}, clear=True))
                     stack.enter_context(patch.object(module, 'urlopen', side_effect=AssertionError('Réseau interdit pendant le test')))
                     stack.enter_context(patch.object(module, 'parse_args', return_value=SimpleNamespace(
                         policy_option=None, policy='auto', timeout=1, output_dir=output)))
@@ -325,7 +326,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 payload = self.tfl_payload(module)
                 payload['data'][0]['pricing']['prompt'] = 'NaN'
                 with ExitStack() as stack:
-                    stack.enter_context(patch.dict(module.os.environ, {}, clear=True))
+                    stack.enter_context(patch.dict(module.os.environ, {'CODEX_HOME': str(output / 'codex-profile')}, clear=True))
                     stack.enter_context(patch.object(module, 'urlopen', side_effect=AssertionError('Réseau interdit pendant le test')))
                     stack.enter_context(patch.object(module, 'parse_args', return_value=SimpleNamespace(
                         policy_option=None, policy='auto', timeout=1, output_dir=output)))

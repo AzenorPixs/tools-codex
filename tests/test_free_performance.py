@@ -198,7 +198,7 @@ class FreePerformanceTests(unittest.TestCase):
                 router=[candidate('router','openrouter')]
                 with ExitStack() as stack:
                     stack.enter_context(patch.object(module,'parse_args',return_value=SimpleNamespace(policy_option=None,policy='auto',timeout=1,output_dir=output)))
-                    stack.enter_context(patch.dict(module.os.environ,{},clear=True))
+                    stack.enter_context(patch.dict(module.os.environ,{'CODEX_HOME':str(output/'codex-profile')},clear=True))
                     stack.enter_context(patch.object(module,'select_secret',return_value=('mode2','go-offline')))
                     stack.enter_context(patch.object(module,'openrouter_secret',return_value='router-offline'))
                     for name in ('fetch_models','fetch_opencode_models','fetch_openrouter_models'):
@@ -230,7 +230,7 @@ class FreePerformanceTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix='isolated-engine-',dir=ROOT/'tests') as directory:
                 installed=Path(directory)/'scripts'/script.name
                 installed.parent.mkdir()
-                for source in (script,script.with_name('performance.py')):
+                for source in (script,script.with_name('performance.py'),script.with_name('model_blacklist.py')):
                     installed.with_name(source.name).write_bytes(source.read_bytes())
                 module=load_script(installed)
                 self.assertEqual(module.performance.FREE_CRITERIA['ttft_lt_seconds'],30)
@@ -290,7 +290,7 @@ class FreePerformanceTests(unittest.TestCase):
                     (output/name).write_text('preserved')
                 with ExitStack() as stack:
                     stack.enter_context(patch.object(module,'parse_args',return_value=SimpleNamespace(policy_option=None,policy='auto',timeout=1,output_dir=output)))
-                    stack.enter_context(patch.dict(module.os.environ,{},clear=True))
+                    stack.enter_context(patch.dict(module.os.environ,{'CODEX_HOME':str(output/'codex-profile')},clear=True))
                     stack.enter_context(patch.object(module,'select_secret',return_value=('mode1','offline-key')))
                     stack.enter_context(patch.object(module,'openrouter_secret',return_value='router-offline'))
                     for name in ('fetch_models','fetch_opencode_models','fetch_openrouter_models'):
