@@ -188,10 +188,10 @@ un épuisement les rend rouges et invalides sans repli gratuit. Les modes 3/4
 ne consultent jamais quota ni solde, même entre paliers ; ils affichent
 `quota_status=not_applicable`, `quotas=null` et `Non applicable`.
 Ils exigent gratuité vérifiée, contexte ≥1M, réponse complète, comptage fiable,
-TTFT <30 s et débit >20 tokens/s. Tous les gratuits, y compris le repli OpenRouter de 5, exigent <30 s et >20
+TTFT <30 s et débit >20 tokens/s. Tous les gratuits PLLM 3/4 exigent <30 s et >20
 tokens/s ; seuls les payants gardent TTFT <90 s et débit >15 tokens/s. Les critères sont publiés par politique dans `performance_criteria`.
-Le mode5 garde les payants OpenRouter avec crédit et ses gratuits après
-épuisement confirmé, avec transitions bornées et retour aux payants. Mode6
+Le mode5 garde exclusivement les payants OpenRouter avec crédit positif ;
+un épuisement le rend invalide sans repli gratuit. Mode6
 garde le contrôle de solde DeepSeek. Les gratuits restent soumis aux accès,
 HIGH/XHIGH autorisé, filtres TFL, protocoles et limitations HTTP du fournisseur.
 
@@ -213,17 +213,19 @@ une identité native et ne crée pas de secret. La configuration OpenCode reste
 inchangée. L'état historique accepte `opencode` pour les anciens 1/2 et les gratuits 3/4 ;
 les candidats courants 1/2 restent exclusivement payants Go.
 
-Les tests déterminent l'admissibilité. Les réussites payantes de 1/2 et de la
-catégorie payante de 5 sont classées par coût moyen TFL croissant : moyenne des
-prix d'entrée/sortie hors pointe Go ou de base OpenRouter. À prix égal seulement,
-le débit maximal, le TTFT minimal puis l'ordre TFL stable départagent les
-payants. Les gratuits de 3/4 et du repli de 5 gardent ce classement par
-performances. Mode6 garde son unique candidat direct sans tarif inventé.
+Les tests déterminent l'admissibilité. Les payants 1/2/5 sont essayés par coût
+moyen TFL croissant : moyenne des prix d'entrée/sortie hors pointe Go ou de
+base OpenRouter. À prix égal, conserver l'ordre TFL stable. Les gratuits 3/4
+sont essayés dans l'ordre TFL Go puis général. Dans chaque mode, retenir le
+premier candidat conforme et ne pas tester les suivants ; après un échec,
+essayer le suivant sous réserve des contrôles bloquants. Mode6 garde son
+unique candidat direct sans tarif inventé. Les forçages de rang conservent
+leur cible, avec refus des gratuits en mode5 désormais exclusivement payant.
 Le coût vérifié est conservé dans average_price_usd_per_million_tokens et les
-prix/provenances dans model_source. Les moyennes décimales égales ne sont pas
-départagées par un artefact d'addition binaire ; un prix non vérifiable reste
-exclu et aucun prix antérieur n'est hérité lors d'une nouvelle évaluation.
-L'arrêt au premier succès concerne seulement les paliers d'un candidat.
+prix/provenances dans model_source. Les moyennes décimales égales conservent
+leur égalité sans artefact d'addition binaire ; un prix non vérifiable reste
+exclu et aucun prix antérieur n'est hérité. Le contexte d'entrée ≥1M est une
+capacité TFL vérifiée ; le test borné n'envoie pas un million de tokens.
 Go/général comptent la sortie raisonnement+réponse ; OpenRouter/DeepSeek la
 réponse seule. Le protocole 8 divise ce comptage par la durée complète non
 arrondie de la requête, attente et TTFT inclus. Aucun premier token n'est
@@ -242,8 +244,8 @@ autre éligibilité.
 Le JSON additif conserve catégorie, exclusions, candidats et tentatives, ainsi
 que les quotas réels. La mémoire garde les succès par configuration ; un
 palier d'un autre candidat n'est pas affiché. Les erreurs HTTP/SSE sont filtrées
-et rendues dans État sans corps brut. active termine le classement du mode
-avant de s'arrêter silencieusement ; les forçages gardent un seul candidat.
+et rendues dans État sans corps brut. active s'arrête silencieusement après
+le premier succès du premier mode valide ; les forçages gardent un seul candidat.
 
 Tous les benchmarks PLLM et les gratuits TFL demandent HIGH, avec le seul
 repli XHIGH si HIGH est indisponible et XHIGH pris en charge. Chat Completions

@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.4`.
+Version de release : `0.7.5`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -27,18 +27,20 @@ Les six politiques sont évaluées par priorité :
 |---|---|---|
 | 1/2 | Payants Go des comptes actuels | Quotas disponibles ; épuisement → rouge et invalide, sans gratuit |
 | 3/4 | Gratuits vérifiés Go puis OpenCode général, comptes de 1/2 | Aucun contrôle de quota ; contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s |
-| 5 | Ancien mode 3 OpenRouter | Crédit pour payants ; repli gratuit après épuisement confirmé |
+| 5 | Payants OpenRouter uniquement | Crédit positif ; épuisement → invalide, sans gratuit |
 | 6 | Ancien mode 4 DeepSeek direct | Solde utilisable positif |
 
 Les payants gardent TTFT <90 s et débit >15 tokens/s ; tous les gratuits,
 y compris le repli OpenRouter de 5, exigent <30 s et >20 tokens/s. Les filtres TFL,
 HIGH/XHIGH autorisé, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
-aux limitations fournisseur. Les tests déterminent l'admissibilité ; parmi les
-payants qualifiés de 1/2 et de la catégorie payante de 5, le prix croissant
-établit le classement : coût moyen TFL hors pointe Go ou de base OpenRouter.
-Les performances ne départagent que les prix égaux, par débit maximal puis
-TTFT minimal et ordre TFL stable. Les gratuits 3/4 et le repli gratuit de 5
-restent classés par ces performances. Les priorités 1 à 6 restent inchangées.
+aux limitations fournisseur. Essayer les payants 1/2/5 par coût moyen TFL
+croissant (hors pointe Go, base OpenRouter), avec ordre TFL à prix égal.
+Essayer les gratuits 3/4 dans l'ordre TFL Go puis général. Retenir le premier
+succès aux tests actuels et ne pas tester les suivants du mode ; après un
+échec, essayer le suivant sous réserve des contrôles bloquants. Les priorités
+1 à 6 restent inchangées. En invocation normale, poursuivre les politiques ;
+active s'arrête à la première valide. Le contexte ≥1M est une capacité
+d'entrée vérifiée, sans envoi d'un million de tokens pendant le benchmark.
 Tous les benchmarks demandent HIGH ; XHIGH est le seul repli autorisé si
 HIGH est indisponible et XHIGH pris en charge. Les tokens/s représentent désormais une moyenne sur la requête complète,
 attente et TTFT inclus, sans extrapolation entre fragments reçus. Le protocole

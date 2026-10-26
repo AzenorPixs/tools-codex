@@ -129,8 +129,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 self.assertFalse((module.ROOT / 'data').exists())
                 result, calls = self.run_evaluation(module, catalog, active=True)
                 self.assertEqual(result['selected_mode'], 'mode1')
-                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'first'), ('benchmark', 'first', 1024),
-                                         ('quota', 'second'), ('benchmark', 'second', 1024)])
+                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'first'), ('benchmark', 'first', 1024)])
                 self.assertTrue(all(not m['evaluated_this_run'] for m in result['models'][1:]))
                 self.assertTrue((module.ROOT / 'data/pllm-performance-memory.json').exists())
 
@@ -183,7 +182,8 @@ class ExtensionQualificationTests(unittest.TestCase):
                 catalog.write_text(json.dumps(payload))
                 result, calls = self.run_evaluation(module, catalog)
                 self.assertTrue(all(m['evaluated_this_run'] and m['state'] == 'Valide' for m in result['models']))
-                self.assertEqual(len(calls), 18)
+                self.assertEqual(len(calls), 14)
+                self.assertTrue(all(len(m['candidate_results']) == 1 for m in result['models']))
                 self.assertEqual(result['models'][5]['model'], 'deepseek-v4-flash')
 
     def test_last_tier_fallback_requires_its_own_measurements(self):

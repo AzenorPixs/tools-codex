@@ -125,18 +125,19 @@ class FreePerformanceTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'HIGH et XHIGH'):
                 engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supported_efforts':['low']}})
 
-    def test_pllm_router_free_uses_strict_limits_paid_keeps_original_limits(self):
+    def test_pllm_free_modes_use_strict_limits_router_paid_keeps_original_limits(self):
         for script in PLLM:
             module,path,_=self.workspace(script)
             def behavior(model,budget):
                 model.update(ttft_seconds=40,tokens_per_second=18)
                 return True
-            free,_,_=self.run_evaluation(module,path,exhausted=True,benchmark_behavior=behavior,forced={'mode':'mode5'})
-            self.assertEqual(free['models'][4]['state'],'Invalide')
-            self.assertEqual(free['models'][4]['performance_criteria'],{'ttft_lt_seconds':30,'tokens_per_second_gt':20})
+            free,_,_=self.run_evaluation(module,path,exhausted=True,benchmark_behavior=behavior,forced={'mode':'mode3'})
+            self.assertEqual(free['models'][2]['state'],'Invalide')
+            self.assertEqual(free['models'][2]['performance_criteria'],{'ttft_lt_seconds':30,'tokens_per_second_gt':20})
             paid,_,_=self.run_evaluation(module,path,benchmark_behavior=behavior,forced={'mode':'mode5'})
             self.assertEqual(paid['models'][4]['state'],'Valide')
             self.assertEqual(paid['models'][4]['reasoning'],'high')
+            self.assertEqual(paid['models'][4]['performance_criteria'],{'ttft_lt_seconds':90,'tokens_per_second_gt':15})
 
     def test_pllm_high_rejection_can_retry_xhigh_with_its_own_tier(self):
         for script in PLLM:

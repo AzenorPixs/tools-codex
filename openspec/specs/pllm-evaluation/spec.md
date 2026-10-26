@@ -40,18 +40,18 @@ Un historique invalide SHALL produire un diagnostic et SHALL NOT être écrasé.
 
 ### Requirement: Politiques et sélection explicites
 PLLM SHALL garder six priorités : payants Go 1/2, gratuits Go/général 3/4,
-OpenRouter 5 et DeepSeek 6. Les comptes et références historiques SHALL être
-conservés. Les modèles 1 à 5 SHALL provenir de TFL avec route, fournisseur et
-date. HIGH SHALL être le défaut, avec repli XHIGH pris en charge lorsque HIGH
-est indisponible. La première politique valide après classement SHALL être
-sélectionnée.
+payants OpenRouter 5 et DeepSeek 6. Les comptes et références historiques
+SHALL être conservés. Les modèles 1 à 5 SHALL provenir de TFL avec route,
+fournisseur et date. HIGH SHALL être le défaut, avec repli XHIGH pris en
+charge lorsque HIGH est indisponible. La première politique valide après
+sélection ordonnée de son candidat SHALL être sélectionnée.
 
 #### Scenario: Sélection selon la priorité
 - **WHEN** plusieurs politiques sont valides
 - **THEN** la première par priorité 1 à 6 est retenue indépendamment du débit des autres
 
 #### Scenario: Authentification des modes renumérotés
-- **WHEN** les nouveaux modes sont évalués
+- **WHEN** les modes sont évalués
 - **THEN** les références existantes sont utilisées sans création ou déplacement de secret
 - **AND** policy=mode1 sert à 1/3, policy=mode2 à 2/4, ancien policy=mode3 à 5 et ancien policy=mode4 à 6
 
@@ -59,14 +59,17 @@ sélectionnée.
 Les modes 1/2/5/6 SHALL consulter leurs quotas ou soldes avant chaque
 requête de performance. Une donnée absente, refusée ou incohérente SHALL
 arrêter leur évaluation avant cette requête. Les modes 3/4 SHALL NOT consulter
-quota ou solde ; ils SHALL publier ce contrôle comme non applicable, sans
-valeur ni disponibilité inventée. L'authentification et les limitations
-fournisseur SHALL rester applicables à tous les modes.
+quota ou solde ; ils SHALL publier ce contrôle comme non applicable.
+L'authentification et les limitations fournisseur SHALL rester applicables.
 
 #### Scenario: Gratuit sans contrôle de quota
-- **WHEN** mode3 ou mode4 est évalué avec un accès de génération fonctionnel
+- **WHEN** mode3 ou mode4 est évalué
 - **THEN** aucune requête usage, credits ou balance n'est envoyée, même entre paliers
-- **AND** un quota épuisé ou inaccessible sur le compte associé ne conditionne pas sa validité
+- **AND** les ressources du compte associé ne conditionnent pas sa validité
+
+#### Scenario: Contrôle indispensable indisponible ou épuisé
+- **WHEN** un contrôle des modes 1/2/5/6 est refusé, indisponible ou épuisé
+- **THEN** la politique reste invalide sans génération correspondante ni repli gratuit
 
 #### Scenario: Quota indispensable indisponible
 - **WHEN** un contrôle des modes 1/2/5/6 échoue
@@ -77,24 +80,36 @@ fournisseur SHALL rester applicables à tous les modes.
 - **THEN** la politique reste invalide sans performance ni repli gratuit
 
 #### Scenario: Épuisement confirmé
-- **WHEN** les ressources sont confirmées épuisées
-- **THEN** les modes 1/2 restent invalides sans repli ; seul mode5 peut tester ses gratuits OpenRouter
+- **WHEN** les ressources payantes sont confirmées épuisées
+- **THEN** 1/2/5/6 restent invalides sans génération ni repli gratuit
 
 ### Requirement: Conditions de quota propres aux fournisseurs
 Go payant (modes 1/2) SHALL exiger trois périodes disponibles, statut ok
-et usage <100 %. Un épuisement SHALL rendre le mode invalide et rouge sans
-candidat gratuit. OpenRouter (mode5) SHALL exiger un solde >0 pour les payants ;
-son repli gratuit SHALL exiger un épuisement confirmé. DeepSeek (mode6) SHALL
-exiger is_available=true et au moins un solde utilisable >0, sans addition de
+et usage <100 %. Mode5 SHALL exiger un solde OpenRouter strictement positif
+et SHALL NOT utiliser de candidat gratuit. DeepSeek (mode6) SHALL exiger
+is_available=true et au moins un solde utilisable >0, sans addition de
 devises. Un statut inconnu SHALL NOT prouver un épuisement.
 
 #### Scenario: Go épuisé avant le premier test
 - **WHEN** un quota de mode1 ou mode2 atteint 100 %
-- **THEN** ce mode est rouge et invalide sans requête de génération payante ou gratuite
+- **THEN** ce mode est invalide sans requête de génération payante ou gratuite
+
+#### Scenario: Ressources épuisées pendant le parcours
+- **WHEN** le contrôle avant un palier ou le candidat suivant après un échec constate l'épuisement
+- **THEN** le mode s'arrête sans génération supplémentaire ni repli gratuit
+
+#### Scenario: Crédit OpenRouter épuisé
+- **WHEN** le solde de mode5 est nul ou négatif
+- **THEN** le mode est invalide et aucun candidat payant ou gratuit n'est testé
+
+#### Scenario: Réussite sans candidat suivant
+- **WHEN** le premier candidat conforme réussit avec ses contrôles actuels
+- **THEN** aucun contrôle ni test du candidat suivant n'est effectué dans ce mode
 
 #### Scenario: Épuisement Go après une réussite
-- **WHEN** un contrôle avant le candidat suivant établit l'épuisement
-- **THEN** le mode est invalidé sans conserver son ancien gagnant et sans repli gratuit
+- **WHEN** le quota externe évolue après la réussite qui a terminé le mode
+- **THEN** aucun candidat suivant ni contrôle supplémentaire n'est lancé dans ce mode
+- **AND** la réussite reste datée de ses contrôles réels sans garantie de disponibilité permanente
 
 #### Scenario: OpenRouter et DeepSeek renumérotés
 - **WHEN** modes 5 et 6 sont évalués
@@ -102,15 +117,32 @@ devises. Un statut inconnu SHALL NOT prouver un épuisement.
 
 #### Scenario: Limite de quota atteinte
 - **WHEN** un quota Go atteint 100 % ou le solde OpenRouter est épuisé
-- **THEN** aucun payant correspondant n'est testé ; seul mode5 autorise son repli gratuit mesuré
+- **THEN** aucun candidat payant ou gratuit correspondant n'est testé
 
 ### Requirement: Mesures concluantes du modèle sélectionné
 Tous les modes SHALL exiger réponse complète, comptage fiable et mesures
-actuelles du modèle retenu. Tous les candidats gratuits, y compris le repli OpenRouter de 5, SHALL exiger contexte ≥1M,
-TTFT <30 s et débit >20 tokens/s. Les candidats payants des modes 1/2/5/6 SHALL conserver TTFT <90 s
-et débit >15 tokens/s. Une troncature, erreur ou mesure absente SHALL NOT
-être remplacée par un résultat historique. Tous les candidats admissibles
-SHALL être comparés hors forçage.
+actuelles. Les candidats TFL SHALL avoir un contexte d'entrée ≥1M, sans
+envoi d'un million de tokens. Les gratuits 3/4 SHALL respecter TTFT <30 s
+et débit >20 tokens/s ; les payants 1/2/5/6, <90 s et >15 tokens/s. Les
+paliers, HIGH/XHIGH et le protocole actuels SHALL rester inchangés. Hors
+forçage, le parcours SHALL s'arrêter au premier succès selon l'ordre du mode.
+
+#### Scenario: Limites strictes distinctes
+- **WHEN** un gratuit atteint TTFT 30 s ou débit 20 tokens/s, ou un payant atteint TTFT 90 s ou débit 15 tokens/s
+- **THEN** ce candidat est invalide
+
+#### Scenario: Seuil payant conservé
+- **WHEN** un payant mesure TTFT 70,4 s et satisfait tous les autres critères
+- **THEN** son seuil TTFT est satisfait ; ce même TTFT échoue pour un gratuit
+
+#### Scenario: Mesure non concluante
+- **WHEN** une réponse est tronquée, absente ou sans comptage fiable
+- **THEN** elle ne constitue pas une réussite et aucun résultat historique ne la remplace
+
+#### Scenario: Candidat limité ou incomplet
+- **WHEN** un candidat échoue après ses paliers ou reçoit une limitation fournisseur
+- **THEN** seul le candidat suivant admissible de la catégorie autorisée peut le remplacer
+- **AND** ce remplaçant exige ses propres contrôles et mesures
 
 #### Scenario: Limites strictes gratuites
 - **WHEN** un mode 3/4 mesure TTFT ≥30 s ou débit ≤20 tokens/s
@@ -123,15 +155,6 @@ SHALL être comparés hors forçage.
 #### Scenario: Limites des autres modes
 - **WHEN** un candidat payant de mode 1/2/5/6 mesure TTFT ≥90 s ou débit ≤15 tokens/s
 - **THEN** son candidat reste invalide
-
-#### Scenario: Mesure non concluante
-- **WHEN** une réponse est tronquée, absente ou sans comptage fiable
-- **THEN** le candidat reste invalide sans succès ni mesure inventés
-
-#### Scenario: Candidat limité ou incomplet
-- **WHEN** un candidat échoue après ses paliers ou reçoit une limitation fournisseur
-- **THEN** seul un autre candidat de la catégorie autorisée peut le remplacer
-- **AND** le remplaçant exige ses propres contrôles et mesures
 
 #### Scenario: Limites strictes
 - **WHEN** un candidat atteint TTFT 30 s ou débit 20 tokens/s pour un candidat gratuit, ou TTFT 90 s ou débit 15 tokens/s pour les candidats payants
@@ -261,14 +284,23 @@ Les anciens débits SHALL NOT être présentés comme comparables ou actuels.
 
 ### Requirement: Invocation normale et mode active silencieux
 L'invocation normale SHALL évaluer les six modes et restituer un tableau
-à six lignes et leurs ressources ou mention non applicable. active SHALL
-classer tous les candidats du premier mode valide puis s'arrêter et publier
-sans sortie console ou conversationnelle. Les modes non visités SHALL garder
-evaluated_this_run=false et SHALL NOT être sélectionnés depuis l'historique.
+à six lignes et leurs ressources ou mention non applicable. Chaque mode
+SHALL arrêter son parcours au premier candidat valide. active SHALL s'arrêter
+à la première politique valide et publier sans sortie console ou
+conversationnelle. Les modes non visités SHALL garder evaluated_this_run=false
+et SHALL NOT être sélectionnés depuis l'historique.
+
+#### Scenario: Invocation normale après une réussite
+- **WHEN** un candidat valide est retenu dans un mode
+- **THEN** les candidats suivants de ce mode ne sont pas testés et la politique suivante est évaluée
 
 #### Scenario: active s'arrête sur le premier gratuit valide
-- **WHEN** les modes 1/2 sont invalides et mode3 est valide
+- **WHEN** modes 1/2 sont invalides et le premier gratuit conforme de mode3 réussit
 - **THEN** les modes 4/5/6 ne sont pas évalués et la publication reste silencieuse
+
+#### Scenario: Politiques non visitées
+- **WHEN** active retient une politique
+- **THEN** les autres modes gardent evaluated_this_run=false et ne sont pas sélectionnés depuis leurs résultats historiques
 
 #### Scenario: Mode active avec politiques non visitées
 - **WHEN** le mode `active` sélectionne une politique et s'arrête
@@ -327,54 +359,81 @@ réconcilier la session et ses autorisations avant de poursuivre.
 ### Requirement: Catégories payante et gratuite exclusives
 Les modes 1/2 SHALL examiner exclusivement les payants Go. Les modes 3/4
 SHALL examiner exclusivement les gratuits Go puis OpenCode général, quelle que
-soit la disponibilité du compte associé. Mode5 SHALL conserver payants
-OpenRouter avec crédit, gratuits après épuisement confirmé. Mode6 SHALL
-conserver DeepSeek direct. Aucun candidat payant SHALL être appelé en 3/4.
+soit la disponibilité du compte associé. Mode5 SHALL examiner exclusivement
+les payants OpenRouter avec crédit positif. Mode6 SHALL conserver DeepSeek
+direct. Les modes 1/2/5 SHALL NOT basculer vers un candidat gratuit.
 
 #### Scenario: Compte Go disponible ou épuisé
 - **WHEN** les gratuits 3/4 sont évalués
 - **THEN** leur catégorie reste gratuite indépendamment des ressources du compte
 
+#### Scenario: Candidat au nom free mais payant
+- **WHEN** le nom contient free mais les prix vérifiés ne sont pas tous nuls
+- **THEN** ce candidat n'est pas admissible en 3/4
+
+#### Scenario: Gratuit OpenRouter forcé
+- **WHEN** le rang explicitement demandé en mode5 désigne un gratuit
+- **THEN** il échoue comme catégorie incompatible sans substitution ni génération
+
 #### Scenario: Candidat payant au nom free
 - **WHEN** un candidat porte free dans son nom mais ses prix ne sont pas tous nuls
-- **THEN** il n'est pas admissible en 3/4 ni au repli gratuit de 5
+- **THEN** il n'est pas admissible en 3/4 et sa catégorie payante exige les contrôles correspondants
 
 #### Scenario: Retour au payant après repli général
 - **WHEN** un historique ancien désigne un gratuit général en mode1/2 puis les quotas Go reviennent
 - **THEN** seuls les payants Go peuvent représenter 1/2 après leurs nouveaux contrôles ; les gratuits sont en 3/4
 
 #### Scenario: Crédit épuisé et modèle payant au nom free
-- **WHEN** le solde OpenRouter est nul et qu'un nom free porte un prix non nul
-- **THEN** ce candidat est exclu du repli gratuit
-- **AND** aucun candidat payant n'est appelé
+- **WHEN** le solde OpenRouter est nul et un nom free porte un prix non nul
+- **THEN** le mode5 reste invalide sans génération payante ou gratuite
 
 ### Requirement: Gratuité vérifiable et retour au payant
-La gratuité SHALL exiger prix publiés d'entrée et de sortie nuls avec
-variantes compatibles, jamais un nom seul. Contexte ≥1M, filtres TFL, accès,
-transport et le raisonnement HIGH/XHIGH autorisé SHALL être préservés. Le retour au payant et les transitions
-de catégorie bornées SHALL concerner uniquement le mode5. Les modes 3/4
-SHALL rester gratuits sans transition de quota.
+La gratuité des modes 3/4 SHALL exiger prix publiés d'entrée et de sortie
+nuls avec variantes compatibles, jamais un nom seul. Contexte ≥1M, filtres
+TFL, accès, transport et HIGH/XHIGH autorisé SHALL être préservés. Les
+catégories SHALL rester fixes pendant l'invocation. Les ressources des modes
+payants SHALL être relues à chaque nouvelle invocation, sans résultat hérité.
 
 #### Scenario: Ressources rétablies
-- **WHEN** les ressources du compte Go reviennent
-- **THEN** 1/2 peuvent redevenir valides après leurs propres contrôles et mesures
+- **WHEN** les quotas Go ou le crédit OpenRouter redeviennent disponibles à une nouvelle invocation
+- **THEN** 1/2/5 peuvent redevenir valides après leurs propres contrôles et mesures payantes
 - **AND** 3/4 restent gratuits avec leurs seuils propres
 
+#### Scenario: Ancien résultat gratuit OpenRouter
+- **WHEN** un historique valide contient un ancien gagnant gratuit en mode5
+- **THEN** il reste lisible mais ne valide pas l'évaluation actuelle et aucun test gratuit n'est lancé
+
 #### Scenario: Crédit OpenRouter rétabli pendant le repli
-- **WHEN** mode5 constate un crédit disponible avant une tentative gratuite
-- **THEN** seuls ses payants peuvent le représenter et ses transitions restent bornées
+- **WHEN** le crédit revient après l'arrêt du mode5 pour épuisement
+- **THEN** aucune transition gratuite n'est effectuée et une nouvelle invocation relit le crédit avant de tester ses payants
 
 #### Scenario: Quotas rétablis pendant les tests gratuits
-- **WHEN** mode5 retrouve du crédit pendant ses tests gratuits OpenRouter
-- **THEN** seuls ses payants peuvent représenter ce mode et les oscillations restent bornées
+- **WHEN** les ressources reviennent pendant les tests gratuits 3/4
+- **THEN** ces modes restent gratuits sans contrôle de ressources et mode5 conserve sa catégorie payante
 
 ### Requirement: Diagnostic visible et sûr
-État SHALL conserver les diagnostics HTTP/SSE filtrés sans corps brut,
-secret ou compte. Les modes 1/2 épuisés SHALL afficher rouge et Invalide avec
-la cause Quota épuisé. Les réussites 3/4 SHALL afficher Valide et gratuit,
-sans mention de repli ou quota disponible. Mode5 gratuit SHALL garder Valide
-et repli gratuit avec solde réel. Le JSON SHALL conserver causes, candidats,
-exclusions, tentatives, seuils par politique et mesures null si absentes.
+Le rapport SHALL garder huit colonnes et les diagnostics dans État, sans
+secret ni compte. Les modes 1/2/5 épuisés SHALL afficher rouge et Invalide
+avec leur cause. Les réussites 3/4 SHALL afficher Valide et gratuit, avec
+ressources non applicables. Le JSON SHALL conserver causes, candidats
+évalués, exclusions, tentatives et quotas réels sans mesure fabriquée pour
+un candidat non visité.
+
+#### Scenario: Ressources gratuites
+- **WHEN** le rapport des modes 3/4 est publié
+- **THEN** leurs ressources indiquent Non applicable et leurs quotas JSON sont null
+
+#### Scenario: Authentification refusée
+- **WHEN** un contrôle ou un flux exécuté renvoie HTTP 401
+- **THEN** le mode est invalide avec le diagnostic sûr d'authentification refusée
+
+#### Scenario: Paramètre refusé et message sensible
+- **WHEN** un HTTP 400 désigne un paramètre connu avec un corps privé
+- **THEN** seuls le statut, le code reconnu et le paramètre connu sont publiés, sans corps brut
+
+#### Scenario: Arrêt sans mesure inventée
+- **WHEN** un candidat valide met fin au parcours du mode
+- **THEN** candidate_results contient uniquement les candidats effectivement visités
 
 #### Scenario: Authentification ou limitation gratuite
 - **WHEN** mode3 ou mode4 reçoit HTTP 401, 403 ou 429
@@ -388,19 +447,9 @@ exclusions, tentatives, seuils par politique et mesures null si absentes.
 - **WHEN** un refus contient des informations privées
 - **THEN** seuls les champs autorisés filtrés sont conservés
 
-#### Scenario: Authentification refusée
-- **WHEN** le contrôle ou un flux renvoie un refus d'authentification HTTP 401
-- **THEN** la ligne affiche Invalide et Authentification refusée (HTTP 401)
-- **AND** aucun ancien gagnant ni repli gratuit ne masque ce refus
-
 #### Scenario: Réussite gratuite avec quota épuisé
-- **WHEN** mode3/4 satisfait ses seuils gratuits ou que le repli gratuit de mode5 réussit
-- **THEN** 3/4 affichent Valide et gratuit avec quota non applicable ; 5 affiche repli gratuit et son solde réel épuisé
-
-#### Scenario: Paramètre refusé et message sensible
-- **WHEN** un HTTP 400 désigne un paramètre connu avec un corps contenant des données privées
-- **THEN** seuls le statut, le code reconnu et le paramètre connu sont publiés
-- **AND** aucune donnée privée ni message brut n'est conservé
+- **WHEN** mode3/4 satisfait ses seuils gratuits avec le quota Go associé épuisé
+- **THEN** il affiche Valide et gratuit avec ressources non applicables ; un crédit OpenRouter épuisé laisse mode5 invalide
 
 ### Requirement: Contrat Low propre au transport
 Le contrat historique Low SHALL être remplacé par HIGH, puis XHIGH seulement
@@ -445,55 +494,72 @@ une reprise. L'échéance SHALL NOT garantir un succès futur.
 - **AND** la réponse HTTP est fermée et le candidat reste invalide
 
 ### Requirement: Classement interne par prix des payants et performances des gratuits
-Hors forçage, PLLM SHALL tester tous les candidats admissibles de la catégorie.
-Les tests SHALL déterminer l'admissibilité. Les réussites payantes de 1/2 et 5
-SHALL être classées par coût moyen TFL croissant, débit décroissant, TTFT
-croissant puis ordre stable TFL. Le premier SHALL représenter le mode. Un
-débit supérieur SHALL NOT faire devancer un payant moins cher valide.
+Hors forçage, PLLM SHALL essayer les payants 1/2/5 par coût moyen TFL
+croissant et SHALL retenir le premier candidat qui satisfait tous les tests
+actuels. Un candidat suivant SHALL être essayé seulement après échec du
+précédent, sous réserve des contrôles bloquants. À prix égal, l'ordre stable
+TFL SHALL être conservé sans test supplémentaire pour départager les débits.
 
-#### Scenario: Payant moins cher et moins rapide
-- **WHEN** deux payants valides coûtent 0,15 et 0,21 USD/M avec respectivement 113 et 200 tokens/s
-- **THEN** le payant à 0,15 USD/M représente le mode malgré son débit inférieur
+#### Scenario: Catalogue désordonné
+- **WHEN** le catalogue place un payant à 0,21 USD/M avant un payant à 0,15 USD/M
+- **THEN** le payant à 0,15 USD/M est essayé en premier
+- **AND** s'il réussit, le payant à 0,21 USD/M n'est pas testé
 
 #### Scenario: Payant moins cher invalide
-- **WHEN** le payant le moins cher échoue à un contrôle ou seuil obligatoire
-- **THEN** il reste exclu du classement des réussites et le moins cher valide peut être retenu
+- **WHEN** le moins cher échoue à ses tests sans blocage global de ressources ou d'authentification
+- **THEN** le suivant par prix est essayé avec ses propres contrôles jusqu'au premier succès
 
 #### Scenario: Prix égaux
-- **WHEN** deux payants valides ont le même coût moyen vérifié
-- **THEN** le débit décroissant puis le TTFT croissant et l'ordre stable les départagent
+- **WHEN** deux payants ont le même coût moyen vérifié
+- **THEN** le premier dans l'ordre TFL est essayé d'abord et sa réussite arrête le mode
+
+#### Scenario: Payant moins cher et moins rapide
+- **WHEN** le premier payant par prix à 0,15 USD/M réussit à 113 tokens/s
+- **THEN** il représente le mode sans tester un payant plus cher même potentiellement plus rapide
 
 ### Requirement: Coût vérifié de classement PLLM
-Le coût SHALL être la moyenne des prix d'entrée/sortie TFL : hors pointe pour
-Go et prix de base pour OpenRouter. Les égalités tarifaires SHALL résister aux
-erreurs d'addition binaire. Les prix non vérifiables SHALL rester exclus.
-Le JSON SHALL tracer les prix et leur provenance sans hériter de prix périmés.
-Mode6 SHALL garder son candidat direct unique sans tarif inventé.
+Le coût SHALL être la moyenne des prix d'entrée/sortie TFL : hors pointe
+pour Go et prix de base pour OpenRouter. Les égalités tarifaires SHALL
+résister aux erreurs d'addition binaire et conserver l'ordre TFL. Les prix
+non vérifiables SHALL rester exclus. Le JSON SHALL tracer prix et provenance
+sans héritage périmé. Mode6 SHALL garder son candidat unique sans tarif inventé.
 
 #### Scenario: Moyennes égales calculées différemment
 - **WHEN** les prix 0,1/0,2 et 0,15/0,15 sont publiés pour deux candidats
-- **THEN** leurs coûts moyens sont égaux à 0,15 et les performances peuvent les départager
+- **THEN** leurs moyennes égales à 0,15 conservent l'ordre TFL initial
 
 #### Scenario: Prix absent ou invalide
-- **WHEN** le catalogue ne fournit pas un prix vérifiable pour un candidat payant
-- **THEN** le candidat est exclu avec sa cause, sans prix ni classement inventés
+- **WHEN** un candidat payant n'a pas de prix vérifiable
+- **THEN** il est exclu avec sa cause avant génération
 
 ### Requirement: Classement des gratuits par performances
-Les réussites gratuites de 3/4 et du repli de 5 SHALL être classées par débit
-décroissant, TTFT croissant puis ordre stable TFL, Go avant général en 3/4.
-Le premier SHALL représenter le mode ; aucun prix artificiel SHALL être utilisé.
+Les modes 3/4 SHALL parcourir les gratuits admissibles dans l'ordre TFL,
+Go avant OpenCode général, et SHALL retenir le premier succès aux tests
+gratuits actuels. Ils SHALL NOT tester les candidats suivants pour chercher
+un débit supérieur. Après échec d'un gratuit, le suivant SHALL conserver
+ses propres mesures et les seuils stricts <30 s et >20 tokens/s.
+
+#### Scenario: Premier gratuit valide
+- **WHEN** le premier gratuit Go satisfait tous les critères
+- **THEN** il est retenu et aucun autre gratuit Go ou général n'est testé
+
+#### Scenario: Repli vers le gratuit suivant
+- **WHEN** les gratuits Go échouent sans blocage d'authentification et un gratuit général réussit
+- **THEN** le premier gratuit général conforme est retenu sans contrôle de quota ni de solde
 
 #### Scenario: Gratuit plus performant
-- **WHEN** deux gratuits valides ont des débits distincts en 3/4 ou dans le repli gratuit de 5
-- **THEN** celui au débit maximal est retenu et aucun prix artificiel ne les départage
+- **WHEN** un gratuit conforme précède un autre candidat potentiellement plus performant
+- **THEN** le premier succès est retenu et le suivant n'est pas testé
 
 ### Requirement: Invariants du classement tarifaire
-Les priorités 1 à 6, seuils, quotas, raisonnement, forçages et protocole 8
-SHALL rester inchangés. Le JSON SHALL tracer candidats et tentatives ; active
-SHALL terminer le classement du premier mode valide avant de s'arrêter.
-Le rapport SHALL conserver ses huit colonnes.
+Les priorités 1 à 6, seuils payants et gratuits, quotas, raisonnement,
+forçages de rang et protocole 8 SHALL rester inchangés. Le mode5 SHALL
+refuser les rangs gratuits conformément à sa catégorie exclusivement
+payante. Le JSON SHALL tracer les candidats visités et leurs tentatives ;
+active SHALL s'arrêter au premier mode valide. Le rapport SHALL conserver
+ses huit colonnes.
 
 #### Scenario: Publication et priorités préservées
-- **WHEN** plusieurs politiques valides ont été classées avec leurs règles propres
-- **THEN** la première par priorité 1 à 6 est sélectionnée, avec huit colonnes inchangées
-- **AND** son prix courant et les preuves des candidats restent auditables dans le JSON
+- **WHEN** plusieurs politiques valides ont été évaluées selon leurs règles
+- **THEN** la première par priorité 1 à 6 est sélectionnée avec huit colonnes inchangées
+- **AND** son prix courant et les preuves des candidats visités restent auditables

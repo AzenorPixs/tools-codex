@@ -100,13 +100,13 @@ class PllmFreeFallbackTests(unittest.TestCase):
         data = json.loads((module.ROOT / 'data/pllm-current.json').read_text())
         return data, events, output.getvalue()
 
-    def test_available_resources_only_benchmark_paid_and_choose_fastest(self):
+    def test_available_resources_only_benchmark_first_valid_paid(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             data, events, output = self.run_evaluation(module, path, active=True)
             self.assertEqual(data['selected_mode'], 'mode1')
-            self.assertEqual(data['models'][0]['model_id'], 'paid-b')
-            self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['paid-a', 'paid-b'])
+            self.assertEqual(data['models'][0]['model_id'], 'paid-a')
+            self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['paid-a'])
             self.assertFalse(any(event[1] != 'mode1' for event in events))
             self.assertEqual(output, '')
 
@@ -122,7 +122,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 self.assertFalse(any(event[0] == 'benchmark' and event[1] == model['mode'] for event in events))
             for model in data['models'][2:4]:
                 self.assertEqual((model['model_id'], model['provider'], model['state']),
-                                 ('free-general', 'opencode', 'Valide'))
+                                 ('free-go', 'opencodego', 'Valide'))
                 self.assertIsNone(model['quotas'])
                 self.assertEqual(model['quota_status'], 'not_applicable')
                 self.assertEqual(model['selection_category'], 'free')
@@ -131,13 +131,13 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertIn('🟢 Valide — gratuit', output)
             self.assertIn('🔴 Invalide — Quota épuisé', output)
 
-    def test_openrouter_free_only_when_credit_exhausted_and_returns_to_paid(self):
+    def test_openrouter_exhausted_never_generates_and_next_run_can_recover(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             first, events, _ = self.run_evaluation(module, path, exhausted=True, forced={'mode': 'mode5'})
-            self.assertEqual(first['models'][4]['model_id'], 'free-router')
-            self.assertEqual(first['models'][4]['state'], 'Valide')
-            self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['free-router'])
+            self.assertEqual(first['models'][4]['state'], 'Invalide')
+            self.assertEqual(first['models'][4]['quota_status'], 'exhausted')
+            self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], [])
             second, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode5'})
             self.assertEqual(second['models'][4]['model_id'], 'paid-router')
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['paid-router'])
@@ -145,16 +145,21 @@ class PllmFreeFallbackTests(unittest.TestCase):
     def test_free_winner_history_keeps_its_category_when_go_recovers(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
-            self.run_evaluation(module, path, exhausted=True, active=True)
+            def first_run(model, budget):
+                model.update(ttft_seconds=30 if model['model_id'] == 'free-go' else 5,
+                             tokens_per_second=40)
+                return True
+
+            self.run_evaluation(module, path, exhausted=True, benchmark_behavior=first_run, active=True)
             self.assertEqual(module.load_current()['models'][2]['provider'], 'opencode')
             data, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode3'})
             self.assertEqual(data['models'][2]['model_id'], 'free-go')
             self.assertTrue(all(event[0] != 'quota' for event in events))
             self.assertTrue(all(event[2].startswith('free-') for event in events))
 
-    def test_ttft_then_catalog_order_break_ties(self):
+    def test_catalog_order_breaks_free_price_ties_without_comparison(self):
         for script in PLLM:
-            for equal_ttft, expected in ((False, 'paid-b'), (True, 'paid-a')):
+            for equal_ttft in (False, True):
                 module, path, _ = self.workspace(script)
 
                 def behavior(model, budget):
@@ -163,7 +168,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                     return True
 
                 data, _, _ = self.run_evaluation(module, path, benchmark_behavior=behavior, active=True)
-                self.assertEqual(data['models'][0]['model_id'], expected)
+                self.assertEqual(data['models'][0]['model_id'], 'paid-a')
 
     def test_lower_priority_faster_mode_does_not_replace_first_valid(self):
         for script in PLLM:
@@ -230,7 +235,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 self.assertEqual(len(relevant), 0 if empty else 8)
                 self.assertTrue(all(event[2].startswith('free-') for event in relevant))
 
-    def test_authentication_failure_after_success_invalidates_mode(self):
+    def test_success_does_not_contact_next_candidate_with_unusable_authentication(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
 
@@ -241,10 +246,27 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 return True
 
             data, events, output = self.run_evaluation(module, path, benchmark_behavior=behavior)
+            self.assertEqual(data['models'][0]['state'], 'Valide')
+            self.assertEqual(data['models'][0]['ttft_seconds'], 5)
+            self.assertNotIn('Authentification refusée (HTTP 401)', output)
+            self.assertEqual(len([event for event in events if event[0] == 'benchmark' and event[1] == 'mode1']), 1)
+
+    def test_authentication_failure_on_next_candidate_after_failure_invalidates_mode(self):
+        for script in PLLM:
+            module, path, _ = self.workspace(script)
+
+            def behavior(model, budget):
+                if model['model_id'] == 'paid-b':
+                    raise http_error(401)
+                model.update(ttft_seconds=5, tokens_per_second=10)
+                return True
+
+            data, events, output = self.run_evaluation(module, path, benchmark_behavior=behavior, active=True)
             self.assertEqual(data['models'][0]['state'], 'Invalide')
-            self.assertIsNone(data['models'][0]['ttft_seconds'])
-            self.assertIn('Authentification refusée (HTTP 401)', output)
-            self.assertEqual(len([event for event in events if event[0] == 'benchmark' and event[1] == 'mode1']), 2)
+            self.assertIn('Authentification refusée (HTTP 401)', data['models'][0]['cause'])
+            self.assertEqual(output, '')
+            self.assertEqual([e[2] for e in events if e[0] == 'benchmark' and e[1] == 'mode1'],
+                             ['paid-a'] * 4 + ['paid-b'])
 
     def test_paid_go_recovers_only_on_next_evaluation(self):
         for script in PLLM:
@@ -288,10 +310,16 @@ class PllmFreeFallbackTests(unittest.TestCase):
             module, path, catalog = self.workspace(script)
             catalog['opencode']['models'][0]['id'] = 'free-go'
             path.write_text(json.dumps(catalog))
-            data, events, _ = self.run_evaluation(module, path, exhausted=True, active=True)
+            def behavior(model, budget):
+                model.update(ttft_seconds=30 if model['provider'] == 'opencodego' else 5,
+                             tokens_per_second=40)
+                return True
+
+            data, events, _ = self.run_evaluation(module, path, exhausted=True,
+                                                  benchmark_behavior=behavior, active=True)
             calls = [event for event in events if event[0] == 'benchmark']
-            self.assertEqual([event[-1] for event in calls], ['opencodego', 'opencode'])
-            self.assertEqual(data['models'][2]['provider'], 'opencodego')
+            self.assertEqual([event[-1] for event in calls], ['opencodego'] * 4 + ['opencode'])
+            self.assertEqual(data['models'][2]['provider'], 'opencode')
 
     def test_eligibility_checks_prices_context_protocol_and_endpoint(self):
         for script in PLLM:
@@ -338,11 +366,20 @@ class PllmFreeFallbackTests(unittest.TestCase):
             module, path, _ = self.workspace(script)
             first, _, _ = self.run_evaluation(module, path, active=True)
             memory = module.load_memory()['policies']['mode1']
-            self.assertEqual(len(memory['configurations']), 2)
+            self.assertEqual(len(memory['configurations']), 1)
             selected = first['models'][0]
             self.assertEqual(module.budgets_for(selected, module.load_memory())[0], 1024)
-            second, _, _ = self.run_evaluation(module, path, secret_ok=False, active=True)
-            self.assertIsNone(second['models'][0]['last_successful_max_tokens'])
+
+            def next_candidate(model, budget):
+                model.update(ttft_seconds=5, tokens_per_second=10 if model['model_id'] == 'paid-a' else 40)
+                return True
+
+            second, _, _ = self.run_evaluation(module, path, benchmark_behavior=next_candidate, active=True)
+            self.assertEqual(second['models'][0]['model_id'], 'paid-b')
+            self.assertEqual(len(module.load_memory()['policies']['mode1']['configurations']), 2)
+            self.assertEqual(second['models'][0]['performance_test']['attempts'][0]['max_tokens'], 1024)
+            third, _, _ = self.run_evaluation(module, path, secret_ok=False, active=True)
+            self.assertIsNone(third['models'][0]['last_successful_max_tokens'])
 
     def test_go_and_general_streams_use_same_global_throughput_and_low(self):
         for script in PLLM:
@@ -387,7 +424,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'high'})
             self.assertNotIn('provider', request.call_args.args[2])
 
-    def test_quota_failure_after_first_winner_invalidates_without_more_generation(self):
+    def test_success_does_not_check_quota_for_next_candidate(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
 
@@ -397,17 +434,41 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 return False
 
             data, events, _ = self.run_evaluation(module, path, quota_behavior=unavailable, active=True)
-            self.assertEqual(data['models'][0]['state'], 'Invalide')
+            self.assertEqual(data['models'][0]['state'], 'Valide')
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark' and event[1] == 'mode1'], ['paid-a'])
+            self.assertFalse(any(event[0] == 'quota' and event[2] == 'paid-b' for event in events))
 
-    def test_paid_quota_exhaustion_discards_paid_winner_without_free_fallback(self):
+    def test_quota_failure_before_next_candidate_after_failure_blocks_generation(self):
+        for script in PLLM:
+            module, path, _ = self.workspace(script)
+
+            def unavailable(model, events):
+                if model['model_id'] == 'paid-b':
+                    raise RuntimeError('Quota indispensable indisponible')
+                return False
+
+            def fail(model, budget):
+                model.update(ttft_seconds=5, tokens_per_second=10)
+                return True
+
+            data, events, _ = self.run_evaluation(module, path, quota_behavior=unavailable,
+                                                  benchmark_behavior=fail, active=True)
+            self.assertEqual(data['models'][0]['state'], 'Invalide')
+            self.assertEqual([e[2] for e in events if e[0] == 'benchmark' and e[1] == 'mode1'], ['paid-a'] * 4)
+
+    def test_paid_quota_exhaustion_between_failed_tiers_stops_without_free_fallback(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
 
             def exhausted_after_first(model, events):
                 return any(event[0] == 'benchmark' for event in events)
 
-            data, events, _ = self.run_evaluation(module, path, quota_behavior=exhausted_after_first, active=True)
+            def fail(model, budget):
+                model.update(ttft_seconds=5, tokens_per_second=10 if model['mode'] == 'mode1' else 40)
+                return True
+
+            data, events, _ = self.run_evaluation(module, path, quota_behavior=exhausted_after_first,
+                                                  benchmark_behavior=fail, active=True)
             self.assertEqual(data['models'][0]['state'], 'Invalide')
             self.assertEqual(data['models'][0]['selection_category'], 'paid')
             self.assertIsNone(data['models'][0]['ttft_seconds'])

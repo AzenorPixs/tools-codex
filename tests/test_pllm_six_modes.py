@@ -87,7 +87,7 @@ class PllmSixModesTests(unittest.TestCase):
             self.assertEqual(lookups[5]['account'], module.ACCOUNTS[3])
             self.assertNotIn('offline-fixture', output + json.dumps(data))
 
-    def test_active_stops_after_free_ranking_and_normal_evaluates_six(self):
+    def test_active_stops_after_first_free_success_and_normal_evaluates_six(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             data, events, output = self.run_evaluation(module, path, exhausted=True, active=True)
@@ -95,7 +95,7 @@ class PllmSixModesTests(unittest.TestCase):
             self.assertEqual(output, '')
             self.assertTrue(all(not model['evaluated_this_run'] for model in data['models'][3:]))
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark'],
-                             ['free-go', 'free-general'])
+                             ['free-go'])
             data, _, output = self.run_evaluation(module, path)
             self.assertTrue(all(model['evaluated_this_run'] for model in data['models']))
             self.assertEqual(sum(line.startswith('| mode') for line in output.splitlines()), 6)
@@ -234,14 +234,14 @@ class PllmSixModesTests(unittest.TestCase):
             module, path, _ = self.workspace(script)
             for command, expected in (('31', 'free-go'), ('32', 'free-general'),
                                       ('41', 'free-go'), ('42', 'free-general'),
-                                      ('51', 'free-router'), ('6', 'deepseek-v4-flash')):
+                                      ('52', 'paid-router'), ('6', 'deepseek-v4-flash')):
                 forced = module.FORCED_COMMANDS[command]
-                data, events, _ = self.run_evaluation(module, path, exhausted=command == '51', forced=forced)
+                data, events, _ = self.run_evaluation(module, path, forced=forced)
                 selected = next(model for model in data['models'] if model['selected'])
                 self.assertEqual(selected['mode'], forced['mode'])
                 self.assertEqual(selected['model_id'], expected)
                 self.assertEqual(sum(event[0] == 'benchmark' for event in events), 1)
-            for command in ('33', '43'):
+            for command in ('33', '43', '51'):
                 data, events, _ = self.run_evaluation(module, path, forced=module.FORCED_COMMANDS[command])
                 self.assertIsNone(data['selected_mode'])
                 self.assertFalse(any(event[0] == 'benchmark' for event in events))
@@ -259,7 +259,7 @@ class PllmSixModesTests(unittest.TestCase):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             for mode, category in (('mode1', 'free'), ('mode2', 'free'),
-                                   ('mode3', 'paid'), ('mode4', 'paid'), ('mode6', 'free')):
+                                   ('mode3', 'paid'), ('mode4', 'paid'), ('mode5', 'free'), ('mode6', 'free')):
                 with self.subTest(mode=mode), self.assertRaisesRegex(RuntimeError, 'Catégorie incompatible'):
                     module.candidates_for({'mode': mode, 'candidate_exclusions': []}, category, path)
 

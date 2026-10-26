@@ -130,20 +130,26 @@ général pour 3/4, et OpenRouter pour 5 ; 6 conserve DeepSeek direct.
 Les modes 1/2 épuisés deviennent rouges et invalides sans essai gratuit.
 Les modes 3/4 utilisent les comptes de 1/2 respectivement sans consulter de
 quota ou solde. Ils exigent prix nuls vérifiés, contexte ≥1M, réponse complète,
-TTFT <30 s et débit >20 tokens/s. Tous les gratuits, y compris le repli OpenRouter de 5, utilisent ces seuils.
-Les payants gardent leurs seuils <90 s et >15 tokens/s et leurs contrôles de ressources ; seul 5 conserve le
-repli gratuit OpenRouter après crédit épuisé. Les références de trousseau
+TTFT <30 s et débit >20 tokens/s. Tous les gratuits PLLM 3/4 utilisent ces seuils.
+Les payants gardent leurs seuils <90 s et >15 tokens/s et leurs contrôles de
+ressources. Mode5 est exclusivement payant : crédit épuisé, invalide sans repli gratuit. Les références de trousseau
 restent celles des anciens comptes, sans nouveau secret ni migration de clé.
 Les historiques à quatre modes sont adaptés au schéma 2 (ancien 3→5, ancien
 4→6, nouveaux 3/4 initialisés), sans résultat courant ni sélection hérités.
 La mémoire suit ce déplacement sans apprentissage pour les nouveaux 3/4.
 Un ancien évaluateur ne lit pas le schéma 2 : sauvegarder ses données avant
 un retour de version. Aucun historique invalide n'est écrasé.
-Le gagnant payant de 1/2 et de la catégorie payante de 5 est le moins cher
-parmi les candidats qualifiés, selon le coût moyen de référence TFL (hors
-pointe Go, prix de base OpenRouter). À prix égal seulement, départager par
-débit maximal, TTFT minimal puis ordre TFL stable. Les gratuits 3/4 et le repli
-gratuit de 5 restent classés par performances ; 6 garde son candidat unique.
+Les payants 1/2/5 sont essayés par coût moyen TFL croissant (hors pointe Go,
+prix de base OpenRouter), avec ordre TFL stable à prix égal. Les gratuits 3/4
+sont essayés dans l'ordre TFL Go puis OpenCode général. Retenir le premier
+succès aux tests actuels et ne pas tester les candidats suivants du mode.
+Après un échec, essayer le suivant admissible avec ses propres contrôles ;
+une erreur bloquante d'authentification ou de ressources arrête le mode.
+Le contexte ≥1M est une capacité d'entrée vérifiée, sans requête d'un million
+de tokens. Les paliers, seuils et HIGH/XHIGH actuels sont préservés.
+L'invocation normale poursuit les politiques ; active s'arrête à la première
+politique valide. Les rangs forcés restent ciblés, sauf qu'un gratuit forcé en
+mode5 est incompatible avec sa nouvelle catégorie exclusivement payante.
 Les priorités entre politiques 1 à 6 restent inchangées. Tous les benchmarks demandent HIGH, puis XHIGH seulement si HIGH est
 indisponible et XHIGH pris en charge ; aucun repli inférieur. Les restrictions
 fournisseur restent applicables aux gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
@@ -377,7 +383,7 @@ locale est qualifiée hors ligne et n'exécute aucun benchmark fournisseur réel
 ## Protocole 8 de débit moyen
 
 Distribuer les quatre copies identiques de performance.py avec les scripts
-PLLM/TFL de la même release 0.7.4. Le débit utilise désormais le comptage API
+PLLM/TFL de la même release 0.7.5. Le débit utilise désormais le comptage API
 sur la durée totale non arrondie de la requête, attente et TTFT inclus.
 Les rafales et réponses en un bloc ne sont plus extrapolées sur la fenêtre
 entre fragments. Les durées invalides produisent une mesure indisponible,

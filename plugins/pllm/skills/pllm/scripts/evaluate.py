@@ -399,8 +399,7 @@ def policy_table(models):
             model['provider'],
             performance_display('ttft', model.get('ttft_seconds'), mode='mode3' if model.get('is_free') else model['mode']),
             performance_display('tokens', model.get('tokens_per_second'), model.get('throughput_scope'), 'mode3' if model.get('is_free') else model['mode']),
-            ('🟢 Valide' + (' — gratuit' if model['mode'] in FREE_MODES else
-                           ' — repli gratuit' if model.get('selection_category') == 'free' else '')
+            ('🟢 Valide' + (' — gratuit' if model['mode'] in FREE_MODES else '')
              if model['state'] == 'Valide' else '🔴 Invalide — ' + (model.get('cause') or 'Non évalué')),
             model.get('last_successful_max_tokens') or '-',
             display_timestamp(model.get('evaluated_at')),
@@ -600,7 +599,7 @@ def initial_model(priority, provider):
             'model': 'Non évalué', 'reasoning': 'high', 'state': 'Invalide',
             'condition': f'TTFT < {ttft} s ET tokens/s > {throughput} ET ' + (
                 'gratuité vérifiée ET contexte >= 1M' if mode in FREE_MODES else
-                '(solde > 0 pour un payant OU épuisement confirmé et gratuit accessible)' if mode == 'mode5' else
+                'candidat payant ET solde > 0' if mode == 'mode5' else
                 'is_available=true ET au moins un solde utilisable > 0' if mode == 'mode6' else 'quotas valides'),
             'performance_criteria': {'ttft_lt_seconds': ttft, 'tokens_per_second_gt': throughput},
             'throughput_metric': performance.THROUGHPUT_METRIC, 'throughput_window': performance.THROUGHPUT_WINDOW,
@@ -656,9 +655,7 @@ def resource_category(model, key):
         quota(model, key)
     except QuotaExhausted:
         model['quota_status'] = 'exhausted'
-        if model['mode'] != 'mode5':
-            raise
-        return 'free'
+        raise
     except Exception:
         model['quota_status'] = 'unavailable'
         raise
@@ -707,22 +704,15 @@ def catalog_candidate(row, section, rank, generated_at):
             'api_endpoint': endpoint, 'api_protocol': protocol,
             'throughput_scope': 'reasoning_and_response' if section != 'openrouter' else 'response_only',
             'average_price_usd_per_million_tokens': average_price,
-            'is_free': free, 'reasoning_capabilities': performance.capabilities(row), 'model_source': {'selector': 'tfl_performance_ranking' if free else 'tfl_price_then_performance_ranking', 'section': section,
+            'is_free': free, 'reasoning_capabilities': performance.capabilities(row), 'model_source': {'selector': 'tfl_order_first_success' if free else 'tfl_price_first_success', 'section': section,
                                              'rank': rank, 'generated_at': generated_at,
                                              'input_price_usd_per_million_tokens': prices[0],
                                              'output_price_usd_per_million_tokens': prices[1]}}
 
 
-def candidate_sort_key(model):
-    performance_key = (-model['tokens_per_second'], model['ttft_seconds'])
-    if model['mode'] in ('mode1', 'mode2', 'mode5') and not model['is_free']:
-        return (model['average_price_usd_per_million_tokens'], *performance_key)
-    return performance_key
-
-
 def candidates_for(model, category, catalog_path, forced=None):
     if ((model['mode'] in FREE_MODES and category != 'free')
-            or (model['mode'] in ('mode1', 'mode2', 'mode6') and category != 'paid')):
+            or (model['mode'] in ('mode1', 'mode2', 'mode5', 'mode6') and category != 'paid')):
         raise RuntimeError('Catégorie incompatible avec la politique PLLM')
     if model['mode'] == 'mode6':
         return [{'model_id': 'deepseek-v4-flash', 'model': 'deepseek-v4-flash',
@@ -764,6 +754,8 @@ def candidates_for(model, category, catalog_path, forced=None):
         if rank < 1 or rank > len(candidates):
             raise RuntimeError('Rang gratuit TFL indisponible : ' + str(rank))
         return [candidates[rank - 1]]
+    if not forced and category == 'paid':
+        candidates.sort(key=lambda candidate: candidate['average_price_usd_per_million_tokens'])
     return candidates[:1] if forced else candidates
 
 
@@ -916,13 +908,15 @@ def main(active=False, forced=None, tfl_catalog=None):
                         model['candidate_results'].append(copy.deepcopy(current))
                         model['quotas'] = current['quotas']
                         model['quotas_evaluated_at'] = current.get('quotas_evaluated_at')
+                        if current['state'] == 'Valide':
+                            break
                 except CategoryChanged as error:
                     if forced or transition == 2:
                         raise RuntimeError('Ressources modifiées pendant les tests ; nouvelle évaluation requise') from error
                     category = error.category
                     continue
                 valid = [result for result in results if result['state'] == 'Valide']
-                winner = min(valid, key=candidate_sort_key) if valid else results[-1]
+                winner = valid[0] if valid else results[-1]
                 records, exclusions = model['candidate_results'], model['candidate_exclusions']
                 quotas, quota_time = model['quotas'], model.get('quotas_evaluated_at')
                 model.update(winner)

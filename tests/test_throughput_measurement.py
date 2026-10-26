@@ -148,20 +148,22 @@ class ThroughputMeasurementTests(unittest.TestCase):
                 self.run_stream(script,chat_events(finish=None),(0,1,2),done=False,model=model)
             self.assertIsNone(model['tokens_per_second'])
 
-    def test_ranking_uses_request_average_instead_of_the_fastest_received_burst(self):
+    def test_selection_rejects_a_burst_with_insufficient_request_average(self):
         for script in PLLM:
             module,path,_=self.workspace(script)
             def behavior(model,budget):
                 burst=model['model_id']=='paid-a'
                 ticks=(0,9.99,9.990001,9.999,10) if burst else (0,.1,.9,.99,1)
-                with patch.object(module.performance,'request',return_value=stream(response_events(1000 if burst else 400),False)), \
+                with patch.object(module.performance,'request',return_value=stream(response_events(100 if burst else 400),False)), \
                      patch.object(module.performance.time,'monotonic',side_effect=ticks), \
                      patch.object(module.performance.signal,'alarm'):
                     return module.performance.benchmark(model,'offline-fixture',budget,{},session_id='fixture')
             data,_,_=self.run_evaluation(module,path,benchmark_behavior=behavior,active=True)
             self.assertEqual(data['models'][0]['model_id'],'paid-b')
             self.assertEqual(data['models'][0]['tokens_per_second'],400)
-            self.assertEqual([m['tokens_per_second'] for m in data['models'][0]['candidate_results']],[100,400])
+            self.assertEqual([m['tokens_per_second'] for m in data['models'][0]['candidate_results']],[10,400])
+            self.assertEqual([a['max_tokens'] for a in data['models'][0]['candidate_results'][0]['performance_test']['attempts']],
+                             [1024,2048,4096,8192])
 
     def test_tfl_excludes_free_burst_that_fails_the_average_threshold(self):
         for script in TFL:

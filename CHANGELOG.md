@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Après qualification du correctif de sélection PLLM, incrémenter la release commune de 0.7.4 à 0.7.5 dans VERSION, pyproject.toml, la documentation et les cinq manifestes ; aucune publication distante ni mise à jour de profil utilisateur.
+
+- Arrêter chaque mode PLLM au premier candidat conforme aux tests actuels : payants 1/2/5 par coût moyen TFL croissant et ordre TFL à prix égal ; gratuits 3/4 dans l'ordre TFL Go puis général.
+- Réserver le mode5 aux payants OpenRouter : un crédit épuisé le rend invalide sans repli gratuit. Préserver les seuils distincts, paliers, HIGH/XHIGH, contrôles, transports, mémoire, forçages de rang et publication ; active garde son arrêt à la première politique valide.
+- Conserver dans le JSON les seuls candidats visités et leur stratégie de sélection. Cette qualification locale ne relance pas les fournisseurs et n'actualise pas les installations utilisateur.
+
 - Classer les payants PLLM qualifiés par coût moyen TFL croissant ; utiliser le débit, le TTFT puis l'ordre TFL uniquement à prix égal. Conserver le classement des gratuits par performances et les priorités entre les six politiques.
 - Conserver dans le JSON le coût vérifié et ses prix/provenances ; préserver les seuils, contrôles, forçages, mode active et protocole 8. Cette modification des sources ne met pas à jour les installations utilisateur ni la release distante.
 - Incrémenter la release commune de 0.7.3 à 0.7.4 dans VERSION, pyproject.toml, la documentation et les cinq manifestes de plugins.
