@@ -1,4 +1,4 @@
-"""Six politiques PLLM : contrats observables, migrations et seuils stricts."""
+"""Sept politiques PLLM : contrats observables, migrations et seuils stricts."""
 
 import copy
 import json
@@ -17,7 +17,7 @@ class PllmSixModesTests(unittest.TestCase):
 
     def test_free_limits_are_strict_and_paid_limits_preserved(self):
         for script in PLLM:
-            for mode in ('mode3', 'mode4'):
+            for mode in ('mode3', 'mode4', 'mode6'):
                 for ttft, throughput, expected in ((29.999, 20.001, 'Valide'),
                                                     (30, 21, 'Invalide'),
                                                     (30.001, 21, 'Invalide'),
@@ -44,7 +44,7 @@ class PllmSixModesTests(unittest.TestCase):
                         self.assertEqual(module.MEMORY_PATH.exists(), expected == 'Valide')
             module, path, _ = self.workspace(script)
             data, _, _ = self.run_evaluation(module, path)
-            for model in (data['models'][i] for i in (0, 1, 4, 5)):
+            for model in (data['models'][i] for i in (0, 1, 6)):
                 self.assertEqual(model['performance_criteria'],
                                  {'ttft_lt_seconds': 90, 'tokens_per_second_gt': 15})
 
@@ -57,15 +57,49 @@ class PllmSixModesTests(unittest.TestCase):
 
             data, events, _ = self.run_evaluation(module, path, quota_behavior=unavailable)
             self.assertEqual(data['selected_mode'], 'mode3')
-            for model in data['models'][2:4]:
+            for model in (data['models'][2], data['models'][3], data['models'][5]):
                 self.assertEqual(model['state'], 'Valide')
                 self.assertIsNone(model['quotas'])
                 self.assertEqual(model['quota_status'], 'not_applicable')
-            self.assertTrue(all(event[1] not in ('mode3', 'mode4') for event in events if event[0] == 'quota'))
-            for mode in ('mode3', 'mode4'):
+            self.assertTrue(all(event[1] not in ('mode3', 'mode4', 'mode6') for event in events if event[0] == 'quota'))
+            for mode in ('mode3', 'mode4', 'mode6'):
                 with patch.object(module, 'get') as get:
                     module.quota({'mode': mode}, 'offline-fixture')
                 get.assert_not_called()
+
+    def test_mode5_selects_paid_router_without_medium_or_performance(self):
+        for script in PLLM:
+            module, path, catalog = self.workspace(script)
+            paid = row('paid-router-no-medium', 'openrouter')
+            paid.pop('reasoning_capabilities')
+            catalog['openrouter']['models'] = [paid]
+            path.write_text(json.dumps(catalog))
+            data, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode5'})
+            model = data['models'][4]
+            self.assertEqual((model['state'], model['model_id'], model['provider']),
+                             ('Valide', 'paid-router-no-medium', 'openrouter'))
+            self.assertIsNone(model['reasoning'])
+            self.assertIsNone(model['ttft_seconds'])
+            self.assertIsNone(model['tokens_per_second'])
+            self.assertEqual(model['performance_test']['status'], 'not_required')
+            self.assertFalse(any(event[0] == 'benchmark' and event[1] == 'mode5' for event in events))
+
+    def test_mode6_openrouter_free_is_medium_benchmarked_without_quota(self):
+        for script in PLLM:
+            module, path, catalog = self.workspace(script)
+            catalog['openrouter']['models'] = [row('free-router', 'openrouter', free=True)]
+            path.write_text(json.dumps(catalog))
+            data, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode6'})
+            model = data['models'][5]
+            self.assertEqual((model['state'], model['provider'], model['model_id']),
+                             ('Valide', 'openrouter', 'free-router'))
+            self.assertEqual(model['reasoning'], 'medium')
+            self.assertEqual(model['performance_criteria'],
+                             {'ttft_lt_seconds': 30, 'tokens_per_second_gt': 20})
+            self.assertEqual(model['quota_status'], 'not_applicable')
+            self.assertIsNone(model['quotas'])
+            self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['free-router'])
+            self.assertFalse(any(event[0] == 'quota' and event[1] == 'mode6' for event in events))
 
     def test_secrets_use_original_accounts_and_policy_attributes(self):
         for script in PLLM:
@@ -80,14 +114,15 @@ class PllmSixModesTests(unittest.TestCase):
 
             data, _, output = self.run_evaluation(module, path, secret_lookup=lookup)
             self.assertEqual([item['policy'] for item in lookups],
-                             ['mode1', 'mode2', 'mode1', 'mode2', 'mode3', 'mode4'])
+                             ['mode1', 'mode2', 'mode1', 'mode2', 'mode3', 'mode3', 'mode4'])
             self.assertEqual(lookups[0], lookups[2])
             self.assertEqual(lookups[1], lookups[3])
             self.assertEqual(lookups[4]['account'], module.ACCOUNTS[2])
-            self.assertEqual(lookups[5]['account'], module.ACCOUNTS[3])
+            self.assertEqual(lookups[5]['account'], module.ACCOUNTS[2])
+            self.assertEqual(lookups[6]['account'], module.ACCOUNTS[3])
             self.assertNotIn('offline-fixture', output + json.dumps(data))
 
-    def test_active_stops_after_first_free_success_and_normal_evaluates_six(self):
+    def test_active_stops_after_first_free_success_and_normal_evaluates_seven(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             data, events, output = self.run_evaluation(module, path, exhausted=True, active=True)
@@ -98,7 +133,7 @@ class PllmSixModesTests(unittest.TestCase):
                              ['free-go'])
             data, _, output = self.run_evaluation(module, path)
             self.assertTrue(all(model['evaluated_this_run'] for model in data['models']))
-            self.assertEqual(sum(line.startswith('| mode') for line in output.splitlines()), 6)
+            self.assertEqual(sum(line.startswith('| mode') for line in output.splitlines()), 7)
             self.assertIn('mode3 : Non applicable', output)
             self.assertIn('mode4 : Non applicable', output)
 
@@ -135,9 +170,10 @@ class PllmSixModesTests(unittest.TestCase):
 
     def legacy_current(self, module):
         data = module.load_current()
-        data['models'] = [data['models'][i] for i in (0, 1, 4, 5)]
+        data['models'] = [data['models'][i] for i in (0, 1, 4, 6)]
         for priority, model in enumerate(data['models'], 1):
             model.update(mode=f'mode{priority}', priority=priority, state='Valide',
+                         reasoning='medium',
                          selected=priority == 3, evaluated_this_run=True,
                          evaluated_at='2026-10-24T12:00:00+02:00',
                          model_id=f'old-{priority}', ttft_seconds=70.4, tokens_per_second=20)
@@ -154,17 +190,16 @@ class PllmSixModesTests(unittest.TestCase):
             current.write_bytes(raw)
             migrated = module.load_current()
             self.assertEqual(current.read_bytes(), raw)
-            self.assertEqual(migrated['schema_version'], 2)
+            self.assertEqual(migrated['schema_version'], 3)
             self.assertIsNone(migrated['selected_mode'])
             self.assertTrue(all(not m['selected'] and not m['evaluated_this_run'] for m in migrated['models']))
-            self.assertEqual(migrated['models'][4]['model_id'], 'old-3')
-            self.assertEqual(migrated['models'][5]['model_id'], 'old-4')
+            self.assertEqual(migrated['models'][4]['model'], 'Non évalué')
+            self.assertEqual(migrated['models'][6]['model_id'], 'old-4')
             self.assertTrue(all(m['ttft_seconds'] is None and m['state'] == 'Invalide'
-                                for m in migrated['models'][2:4]))
+                                for m in migrated['models'][2:6]))
             data, _, _ = self.run_evaluation(module, path, secret_ok=False, forced={'mode': 'mode3'})
             self.assertIsNone(data['selected_mode'])
-            self.assertEqual(data['models'][4]['model_id'], 'Non évalué')
-            self.assertTrue(data['models'][4]['candidate_exclusions'])
+            self.assertEqual(data['models'][4]['model'], 'Non évalué')
             self.assertFalse(data['models'][4]['evaluated_this_run'])
 
     def test_old_free_go_winner_cannot_remain_a_paid_winner(self):
@@ -190,11 +225,11 @@ class PllmSixModesTests(unittest.TestCase):
             raw = json.dumps(old).encode()
             module.MEMORY_PATH.write_bytes(raw)
             memory = module.load_memory()
-            self.assertEqual(memory['schema_version'], 2)
+            self.assertEqual(memory['schema_version'], 3)
             self.assertEqual(module.MEMORY_PATH.read_bytes(), raw)
-            self.assertEqual(set(memory['policies']), {'mode1', 'mode2', 'mode5', 'mode6'})
-            self.assertEqual(memory['policies']['mode5']['identity']['model_id'], 'old-3')
-            for mode in ('mode3', 'mode4'):
+            self.assertEqual(set(memory['policies']), {'mode1', 'mode2', 'mode7'})
+            self.assertEqual(memory['policies']['mode7']['identity']['model_id'], 'old-4')
+            for mode in ('mode3', 'mode4', 'mode5', 'mode6'):
                 self.assertEqual(module.budgets_for({'mode': mode}, memory), module.BUDGETS)
 
     def test_invalid_memory_or_current_is_preserved_without_lookup(self):
@@ -210,7 +245,7 @@ class PllmSixModesTests(unittest.TestCase):
                     module.main(tfl_catalog=path)
                 lookup.assert_not_called()
                 self.assertEqual(module.MEMORY_PATH.read_bytes(), raw)
-            module.MEMORY_PATH.write_text(json.dumps({'schema_version': 2, 'policies': {}}))
+            module.MEMORY_PATH.write_text(json.dumps({'schema_version': 3, 'policies': {}}))
             current = module.ROOT / 'data/pllm-current.json'
             pristine = module.load_current()
             for change in ('duplicate', 'provider', 'schema', 'priority'):
@@ -220,7 +255,7 @@ class PllmSixModesTests(unittest.TestCase):
                 elif change == 'provider':
                     data['models'][2]['provider'] = 'openrouter'
                 elif change == 'schema':
-                    data['schema_version'] = 3
+                    data['schema_version'] = 9
                 else:
                     data['models'][2]['priority'] = 4
                 raw = json.dumps(data).encode()
@@ -243,8 +278,9 @@ class PllmSixModesTests(unittest.TestCase):
                 selected = next(model for model in data['models'] if model['selected'])
                 self.assertEqual(selected['mode'], forced['mode'])
                 self.assertEqual(selected['model_id'], expected)
-                self.assertEqual(sum(event[0] == 'benchmark' for event in events), 1)
-            for command in ('33', '43', '51', '6'):
+                self.assertEqual(sum(event[0] == 'benchmark' for event in events),
+                                 0 if forced['mode'] == 'mode5' else 1)
+            for command in ('33', '43', '51', '63'):
                 data, events, _ = self.run_evaluation(module, path, forced=module.FORCED_COMMANDS[command])
                 self.assertIsNone(data['selected_mode'])
                 self.assertFalse(any(event[0] == 'benchmark' for event in events))
@@ -299,7 +335,7 @@ class PllmSixModesTests(unittest.TestCase):
     def test_free_color_marks_exact_rejection_limits_red(self):
         for script in PLLM:
             module, _, _ = self.workspace(script)
-            for mode in ('mode3', 'mode4'):
+            for mode in ('mode3', 'mode4', 'mode6'):
                 self.assertEqual(module.performance_color('ttft', 30, mode), '🔴')
                 self.assertEqual(module.performance_color('tokens', 20, mode), '🔴')
                 self.assertNotEqual(module.performance_color('ttft', 29.999, mode), '🔴')
@@ -309,7 +345,8 @@ class PllmSixModesTests(unittest.TestCase):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             for mode, category in (('mode1', 'free'), ('mode2', 'free'),
-                                   ('mode3', 'paid'), ('mode4', 'paid'), ('mode5', 'free'), ('mode6', 'free')):
+                                   ('mode3', 'paid'), ('mode4', 'paid'), ('mode5', 'free'),
+                                   ('mode6', 'paid'), ('mode7', 'free')):
                 with self.subTest(mode=mode), self.assertRaisesRegex(RuntimeError, 'Catégorie incompatible'):
                     module.candidates_for({'mode': mode, 'candidate_exclusions': []}, category, path)
 

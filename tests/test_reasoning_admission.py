@@ -195,7 +195,7 @@ class ReasoningAdmissionTests(unittest.TestCase):
         for script in PLLM:
             module = load_script(script)
             with self.assertRaisesRegex(RuntimeError, 'Medium'):
-                module.candidates_for({'mode': 'mode6'}, 'paid', None)
+                module.candidates_for({'mode': 'mode7'}, 'paid', None)
 
 
 if __name__ == '__main__':

@@ -875,12 +875,18 @@ def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | N
             continue
         supported = set(model.get("supported_parameters") or [])
         reasoning_capabilities = performance.capabilities(model)
-        try:
-            effort = performance.verified_effort({'reasoning_capabilities': reasoning_capabilities})
-        except RuntimeError as error:
-            excluded.append({'id': model_id, 'reason': str(error),
-                             'reasoning_capabilities': reasoning_capabilities, 'exclusion_type': 'reasoning_effort'})
-            continue
+        pricing_details = openrouter_pricing_details(pricing)
+        free = performance.is_free({'input_price': input_price, 'output_price': output_price,
+                                    'pricing_details': pricing_details}, 'openrouter')
+        if free:
+            try:
+                effort = performance.verified_effort({'reasoning_capabilities': reasoning_capabilities})
+            except RuntimeError as error:
+                excluded.append({'id': model_id, 'reason': str(error),
+                                 'reasoning_capabilities': reasoning_capabilities, 'exclusion_type': 'reasoning_effort'})
+                continue
+        else:
+            effort = None
         capabilities = []
         if "tools" in supported:
             capabilities.append("tools")
@@ -902,9 +908,10 @@ def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | N
             "exchange_rates": exchange_rates,
             "reasoning_capabilities": reasoning_capabilities,
             "reasoning": effort,
+            "is_free": free,
             "pricing_source": payload.get("pricing_source", OPENROUTER_API_URL),
             "pricing_retrieved_at": payload.get("pricing_retrieved_at"),
-            "pricing_details": openrouter_pricing_details(pricing),
+            "pricing_details": pricing_details,
             "input_modalities": input_modalities,
             "output_modalities": output_modalities,
             "capabilities": capabilities,
@@ -945,7 +952,7 @@ def format_openrouter_table(rows: list[dict], generated_at: str, *, excluded: li
     lines.append("")
     if not rows:
         lines.extend(format_empty_selection(excluded or []))
-    lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, effort Medium vérifiable, coût moyen ≤ 0.20 €/M, classement croissant.")
+    lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, coût moyen ≤ 0.20 €/M, classement croissant. Medium et les tests de performance sont requis uniquement pour les modèles gratuits.")
     rates = exchange_rates or next((row.get('exchange_rates') for row in rows if row.get('exchange_rates')), None)
     if rates:
         lines.append(f"Taux BCE du {rates['date']} : 1 EUR = {rates['rates']['USD']} USD ; source : {performance.ECB_RATES_URL}.")
@@ -1230,7 +1237,7 @@ def main() -> int:
         "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS,
                     "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION,
                     "openrouter_maximum_average_eur_per_million_tokens": 0.20,
-                    "required_reasoning_efforts": ["medium"]},
+                    "required_reasoning_efforts": {"paid": [], "free": ["medium"]}},
         "lm_blacklist": {"model_ids": list(blacklisted_models)},
         "opencode_go": opencode_catalog,
         "openrouter": openrouter_catalog,

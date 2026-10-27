@@ -42,7 +42,7 @@ class ModelEvidenceTests(unittest.TestCase):
         raw.pop('reasoning_capabilities')
         metadata['models']['new-model'].update(limit={}, reasoning=True)
         if section == 'openrouter':
-            raw['pricing'] = {'prompt': '0.0000001', 'completion': '0.0000001'}
+            raw['pricing'] = {'prompt': '0', 'completion': '0'}
             return payload, {}, lambda data: module.build_openrouter_rows(data, (), exchange_rates=FX)
         metadata['provider_id'] = section
         return payload, metadata, lambda data: module.build_rows(

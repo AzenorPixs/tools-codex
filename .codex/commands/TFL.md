@@ -31,8 +31,7 @@ affichées.
 
 Argument reçu : `$ARGUMENTS`
 
-Exclure gratuits et payants sans preuve publiée de Medium avant test et
-affichage, y compris dans les essais gratuits ; garder les motifs JSON.
+Conserver les payants OpenRouter admissibles même sans preuve Medium. Exiger Medium et un benchmark réussi pour les gratuits ; garder les motifs JSON.
 OpenRouter applique la moyenne de base ≤0,20 EUR/M au dernier taux BCE
 publié vérifié ; aucune conversion historique implicite.
 

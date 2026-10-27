@@ -22,20 +22,24 @@ OpenCode Go puis OpenRouter ; le JSON SHALL NOT contenir de section opencode.
 - **THEN** TFL signale l'échec et ne déclare pas le catalogue actualisé
 
 ### Requirement: Seuils de sélection vérifiables
-TFL SHALL retenir un contexte vérifiable ≥1M et un coût moyen entrée/sortie
-≤0,50 USD/M hors pointe pour Go ; OpenRouter SHALL appliquer ≤0,20 EUR/M au
-taux BCE vérifié. Prix ou contextes inconnus SHALL être exclus. Les gratuits
-vérifiés SHALL réussir une réponse complète en Medium, TTFT <30 s et débit
->20 tokens/s avant inclusion dans models. Leurs échecs SHALL rester dans
-excluded_models avec leurs preuves.
+TFL SHALL vérifier contexte ≥1M, coût moyen ≤0,50 USD/M Go et ≤0,20 EUR/M
+OpenRouter au taux BCE. Prix/contexte inconnus sont exclus. Les payants
+OpenRouter satisfaisant contexte, coût, modalités et LM restent admissibles
+sans Medium. Les gratuits vérifiés SHALL réussir réponse complète en Medium,
+TTFT <30 s et débit >20 tokens/s avant inclusion ; échecs et preuves restent
+dans excluded_models.
 
 #### Scenario: Modèle hors seuils
-- **WHEN** le contexte, le coût ou l'effort Medium d'un modèle examiné ne satisfait pas les seuils vérifiables
+- **WHEN** le contexte ou le coût d'un modèle examiné ne satisfait pas les seuils vérifiables
 - **THEN** il est exclu avec son motif dans le catalogue JSON
 
 #### Scenario: Gratuit échoué ou non mesurable
 - **WHEN** le gratuit échoue sur un seuil, l'effort Medium, l'accès, HTTP ou la mesure
 - **THEN** il est exclu de models avec sa cause, ses tentatives et ses mesures disponibles
+
+#### Scenario: Payant sans Medium
+- **WHEN** un payant OpenRouter vérifie contexte ≥1M, coût ≤0,20 EUR/M, modalités et liste noire, mais ne publie pas Medium
+- **THEN** il reste dans models avec ses métadonnées d'effort, sans investigation Medium bloquante
 
 #### Scenario: Seuils gratuits stricts
 - **WHEN** le TTFT atteint 30 s ou le débit atteint au plus 20 tokens/s
@@ -73,7 +77,7 @@ avec la même identité pour Go et OpenRouter.
 ### Requirement: Sélection OpenRouter explicite
 La sélection OpenRouter SHALL être dynamique sur tous les modèles retournés
 par l'API, sans liste prédéfinie d'identifiants admissibles. Elle SHALL retenir
-les modèles satisfaisant les filtres communs de contexte, coût et modalités,
+les modèles payants satisfaisant les filtres communs de contexte, coût et modalités,
 ainsi que la liste noire LM. L'absence d'un ancien modèle SHALL rester
 sans effet sur les autres résultats admissibles.
 
@@ -300,14 +304,19 @@ de publication atomique SHALL rester inchangés.
 - **AND** les modèles interdits restent absents des listes retenues et des tests gratuits
 
 ### Requirement: Effort vérifiable avant admission
-TFL SHALL exiger une capacité Medium vérifiable pour chaque gratuit ou
-payant, avant génération et classement. Les modèles exclus SHALL rester
-auditables dans le JSON et SHALL NOT apparaître dans les tableaux, essais
-gratuits compris.
+TFL SHALL exiger une capacité Medium vérifiable avant classement et benchmark
+des modèles gratuits, y compris OpenRouter. Les payants OpenRouter peuvent être
+classés selon contexte/prix/modalités sans preuve Medium, car PLLM mode5 ne
+benchmarke pas. Les autres modèles sans preuve SHALL rester auditables dans le
+JSON et SHALL NOT apparaître dans les tableaux de benchmark gratuit.
 
-#### Scenario: Modèle payant ou gratuit sans preuve
-- **WHEN** Medium n'est pas vérifiable dans les sources publiées
-- **THEN** le modèle est exclu avant toute génération, absent des tableaux et motivé dans le JSON
+#### Scenario: Modèle benchmarké sans preuve
+- **WHEN** Medium n'est pas vérifiable pour un candidat gratuit ou Go
+- **THEN** le modèle est exclu avant génération et motivé dans le JSON
+
+#### Scenario: Payant OpenRouter sans preuve
+- **WHEN** Medium est absent ou non pris en charge pour un modèle OpenRouter payant qui satisfait contexte/prix/modalités
+- **THEN** le modèle est conservé dans la section OpenRouter sans benchmark ni investigation Medium bloquante
 
 #### Scenario: Preuve publiée et métadonnées invalides
 - **WHEN** supported_efforts publie une liste contenant medium, ou null explicite signifiant tous les efforts
@@ -352,8 +361,8 @@ autres sections. Les filtres et validations indispensables SHALL rester inchang�
 - **WHEN** les deux collectes satisfont les critères de validité
 - **THEN** le rapport affiche Go puis OpenRouter, aucun tableau général, et le JSON conserve les deux sections
 
-#### Scenario: Aucune preuve d'effort dans une section
-- **WHEN** tous ses candidats sont exclus faute de preuve Medium
+#### Scenario: Aucune preuve d'effort dans une section benchmarkée
+- **WHEN** tous ses candidats gratuits sont exclus faute de preuve Medium
 - **THEN** TFL publie la sélection vide et ses motifs sans réutiliser d'anciennes qualifications
 - **AND** les exclus restent absents des tableaux et des essais gratuits
 
@@ -435,15 +444,11 @@ investigations et essais publiés SHALL concerner exclusivement Go/OpenRouter.
 - **THEN** une collecte Go/OpenRouter valide réussit sans aucun appel général
 - **AND** le JSON, le Markdown et stdout ne contiennent aucun modèle général
 
-### Requirement: Effort courant exclusivement Medium
-
-TFL SHALL n'évaluer, classer et publier que des candidats admissibles en
-Medium. Chaque benchmark SHALL transmettre Medium selon le protocole déclaré
-et SHALL échouer explicitement si cet effort n'est pas pris en charge.
-Un refus SHALL NOT entraîner de nouvelle requête avec un effort différent.
-Les métadonnées fournisseur qui déclarent plusieurs capacités restent des
-preuves source ; elles SHALL NOT modifier l'effort demandé ni qualifier une
-mesure réalisée avec un autre effort.
+### Requirement: Effort courant exclusivement Medium pour les benchmarks
+TFL SHALL benchmarker les gratuits uniquement en Medium, transmettre cet
+effort selon le protocole et exclure un refus sans repli. Les payants OpenRouter
+ne sont pas benchmarkés et ne requièrent pas Medium pour leur admission au
+mode5. D'autres capacités publiées ne changent pas l'effort demandé.
 
 #### Scenario: Plusieurs capacités publiées
 

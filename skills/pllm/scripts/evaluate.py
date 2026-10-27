@@ -25,10 +25,10 @@ ROOT = Path(__file__).resolve().parent.parent
 PROMPT = 'Write only Python code for a stable merge_sort(values) function and three assert tests. No explanation.'
 BUDGETS = (1024, 2048, 4096, 8192)
 TTFT_LIMIT_SECONDS = 90
-FREE_MODES = ('mode3', 'mode4')
-POLICY_PROVIDERS = ('opencodego', 'opencodego', 'opencodego', 'opencodego', 'openrouter', 'deepseek')
-SECRET_POLICIES = ('mode1', 'mode2', 'mode1', 'mode2', 'mode3', 'mode4')
-SECRET_ACCOUNT_INDICES = (0, 1, 0, 1, 2, 3)
+FREE_MODES = ('mode3', 'mode4', 'mode6')
+POLICY_PROVIDERS = ('opencodego', 'opencodego', 'opencodego', 'opencodego', 'openrouter', 'openrouter', 'deepseek')
+SECRET_POLICIES = ('mode1', 'mode2', 'mode1', 'mode2', 'mode3', 'mode3', 'mode4')
+SECRET_ACCOUNT_INDICES = (0, 1, 0, 1, 2, 2, 3)
 MEMORY_PATH = ROOT / 'data/pllm-performance-memory.json'
 _PERFORMANCE_SPEC = importlib.util.spec_from_file_location('pllm_performance', Path(__file__).with_name('performance.py'))
 performance = importlib.util.module_from_spec(_PERFORMANCE_SPEC)
@@ -400,7 +400,8 @@ def policy_table(models):
         '|' + '|'.join('---' for _ in headers) + '|',
     ]
     for model in models:
-        if model.get('model_id', model.get('model')) != 'Non évalué' and not performance.effort_allowed(model):
+        if (model.get('model_id', model.get('model')) != 'Non évalué'
+                and model['mode'] != 'mode5' and not performance.effort_allowed(model)):
             continue
         values = [
             model['mode'],
@@ -467,7 +468,7 @@ def sanitize_reasoning_history(data):
         exclusions = model.setdefault('candidate_exclusions', [])
         retained = []
         for candidate in model.get('candidate_results', []):
-            if performance.effort_allowed(candidate, require_recorded=True):
+            if model.get('mode') == 'mode5' or performance.effort_allowed(candidate, require_recorded=True):
                 retained.append(candidate)
             else:
                 exclusions.append({'model_id': candidate.get('model_id'),
@@ -475,7 +476,7 @@ def sanitize_reasoning_history(data):
         if 'candidate_results' in model:
             model['candidate_results'] = retained
         identifier = model.get('model_id', model.get('model'))
-        if (identifier and identifier != 'Non évalué'
+        if (model.get('mode') != 'mode5' and identifier and identifier != 'Non évalué'
                 and not performance.effort_allowed(model, require_recorded=True)):
             exclusions.append({'model_id': identifier, 'cause': 'Medium non vérifiable ou non pris en charge'})
             model.update(state='Invalide', selected=False, model='Non évalué', model_id='Non évalué',
@@ -598,22 +599,27 @@ def next_tfl_opencode_model(current_id, catalog_path=None):
 
 def load_memory():
     if not MEMORY_PATH.exists():
-        return {'schema_version': 2, 'policies': {}}
+        return {'schema_version': 3, 'policies': {}}
     try:
         memory = json.loads(MEMORY_PATH.read_text(encoding='utf-8'))
-        if (not isinstance(memory, dict) or memory.get('schema_version') not in (1, 2)
+        if (not isinstance(memory, dict) or memory.get('schema_version') not in (1, 2, 3)
                 or not isinstance(memory.get('policies'), dict)
                 or any(not isinstance(value, dict) for value in memory['policies'].values())):
             raise ValueError('Structure de mémoire invalide')
-        allowed = {f'mode{i}' for i in range(1, 5 if memory['schema_version'] == 1 else 7)}
+        version = memory['schema_version']
+        allowed = {f'mode{i}' for i in range(1, 5 if version == 1 else 7 if version == 2 else 8)}
         if not set(memory['policies']).issubset(allowed):
             raise ValueError('Politiques de mémoire invalides')
     except (OSError, ValueError) as error:
         raise RuntimeError('Mémoire de performance PLLM invalide ; fichier préservé') from error
-    if memory['schema_version'] == 1:
-        memory['policies'] = {({'mode3': 'mode5', 'mode4': 'mode6'}.get(mode, mode)): value
-                              for mode, value in memory['policies'].items()}
-        memory.update(schema_version=2, migrated_from_schema_version=1)
+    if memory['schema_version'] in (1, 2):
+        old_version = memory['schema_version']
+        carried = ('mode1', 'mode2') if old_version == 1 else ('mode1', 'mode2', 'mode3', 'mode4')
+        migrated = {mode: value for mode, value in memory['policies'].items() if mode in carried}
+        deepseek = memory['policies'].get('mode4' if old_version == 1 else 'mode6')
+        if deepseek:
+            migrated['mode7'] = deepseek
+        memory.update(schema_version=3, migrated_from_schema_version=old_version, policies=migrated)
     return memory
 
 
@@ -659,27 +665,33 @@ def performance_limits(model):
 
 def initial_model(priority, provider):
     mode = f'mode{priority}'
-    ttft, throughput = performance_limits({'mode': mode})
+    unbenchmarked = mode == 'mode5'
+    ttft, throughput = (None, None) if unbenchmarked else performance_limits({'mode': mode, 'is_free': mode in FREE_MODES})
+    if mode == 'mode5':
+        condition = 'candidat payant ET contexte >= 1M ET coût moyen <= 0,20 EUR/M ET solde > 0'
+    elif mode in FREE_MODES:
+        condition = f'TTFT < {ttft} s ET tokens/s > {throughput} ET gratuité vérifiée ET contexte >= 1M'
+    elif mode == 'mode7':
+        condition = f'TTFT < {ttft} s ET tokens/s > {throughput} ET is_available=true ET au moins un solde utilisable > 0'
+    else:
+        condition = f'TTFT < {ttft} s ET tokens/s > {throughput} ET quotas valides'
     return {'mode': mode, 'priority': priority, 'provider': provider,
-            'model': 'Non évalué', 'reasoning': 'medium', 'state': 'Invalide',
-            'condition': f'TTFT < {ttft} s ET tokens/s > {throughput} ET ' + (
-                'gratuité vérifiée ET contexte >= 1M' if mode in FREE_MODES else
-                'candidat payant ET solde > 0' if mode == 'mode5' else
-                'is_available=true ET au moins un solde utilisable > 0' if mode == 'mode6' else 'quotas valides'),
-            'performance_criteria': {'ttft_lt_seconds': ttft, 'tokens_per_second_gt': throughput},
+            'model': 'Non évalué', 'reasoning': None if unbenchmarked else 'medium', 'state': 'Invalide',
+            'condition': condition,
+            'performance_criteria': None if unbenchmarked else {'ttft_lt_seconds': ttft, 'tokens_per_second_gt': throughput},
             'throughput_metric': performance.THROUGHPUT_METRIC, 'throughput_window': performance.THROUGHPUT_WINDOW,
             'measurement_protocol_version': performance.MEASUREMENT_PROTOCOL_VERSION,
             'quota_status': 'not_applicable' if mode in FREE_MODES else 'not_evaluated',
             'selected': False, 'evaluated_this_run': False, 'evaluated_at': None,
             'ttft_seconds': None, 'tokens_per_second': None, 'quotas': None,
-            'cause': 'Non évalué', 'performance_test': {'status': 'not_run'}}
+            'cause': 'Non évalué', 'performance_test': {'status': 'not_required' if unbenchmarked else 'not_run'}}
 
 
 def load_current():
     try:
         data = json.loads((ROOT / 'data/pllm-current.json').read_text(encoding='utf-8'), parse_float=finite, parse_constant=finite)
     except FileNotFoundError:
-        return {'schema_version': 2, 'selected_mode': None, 'selection_status': 'no_valid_model',
+        return {'schema_version': 3, 'selected_mode': None, 'selection_status': 'no_valid_model',
                 'models': [initial_model(priority, provider)
                            for priority, provider in enumerate(POLICY_PROVIDERS, 1)]}
     except (OSError, ValueError) as error:
@@ -687,8 +699,10 @@ def load_current():
     if not isinstance(data, dict) or not isinstance(data.get('models'), list):
         raise RuntimeError('Historique PLLM invalide : politiques attendues ; fichier préservé')
     version = data.get('schema_version', 1)
-    providers = ('opencodego', 'opencodego', 'openrouter', 'deepseek') if version == 1 else POLICY_PROVIDERS
-    if version not in (1, 2) or len(data['models']) != len(providers):
+    providers = (('opencodego', 'opencodego', 'openrouter', 'deepseek') if version == 1 else
+                 ('opencodego', 'opencodego', 'opencodego', 'opencodego', 'openrouter', 'deepseek') if version == 2 else
+                 POLICY_PROVIDERS)
+    if version not in (1, 2, 3) or len(data['models']) != len(providers):
         raise RuntimeError('Historique PLLM invalide : schéma ou nombre de politiques ; fichier préservé')
     models = data['models']
     for priority, provider in enumerate(providers, 1):
@@ -696,18 +710,30 @@ def load_current():
         if (len(matches) != 1 or matches[0].get('priority') != priority
                 or matches[0].get('provider') not in ((provider, 'opencode') if provider == 'opencodego' else (provider,))
                 or not isinstance(matches[0].get('condition'), str)
-                or not isinstance(matches[0].get('reasoning'), str)
+                or (not isinstance(matches[0].get('reasoning'), str)
+                    and not (version == 3 and priority == 5 and matches[0].get('reasoning') is None))
                 or matches[0].get('state') not in ('Valide', 'Invalide')
                 or ('model' in matches[0] and not isinstance(matches[0]['model'], str))):
             raise RuntimeError('Historique PLLM invalide : politiques incohérentes ; fichier préservé')
         matches[0].setdefault('model', matches[0].get('model_id') or 'Non évalué')
-    if version == 1:
-        for model in models:
-            priority = {'mode3': 5, 'mode4': 6}.get(model['mode'], model['priority'])
-            model.update(mode=f'mode{priority}', priority=priority, selected=False, evaluated_this_run=False)
-        models.extend(initial_model(priority, 'opencodego') for priority in (3, 4))
-        models.sort(key=lambda model: model['priority'])
-        data.update(schema_version=2, migrated_from_schema_version=1,
+    if version in (1, 2):
+        old_models = {model['mode']: model for model in models}
+        migrated = [old_models['mode1'], old_models['mode2']]
+        if version == 2:
+            migrated.extend((old_models['mode3'], old_models['mode4']))
+            deepseek = old_models['mode6']
+        else:
+            deepseek = old_models['mode4']
+        if version == 1:
+            migrated.extend(initial_model(priority, 'opencodego') for priority in (3, 4))
+        migrated.extend((initial_model(5, 'openrouter'), initial_model(6, 'openrouter')))
+        deepseek.update(mode='mode7', priority=7, selected=False, evaluated_this_run=False)
+        migrated.append(deepseek)
+        for model in migrated:
+            model.update(selected=False, evaluated_this_run=False)
+        migrated.sort(key=lambda model: model['priority'])
+        data['models'] = migrated
+        data.update(schema_version=3, migrated_from_schema_version=version,
                     selected_mode=None, selection_status='no_valid_model')
     return data
 
@@ -734,7 +760,8 @@ def check_category(model, key, category):
         raise CategoryChanged(current)
 
 
-def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=True, exchange_rates=None):
+def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=True, exchange_rates=None,
+                     require_medium=True):
     if not isinstance(row, dict) or not isinstance(row.get('id'), str) or not row['id']:
         raise RuntimeError('Candidat TFL sans identifiant vérifiable')
     context = row.get('context_length')
@@ -744,7 +771,7 @@ def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=Tru
         raise RuntimeError('Sortie TFL non admissible')
     if enforce_blacklist:
         blacklist.require_allowed(row['id'])
-    effort = performance.verified_effort(row)
+    effort = performance.verified_effort(row) if require_medium else None
     if section == 'openrouter':
         prices = (finite(row['input_price']), finite(row['output_price']))
         exact_prices = performance.native_openrouter_prices(row)
@@ -785,11 +812,11 @@ def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=Tru
                                              'output_price_usd_per_million_tokens': prices[1]}}
 
 
-def candidates_for(model, category, catalog_path, forced=None):
+def candidates_for(model, category, catalog_path, forced=None, key=None):
     if ((model['mode'] in FREE_MODES and category != 'free')
-            or (model['mode'] in ('mode1', 'mode2', 'mode5', 'mode6') and category != 'paid')):
+            or (model['mode'] in ('mode1', 'mode2', 'mode5', 'mode7') and category != 'paid')):
         raise RuntimeError('Catégorie incompatible avec la politique PLLM')
-    if model['mode'] == 'mode6':
+    if model['mode'] == 'mode7':
         blacklist.require_allowed('deepseek-v4-flash')
         candidate = {'model_id': 'deepseek-v4-flash', 'model': 'deepseek-v4-flash',
                  'provider': 'deepseek', 'throughput_scope': 'response_only',
@@ -798,10 +825,18 @@ def candidates_for(model, category, catalog_path, forced=None):
         performance.verified_effort(candidate)
         return [candidate]
     catalog = load_tfl_catalog(catalog_path)
-    go = model['mode'] in ('mode1', 'mode2', *FREE_MODES)
+    go = model['mode'] in ('mode1', 'mode2', 'mode3', 'mode4')
     sections = ('opencode_go',) if go else ('openrouter',)
     candidates = []
     exchange_rates = performance.fetch_eur_rates() if not go else None
+    live_models = None
+    if model['mode'] == 'mode5':
+        if not key:
+            raise AuthenticationFailure('Clé API OpenRouter inaccessible')
+        live_models = get('https://openrouter.ai/api/v1/models', key).get('data')
+        if not isinstance(live_models, list):
+            raise RuntimeError('Catalogue OpenRouter actuel invalide')
+        live_models = {row.get('id'): row for row in live_models if isinstance(row, dict) and isinstance(row.get('id'), str)}
     for section in sections:
         source = catalog.get(section)
         rows = source.get('models') if isinstance(source, dict) else None
@@ -816,7 +851,8 @@ def candidates_for(model, category, catalog_path, forced=None):
             try:
                 candidate = catalog_candidate(row, section, rank, catalog.get('generated_at'),
                                               enforce_blacklist=not (forced and model['mode'] in FREE_MODES),
-                                              exchange_rates=exchange_rates)
+                                              exchange_rates=exchange_rates,
+                                              require_medium=model['mode'] != 'mode5')
             except (KeyError, TypeError, ValueError, RuntimeError) as error:
                 if forced and requested is not None:
                     raise RuntimeError('Candidat forcé non admissible : ' + error_message(error)) from error
@@ -826,6 +862,49 @@ def candidates_for(model, category, catalog_path, forced=None):
                 if forced and requested is not None:
                     raise RuntimeError('Candidat forcé incompatible avec les ressources : catégorie ' + category)
                 continue
+            if model['mode'] == 'mode5':
+                current = live_models.get(candidate['model_id'])
+                if current is None:
+                    model['candidate_exclusions'].append({'section': section, 'rank': rank,
+                                                          'cause': 'Modèle absent du catalogue OpenRouter actuel'})
+                    continue
+                context = current.get('context_length')
+                pricing = current.get('pricing')
+                try:
+                    if type(context) is not int or context < 1_000_000:
+                        raise RuntimeError('Contexte OpenRouter actuel inférieur à 1M ou non vérifiable')
+                    if not isinstance(pricing, dict):
+                        raise RuntimeError('Prix OpenRouter actuels non vérifiables')
+                    prices = tuple(Decimal(str(pricing[field])) * 1_000_000 for field in ('prompt', 'completion'))
+                    if any(not price.is_finite() or price < 0 for price in prices):
+                        raise RuntimeError('Prix OpenRouter actuels non vérifiables')
+                    eur = performance.openrouter_eur_prices(*prices, exchange_rates)
+                    normalized = {'input_price': float(prices[0]), 'output_price': float(prices[1]),
+                                  'base_pricing_usd_per_million_tokens': {
+                                      'input': format(prices[0], 'f'), 'output': format(prices[1], 'f')}}
+                    if performance.is_free(normalized, 'openrouter'):
+                        raise RuntimeError('Candidat OpenRouter gratuit incompatible avec le mode5')
+                except (KeyError, TypeError, ValueError, RuntimeError) as error:
+                    if forced and requested is not None:
+                        raise RuntimeError('Candidat forcé non admissible : ' + error_message(error)) from error
+                    model['candidate_exclusions'].append({'section': section, 'rank': rank,
+                                                          'cause': error_message(error)})
+                    continue
+                average_usd = float(sum(prices) / 2)
+                candidate.update(model=current.get('name') or candidate['model_id'],
+                                 context_length=context,
+                                 input_price_usd_per_million_tokens=format(prices[0], 'f'),
+                                 output_price_usd_per_million_tokens=format(prices[1], 'f'),
+                                 average_price_usd_per_million_tokens=average_usd,
+                                 average_price_eur_per_million_tokens=eur['average_eur'],
+                                 base_pricing_usd_per_million_tokens=normalized['base_pricing_usd_per_million_tokens'],
+                                 cost_exchange_rates=copy.deepcopy(exchange_rates),
+                                 reasoning=None, reasoning_capabilities=performance.capabilities(current),
+                                 model_source={**candidate['model_source'],
+                                               'pricing_source': 'https://openrouter.ai/api/v1/models',
+                                               'live_price_checked': True,
+                                               'input_price_usd_per_million_tokens': format(prices[0], 'f'),
+                                               'output_price_usd_per_million_tokens': format(prices[1], 'f')})
             candidates.append(candidate)
     if forced and model['mode'] in FREE_MODES:
         rank = forced.get('rank', 1)
@@ -834,7 +913,8 @@ def candidates_for(model, category, catalog_path, forced=None):
         blacklist.require_allowed(candidates[rank - 1]['model_id'])
         return [candidates[rank - 1]]
     if not forced and category == 'paid':
-        candidates.sort(key=lambda candidate: candidate['average_price_usd_per_million_tokens'])
+        key_name = 'average_price_eur_per_million_tokens' if model['mode'] == 'mode5' else 'average_price_usd_per_million_tokens'
+        candidates.sort(key=lambda candidate: candidate[key_name])
     return candidates[:1] if forced else candidates
 
 
@@ -926,6 +1006,18 @@ def evaluate_candidate(model, key, category, memory, session_id):
     return model
 
 
+def evaluate_openrouter_paid_catalog_candidate(model):
+    """Validate mode 5 from current catalog metadata without generation."""
+    model.update(reasoning=None, ttft_seconds=None, tokens_per_second=None,
+                 last_successful_max_tokens=None,
+                 performance_criteria=None,
+                 condition='candidat payant ET contexte >= 1M ET coût moyen <= 0,20 EUR/M ET solde > 0',
+                 performance_test={'status': 'not_required',
+                                   'reason': 'Mode 5 : aucune génération ni mesure de performance requise'},
+                 state='Valide', cause='Contexte, plafond de coût et solde vérifiés')
+    return model
+
+
 def main(active=False, forced=None, tfl_catalog=None):
     configured = blacklist.load_models()
     signal.signal(signal.SIGALRM, expire)
@@ -934,8 +1026,8 @@ def main(active=False, forced=None, tfl_catalog=None):
     sanitize_blacklisted_history(data, configured)
     sanitize_reasoning_history(data)
     data['models'].sort(key=lambda model: model['priority'])
-    if [model['mode'] for model in data['models']] != [f'mode{i}' for i in range(1, 7)]:
-        raise RuntimeError('Ce protocole attend les six modes définis')
+    if [model['mode'] for model in data['models']] != [f'mode{i}' for i in range(1, 8)]:
+        raise RuntimeError('Ce protocole attend les sept modes définis')
     data['evaluation_mode'] = 'active' if active else ('forced' if forced else 'all')
     if forced:
         data['forced_policy'] = {'mode': forced['mode'], 'rank': forced.get('rank')}
@@ -948,7 +1040,8 @@ def main(active=False, forced=None, tfl_catalog=None):
         if forced and model['mode'] != forced['mode']:
             continue
         model.update(evaluated_this_run=True, state='Invalide', cause='', selected=False,
-                     provider=provider, model='Non évalué', model_id='Non évalué', reasoning='medium',
+                     provider=provider, model='Non évalué', model_id='Non évalué',
+                     reasoning=None if model['mode'] == 'mode5' else 'medium',
                      ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
                      last_successful_max_tokens=None, selection_category=None,
                      throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
@@ -973,7 +1066,7 @@ def main(active=False, forced=None, tfl_catalog=None):
             session_id = str(uuid.uuid4()) if provider == 'opencodego' else None
             for transition in range(3):
                 model['selection_category'] = category
-                candidates = candidates_for(model, category, tfl_catalog, forced=forced)
+                candidates = candidates_for(model, category, tfl_catalog, forced=forced, key=key)
                 if not candidates:
                     raise RuntimeError('Aucun candidat TFL admissible ' + ('gratuit' if category == 'free' else 'payant'))
                 results = []
@@ -986,7 +1079,10 @@ def main(active=False, forced=None, tfl_catalog=None):
                                        evaluated_at=now(), ttft_seconds=None, tokens_per_second=None,
                                        performance_test={'status': 'not_run', 'reason': 'Test non exécuté'})
                         try:
-                            evaluate_candidate(current, key, category, memory, session_id)
+                            if model['mode'] == 'mode5':
+                                evaluate_openrouter_paid_catalog_candidate(current)
+                            else:
+                                evaluate_candidate(current, key, category, memory, session_id)
                         except (CategoryChanged, AuthenticationFailure, ResourceFailure):
                             records = model['candidate_results']
                             records.append(copy.deepcopy(current))
@@ -1048,6 +1144,10 @@ FORCED_COMMANDS = {
     '52': {'mode': 'mode5', 'rank': 2},
     '53': {'mode': 'mode5', 'rank': 3},
     '6': {'mode': 'mode6'},
+    '61': {'mode': 'mode6', 'rank': 1},
+    '62': {'mode': 'mode6', 'rank': 2},
+    '63': {'mode': 'mode6', 'rank': 3},
+    '7': {'mode': 'mode7'},
 }
 
 

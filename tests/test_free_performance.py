@@ -127,7 +127,7 @@ class FreePerformanceTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,'Medium'):
                     engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supported_efforts':unsupported}})
 
-    def test_pllm_free_modes_use_strict_limits_router_paid_keeps_original_limits(self):
+    def test_pllm_free_modes_use_strict_limits_router_paid_skips_benchmark(self):
         for script in PLLM:
             module,path,_=self.workspace(script)
             def behavior(model,budget):
@@ -138,8 +138,9 @@ class FreePerformanceTests(unittest.TestCase):
             self.assertEqual(free['models'][2]['performance_criteria'],{'ttft_lt_seconds':30,'tokens_per_second_gt':20})
             paid,_,_=self.run_evaluation(module,path,benchmark_behavior=behavior,forced={'mode':'mode5'})
             self.assertEqual(paid['models'][4]['state'],'Valide')
-            self.assertEqual(paid['models'][4]['reasoning'],'medium')
-            self.assertEqual(paid['models'][4]['performance_criteria'],{'ttft_lt_seconds':90,'tokens_per_second_gt':15})
+            self.assertIsNone(paid['models'][4]['reasoning'])
+            self.assertIsNone(paid['models'][4]['performance_criteria'])
+            self.assertEqual(paid['models'][4]['performance_test']['status'],'not_required')
 
     def test_pllm_medium_rejection_does_not_retry_another_effort_or_tier(self):
         for script in PLLM:

@@ -331,13 +331,21 @@ class GeneralOpenCodeTests(unittest.TestCase):
                         catalog = consumer.load_tfl_catalog(catalog_path)
                         for section in empty_sections:
                             self.assertEqual(catalog[section]['models'], [])
-                        for mode in ('mode1', 'mode2', 'mode3', 'mode4', 'mode5'):
-                            free = mode in ('mode3', 'mode4')
-                            section = 'openrouter' if mode == 'mode5' else 'opencode_go'
+                        openrouter_rows = catalog['openrouter']['models']
+                        live_openrouter = {'data': [
+                            {'id': row['id'], 'name': row['name'], 'context_length': row['context_length'],
+                             'pricing': {'prompt': str(row['input_price'] / 1_000_000),
+                                         'completion': str(row['output_price'] / 1_000_000)}}
+                            for row in openrouter_rows]}
+                        for mode in ('mode1', 'mode2', 'mode3', 'mode4', 'mode5', 'mode6'):
+                            free = mode in ('mode3', 'mode4', 'mode6')
+                            section = 'openrouter' if mode in ('mode5', 'mode6') else 'opencode_go'
                             with patch.object(consumer.performance, 'fetch_eur_rates',
-                                              return_value=catalog['openrouter']['cost_exchange_rates']):
+                                              return_value=catalog['openrouter']['cost_exchange_rates']), \
+                                    patch.object(consumer, 'get', return_value=live_openrouter):
                                 selected = consumer.candidates_for({'mode': mode, 'candidate_exclusions': []},
-                                                                   'free' if free else 'paid', catalog_path)
+                                                                   'free' if free else 'paid', catalog_path,
+                                                                   key='offline' if mode == 'mode5' else None)
                             expected = [] if free or section in empty_sections else [
                                 'router-only' if section == 'openrouter' else 'go-only']
                             self.assertEqual([model['model_id'] for model in selected], expected)

@@ -173,7 +173,7 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 | Composant | Prérequis locaux | Services externes nécessaires |
 |---|---|---|
 | `tfl` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS, exécution hors sandbox et répertoire de données inscriptible. Les accès aux fournisseurs sont configurés localement hors des sources. | OpenCode Go, models.dev et OpenRouter. |
-| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les six politiques sont initialisées si le fichier courant manque. | OpenCode Go pour 1 à 4, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
+| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès HTTPS et `data/` inscriptible. Le catalogue TFL est fourni explicitement ou par le chemin voisin ; sept politiques sont initialisées si l'état courant manque. | OpenCode Go 1 à 4, OpenRouter payant 5 et gratuit 6, DeepSeek 7, BCE. |
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
 | `$cm` | Skill découvert dans le projet ou installé dans un emplacement reconnu. | Aucun. |
@@ -184,34 +184,30 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 Les plugins `pllm` et `tfl` écrivent leurs rapports dans leur répertoire
 `data/`. TFL accepte une redirection par `--output-dir` ; PLLM ne propose pas
 d'option équivalente et exige que son propre répertoire `data/` soit
-inscriptible. PLLM charge `data/pllm-current.json` avant l'évaluation ; si ce
-fichier manque, les six politiques sont initialisées sans mesures ni
-sélection historique. Un fichier courant invalide provoque un diagnostic et
-reste préservé. Les contrôles de ressources applicables et de performance restent obligatoires ;
-les gratuits 3/4 ne consultent aucun quota.
+inscriptible. PLLM charge `data/pllm-current.json` avant l'évaluation ; si ce fichier
+manque, sept politiques sont initialisées sans mesures ni sélection historique.
+Un fichier courant invalide provoque un diagnostic et reste préservé. Les
+contrôles de ressources applicables et les benchmarks des modes concernés
+restent obligatoires ; les gratuits 3/4/6 ne consultent aucun quota.
 
-PLLM définit six priorités : 1/2 payants Go, 3/4 gratuits Go avec les comptes de 1/2 respectivement, 5 ancien OpenRouter, 6 ancien
-DeepSeek. Les modes 1/2 contrôlent les trois périodes Go avant chaque requête ;
-un épuisement les rend rouges et invalides sans repli gratuit. Les modes 3/4
-ne consultent jamais quota ni solde, même entre paliers ; ils affichent
-`quota_status=not_applicable`, `quotas=null` et `Non applicable`.
-Ils exigent gratuité vérifiée, contexte ≥1M, réponse complète, comptage fiable,
-TTFT <30 s et débit >20 tokens/s. Tous les gratuits PLLM 3/4 exigent <30 s et >20
-tokens/s ; seuls les payants gardent TTFT <90 s et débit >15 tokens/s. Les critères sont publiés par politique dans `performance_criteria`.
-Le mode5 garde exclusivement les payants OpenRouter avec crédit positif ;
-un épuisement le rend invalide sans repli gratuit. Mode6
-garde le contrôle de solde DeepSeek. Les gratuits restent soumis aux accès,
-Medium, filtres TFL, protocoles et limitations HTTP du fournisseur.
+PLLM définit sept priorités : 1/2 payants Go, 3/4 gratuits Go, 5 payants
+OpenRouter sans benchmark, 6 gratuits OpenRouter benchmarkés et 7 DeepSeek
+direct. Les modes 1/2 contrôlent les trois périodes Go ; mode5 consulte le
+crédit OpenRouter, vérifie coût moyen ≤0,20 EUR/M et contexte ≥1M sans Medium
+ni génération ; mode7 conserve le contrôle DeepSeek. Les gratuits 3/4/6 ne
+consultent jamais quota ni solde et publient `quota_status=not_applicable`,
+`quotas=null` et `Non applicable`. Ils exigent gratuité vérifiée, contexte
+≥1M, Medium, TTFT <30 s et débit >20 tokens/s. Les modes benchmarkés payants
+1/2/7 gardent TTFT <90 s et débit >15 tokens/s.
 
 Les références des secrets sont conservées : policy=mode1 pour 1/3,
-policy=mode2 pour 2/4, ancien policy=mode3 pour 5 et ancien policy=mode4 pour 6.
-Aucune migration de secret n'est nécessaire. Les historiques et mémoires
-passent au schéma 2 : après validation du schéma 1, anciens 3/4 vers 5/6,
-nouveaux 3/4 sans résultat ni apprentissage. La sélection est effacée lors de
-l'adaptation et les lignes anciennes sont non évaluées dans l'invocation.
-Les fichiers existants sont préservés jusqu'à publication ou nouvelle réussite ;
-les fichiers invalides ne sont pas écrasés. Le schéma 2 n'est pas lisible par
-l'ancien évaluateur : préserver une copie de ses données avant retour de version.
+policy=mode2 pour 2/4, ancien policy=mode3 pour 5/6 et ancien policy=mode4
+pour 7. Aucune migration de secret n'est nécessaire. Les états/mémoires
+passent au schéma 3 : les succès anciens Go restent associés, l'ancien mode5
+est réinitialisé, DeepSeek devient mode7 et le mode6 gratuit ne reprend aucun
+apprentissage. La sélection est effacée lors de l'adaptation. Les fichiers
+invalides ne sont pas écrasés. Le schéma 3 n'est pas lisible par l'ancien
+évaluateur ; préserver une copie avant retour de version.
 
 Les routes et fournisseurs de chaque section sont conservés. Les candidats
 OpenCode Go utilisent la clé du compte associé au mode uniquement sur l'origine
@@ -222,13 +218,7 @@ inchangée. L'état historique accepte `opencode` pour les anciens 1/2 et les gr
 les candidats courants 1/2 restent exclusivement payants Go et 3/4 gratuits Go,
 y compris lorsque les catalogues ou historiques contiennent opencode.
 
-Les tests déterminent l'admissibilité. Les payants 1/2/5 sont essayés par coût
-moyen TFL croissant : moyenne des prix d'entrée/sortie hors pointe Go ou de
-base OpenRouter. À prix égal, conserver l'ordre TFL stable. Les gratuits 3/4
-sont essayés dans l'ordre TFL Go exclusivement. Dans chaque mode, retenir le
-premier candidat conforme et ne pas tester les suivants ; après un échec,
-essayer le suivant sous réserve des contrôles bloquants. Mode6 garde son
-unique candidat direct sans tarif inventé. Les forçages de rang conservent
+Les tests déterminent l'admissibilité des modes benchmarkés. Les payants Go 1/2 sont essayés par coût moyen croissant. Le mode5 sélectionne le payant OpenRouter admissible le moins cher au prix courant, sans génération. Les gratuits 3/4/6 sont parcourus dans l'ordre TFL de leur section et retiennent le premier succès. Le mode7 garde son unique candidat DeepSeek sans tarif inventé. Les forçages de rang conservent
 leur cible, avec refus des gratuits en mode5 désormais exclusivement payant.
 Le coût vérifié est conservé dans average_price_usd_per_million_tokens et les
 prix/provenances dans model_source. Les moyennes décimales égales conservent
@@ -256,12 +246,11 @@ palier d'un autre candidat n'est pas affiché. Les erreurs HTTP/SSE sont filtré
 et rendues dans État sans corps brut. active s'arrête silencieusement après
 le premier succès du premier mode valide ; les forçages gardent un seul candidat.
 
-Tous les benchmarks PLLM et les gratuits TFL demandent exclusivement Medium,
+Les benchmarks PLLM hors mode5 et les gratuits TFL demandent exclusivement Medium,
 sans repli vers un autre effort. Chat Completions
 utilise reasoning_effort ; Responses reasoning.effort ; Messages thinking
 adaptive et output_config.effort ; DeepSeek thinking activé et reasoning_effort.
-OpenRouter exige une déclaration vérifiable de Medium ; un budget seul est
-exclu. Aucun autre niveau n'est utilisé. Le niveau effectif est tracé et
+Les gratuits OpenRouter du mode6 exigent une déclaration vérifiable de Medium ; les payants OpenRouter du mode5 en sont exemptés. Aucun autre niveau n'est utilisé. Le niveau effectif est tracé et
 participe à l'identité de mémoire ; une réussite mesurée avec un autre effort
 n'amorce pas un test Medium. Un refus 400 propre à l'effort arrête le candidat ; 401/403/429
 conservent leur traitement propre.
@@ -351,7 +340,7 @@ La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py`,
 `tests/test_prompt_dispatch.py`, exécutables avec
 `python3 -B -m unittest discover -s tests -v`. Elle couvre les deux
 distributions, le catalogue explicite, l'initialisation, la préservation d'un
-historique corrompu et les remplacements après HTTP 429, les six modes, leurs comptes, les
+historique corrompu et les remplacements après HTTP 429, les sept modes, leurs comptes, les
 seuils stricts 3/4, les forçages et les migrations de schéma. Chaque remplaçant recalcule
 ses paliers et exige ses propres mesures avant de devenir valide.
 TFL exclut les prix OpenRouter non finis et les débordements, puis prépare
@@ -415,8 +404,8 @@ conditions de contexte et les jours/horaires UTC publiés. Aucun seuil de
 contexte n'est inventé pour une variante temporelle. La requête modèles
 interroge tout le catalogue sans filtre de catégorie, modalité ni limite
 artificielle de nombre. La sélection est dynamique, sans liste d'identifiants :
-contexte ≥ 1M, Medium vérifiable, moyenne API de base ≤0,20 EUR/M au taux BCE vérifié, modalités
-de sortie et blacklist. Les prix négatifs, non finis ou débordants
+contexte ≥1M, moyenne API de base ≤0,20 EUR/M au taux BCE vérifié, modalités
+de sortie et blacklist. Medium s'applique aux gratuits OpenRouter benchmarkés, pas aux payants du mode5. Les prix négatifs, non finis ou débordants
 sont non exploitables. La provenance tarifaire des deux fournisseurs est
 horodatée. Une source indispensable invalide ou des tarifs Go contradictoires
 font échouer la génération avant publication ; les rapports existants restent
@@ -644,8 +633,7 @@ Références officielles : [paquets et hooks](https://developers.openai.com/plug
 
 ## Admission stricte Medium
 
-Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
-avant test, sélection et affichage. Une liste supported_efforts contenant
+Tout candidat benchmarké doit publier une capacité Medium vérifiable avant test, sélection et affichage. Le mode5 payant OpenRouter n’exige pas Medium. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
 ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
@@ -666,8 +654,7 @@ publiée explicitement sans réintégrer de modèle exclu.
 ## Contrat TFL/PLLM 0.7.14 et conversion OpenRouter
 
 TFL ne collecte ni ne publie plus OpenCode général. Le JSON contient seulement
-opencode_go et openrouter. PLLM 1/2 ne sélectionne que les payants Go et 3/4
-les gratuits Go, même si un ancien catalogue ou historique contient opencode.
+opencode_go et openrouter. PLLM 1/2 sélectionne les payants Go, 3/4 les gratuits Go, 5 les payants OpenRouter sans benchmark, 6 les gratuits OpenRouter benchmarkés et 7 DeepSeek direct, même si un ancien catalogue ou historique contient opencode.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
 puis les essais gratuits ayant une preuve Medium. Aucun modèle exclu
 pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
@@ -675,9 +662,7 @@ Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
 https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
 le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
 prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
-publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
-et à la frontière de génération, y compris pour les anciens catalogues et
-les rangs forcés. Un budget seul n’équivaut plus à Medium.
+publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection, y compris pour les anciens catalogues et les rangs forcés ; mode5 ne génère pas. Un budget seul n’équivaut plus à Medium.
 Go garde 0,50 USD/M. Les capacités absentes peuvent vider une
 section sans bloquer les autres collectes ni la publication. Chaque section
 conserve models, compteurs, sources et exclusions, avec selection_status

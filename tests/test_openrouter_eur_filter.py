@@ -9,6 +9,24 @@ from test_pllm_free_fallback import row
 
 
 class OpenRouterEurTests(unittest.TestCase):
+    def test_paid_without_medium_is_retained_but_free_without_medium_is_excluded(self):
+        for script in TFL:
+            module = load_script(script)
+            payload = {'data': [
+                {'id': 'paid-no-medium', 'name': 'Paid without Medium', 'context_length': 1_000_000,
+                 'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
+                 'architecture': {'output_modalities': ['text']}},
+                {'id': 'free-no-medium', 'name': 'Free without Medium', 'context_length': 1_000_000,
+                 'pricing': {'prompt': '0', 'completion': '0'},
+                 'architecture': {'output_modalities': ['text']}},
+            ]}
+            rows, excluded = module.build_openrouter_rows(payload, (), exchange_rates=FX)
+            self.assertEqual([row['id'] for row in rows], ['paid-no-medium'])
+            self.assertIsNone(rows[0]['reasoning'])
+            self.assertTrue(rows[0]['reasoning_capabilities'] == {})
+            self.assertEqual(excluded[0]['id'], 'free-no-medium')
+            self.assertEqual(excluded[0]['exclusion_type'], 'reasoning_effort')
+
     def test_non_unit_rate_and_exact_boundary_without_rounding(self):
         for script in (*TFL, *PLLM):
             engine = load_script(script).performance
@@ -86,8 +104,11 @@ class OpenRouterEurTests(unittest.TestCase):
                 module.catalog_candidate(candidate, 'openrouter', 1, 'old', exchange_rates=fx)
             with patch.object(module, 'load_tfl_catalog', return_value={'openrouter': {'models': [candidate]}}), \
                     patch.object(module.performance, 'fetch_eur_rates', return_value=fx), \
+                    patch.object(module, 'get', return_value={'data': [{'id': 'over', 'context_length': 1_000_000,
+                        'pricing': {'prompt': '0.0000002', 'completion': '0.0000002'}}]}), \
                     self.assertRaisesRegex(RuntimeError, 'forcé non admissible'):
-                module.candidates_for({'mode': 'mode5', 'candidate_exclusions': []}, 'paid', None, {'rank': 1})
+                module.candidates_for({'mode': 'mode5', 'candidate_exclusions': []}, 'paid', None,
+                                      {'rank': 1}, key='offline')
 
     def test_tfl_rate_failure_preserves_reports(self):
         import test_tfl_opencode_catalog as fixtures
