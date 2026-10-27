@@ -218,6 +218,9 @@ ne teste ni performance ni Medium ; les autres benchmarks restent obligatoires.
   `is_available=true` ET au moins un `total_balance` utilisable >0.
 - Garder les devises séparées. Validité : réponse complète, TTFT <90 s et
   débit réponse seule >15 tokens/s, en plus du solde utilisable.
+- Vérifier Medium effectif depuis `references/model-evidence.json` et relire
+  ses sources officielles avant génération. Un alias Medium mappé à High
+  reste invalide ; afficher le motif précis et conserver la preuve dans le JSON.
 - Les crédits achetés et la consommation cumulée indisponibles ne remplacent
   jamais le contrôle du solde.
 
@@ -527,12 +530,14 @@ aucun endpoint et ne constitue pas une preuve de performance.
 
 Un contexte non vérifiable impose une analyse et une recherche du LLM pour Go
 et OpenRouter ; un effort non vérifiable impose cette recherche pour les
-candidats benchmarkés. Suivre
+candidats benchmarkés et DeepSeek direct mode7. Suivre
 [le protocole de preuve](references/model-evidence.md). Rechercher les sources
 officielles applicables au fournisseur, à l'ID et au protocole exacts ; tracer
 sources, dates et conclusion. Un contexte encore invérifiable après
 investigation exclut le modèle. Un rapport provisoire ne vaut pas conclusion
 définitive ; si la recherche est bloquée, le signaler sans inventer de capacité.
+Le registre DeepSeek direct réside dans `references/model-evidence.json` ; un
+mapping Medium vers un effort supérieur reste invalide et bloque le benchmark.
 La mise à jour du registre TFL ne réécrit jamais son catalogue à la main.
 Une invocation PLLM seule ne lance pas implicitement TFL : signaler la
 collecte nécessaire si elle n'est pas autorisée. Conserver la restitution

@@ -167,6 +167,17 @@ class ModelEvidenceTests(unittest.TestCase):
                 self.assertIn('DeepSeek mappe medium à high', result['cause'])
                 self.assertEqual(result['performance_test']['attempts'], [])
                 self.assertEqual(result['model_investigations'][0]['status'], 'unsupported')
+                data = {'models': [{**result, 'candidate_results': [result],
+                                    'candidate_exclusions': [], 'selected': False}]}
+                module.sanitize_reasoning_history(data)
+                published = data['models'][0]
+                self.assertEqual(published['model_id'], 'Non évalué')
+                self.assertIn('DeepSeek mappe medium à high', published['cause'])
+                self.assertEqual(published['candidate_results'], [])
+                self.assertEqual(len(published['candidate_exclusions']), 1)
+                self.assertEqual(
+                    published['candidate_exclusions'][0]['model_investigations'][0]['status'],
+                    'unsupported')
 
     def test_provider_model_and_protocol_are_exact_without_cross_borrowing(self):
         for script in TFL:

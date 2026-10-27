@@ -52,8 +52,11 @@ Les preuves TFL et les niveaux reasoning_options publiés sont conservés.
 Seule une capacité Medium vérifiée est admissible pour les benchmarks ; utiliser et tracer les
 paramètres Medium propres au protocole publié. Le mode5 ne requiert que prix/contexte. Toute métadonnée de contexte inconnue impose
 une analyse et une recherche du LLM selon le protocole de preuve du skill,
-quel que soit le fournisseur. Un contexte encore invérifiable après
-investigation exclut le modèle. Respecter la restitution exacte du script.
+quel que soit le fournisseur. Le mode7 conserve sa preuve DeepSeek dans le
+registre de référence du skill. Un alias Medium mappé vers un effort supérieur
+reste invalide ; le diagnostic exact accompagne l'exclusion et aucun benchmark
+n'est envoyé. Un contexte encore invérifiable après investigation exclut le
+modèle. Respecter la restitution exacte du script.
 LM est l'unique liste noire et toutes ses entrées sont retirables.
 
 Les modes 1/2 sont exclusivement payants Go, 3/4 gratuits Go, 5 payants OpenRouter sans benchmark, 6 gratuits OpenRouter benchmarkés et 7 DeepSeek. Une ancienne section opencode ne fournit aucun candidat.

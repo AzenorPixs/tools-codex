@@ -696,3 +696,10 @@ sans contexte vérifiable exclut le modèle, sans inventer de limite.
 tests/test_model_evidence.py couvre les deux catalogues, les conclusions,
 les sources changées, le mapping MiMo et le recontrôle PLLM ; les scénarios
 de déploiement isolé incluent désormais ce module dans chaque paquet.
+
+Le registre PLLM de référence peut aussi contenir le fournisseur `deepseek`
+pour l'identifiant direct du mode7. Une preuve `unsupported` est conservée
+dans les exclusions et sa conclusion apparaît dans la cause de la politique ;
+elle empêche le benchmark. Un alias demandé Medium mais appliqué en High
+reste invalide. Le récupérateur suit uniquement les redirections HTTPS de
+même origine ; toute redirection de confiance différente est refusée.

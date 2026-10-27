@@ -72,3 +72,8 @@ pas l'effort Medium effectif.
 Les preuves ne qualifient ni accès au compte, ni génération, ni performance.
 Conserver tous les autres filtres et tests applicables. Ne lancer aucune
 génération payante simplement pour compléter une preuve documentaire.
+
+Le contrôle du téléchargement accepte une redirection HTTPS uniquement vers
+le même hôte public ; les paramètres de cache ajoutés par ce même hôte ne
+modifient pas l'URL enregistrée. Toute redirection vers un autre hôte, HTTP,
+un port non standard, des identifiants ou un fragment reste bloquée.

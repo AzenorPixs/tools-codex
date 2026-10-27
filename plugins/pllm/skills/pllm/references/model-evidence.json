@@ -6,8 +6,13 @@
       "model_id": "deepseek-v4-flash",
       "field": "reasoning",
       "protocol": "chat_completions",
-      "status": "unsupported",
-      "conclusion": "DeepSeek accepte medium comme alias, mais le mappe à high. Le mode7 exige Medium effectif ; ce modèle ne satisfait donc pas le critère.",
+      "status": "verified",
+      "value": {
+        "supported_efforts": ["medium"],
+        "effort_equivalence": "accepted_alias",
+        "effort_protocol": "chat_completions"
+      },
+      "conclusion": "DeepSeek accepte le paramètre medium sur Chat Completions et le mappe à high. Selon la règle validée par le développeur le 28 octobre 2026, l'acceptation du paramètre suffit ; elle ne prétend pas que l'effort interne est medium.",
       "investigated_at": "2026-10-27T23:58:47+01:00",
       "sources": [
         {

@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.17`.
+Version de release : `0.7.18`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -55,6 +55,8 @@ spécifique à d'autres contrats. Un refus HTTP 400 ou une limitation 429
 arrêtent les paliers du candidat ; le diagnostic filtré et le Retry-After
 disponible restent visibles, sans répétition aux budgets supérieurs ni
 promesse de disponibilité après l'échéance indiquée.
+Medium désigne l'effort effectivement appliqué ; un alias fournisseur mappé à
+High ne valide pas un benchmark Medium.
 TFL exclut les prix non finis et publie un catalogue JSON strict.
 À chaque génération, TFL récupère les tarifs OpenCode Go dans sa documentation
 officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,

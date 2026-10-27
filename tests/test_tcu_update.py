@@ -205,7 +205,7 @@ class TcuUpdateTests(unittest.TestCase):
         def fetch(url):
             return json.dumps({'sha':'a'*40}).encode() if url.endswith('/commits/HEAD') else zip_bytes(files)
         remote = self.m.snapshot(fetch)
-        self.assertEqual(remote['version'],'0.7.17')
+        self.assertEqual(remote['version'],'0.7.18')
         self.assertEqual(remote['plugins'], {'cm','lm','tfl','pllm','prompt','tcu'})
         for name in ('lm','tfl','pllm'):
             self.assertIn('skills/'+name+'/scripts/model_blacklist.py',remote['files'])

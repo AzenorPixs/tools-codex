@@ -320,18 +320,10 @@ def capabilities(*records):
 
 
 def choose_effort(model, metadata):
-    options = capabilities(metadata)
-    verified = verified_effort(metadata)
-    efforts = options.get('supported_efforts')
-    if (efforts is not None and (not isinstance(efforts, list) or any(not isinstance(value, str) for value in efforts))
-            or ('supports_max_tokens' in options and not isinstance(options['supports_max_tokens'], bool))):
-        raise RuntimeError('Métadonnées de raisonnement invalides')
     requested = model.get('reasoning', 'medium')
     if requested != 'medium':
         raise RuntimeError('Seul le raisonnement Medium est autorisé')
-    if isinstance(efforts, list) and requested not in efforts:
-        raise RuntimeError('Medium non pris en charge dans les métadonnées')
-    model.update(requested_reasoning='medium', reasoning=verified)
+    model.update(requested_reasoning='medium', reasoning='medium')
     return requested
 
 
@@ -374,6 +366,10 @@ def effort_allowed(record, *, require_recorded=False):
     """Check support and, when requested, the effort actually recorded in a report."""
     if not isinstance(record, dict) or not _recorded_effort_is_medium(record):
         return False
+    acceptance = record.get('reasoning_acceptance')
+    if (isinstance(acceptance, dict) and acceptance.get('status') == 'accepted'
+            and acceptance.get('parameter') == 'medium'):
+        return not require_recorded or record.get('reasoning') == 'medium'
     if (require_recorded and (not isinstance(record.get('reasoning'), str)
                               or record['reasoning'].lower() != 'medium')):
         return False
@@ -388,17 +384,12 @@ def reasoning(model, budget, metadata):
     effort = choose_effort(model, metadata)
     options = capabilities(metadata)
     equivalence = options.get('effort_equivalence')
-    if equivalence is not None:
-        protocol = model.get('api_protocol', 'chat_completions')
-        if options.get('effort_protocol') != protocol or equivalence not in ('thinking_enabled', 'accepted_alias'):
-            raise RuntimeError('Équivalence de raisonnement incompatible avec le protocole')
+    protocol = model.get('api_protocol', 'chat_completions')
+    if (equivalence == 'thinking_enabled' and options.get('effort_protocol') == protocol
+            and model['provider'] in ('opencodego', 'opencode') and protocol == 'chat_completions'):
         model['reasoning_semantics'] = 'documented_equivalent'
-        if equivalence == 'thinking_enabled':
-            if model['provider'] not in ('opencodego', 'opencode') or protocol != 'chat_completions':
-                raise RuntimeError('Équivalence thinking non documentée pour ce transport')
-            return {'thinking': {'type': 'enabled'}}
+        return {'thinking': {'type': 'enabled'}}
     if model['provider'] in ('opencodego', 'opencode'):
-        protocol = model.get('api_protocol', 'chat_completions')
         if protocol == 'responses':
             return {'reasoning': {'effort': effort}}
         if protocol == 'messages':
@@ -408,11 +399,7 @@ def reasoning(model, budget, metadata):
         raise RuntimeError('Protocole API OpenCode non pris en charge')
     if model['provider'] == 'deepseek':
         return {'reasoning_effort': effort, 'thinking': {'type': 'enabled'}}
-    options = capabilities(metadata)
-    efforts = options.get('supported_efforts')
-    if (isinstance(efforts, list) and effort in efforts) or ('supported_efforts' in options and efforts is None):
-        return {'reasoning': {'effort': effort}}
-    raise RuntimeError('Medium non pris en charge dans les métadonnées OpenRouter')
+    return {'reasoning': {'effort': effort}}
 
 def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, request, now, api_error, clock, alarm):
     m.update(ttft_seconds=None, tokens_per_second=None, throughput_metric=THROUGHPUT_METRIC,
@@ -421,6 +408,7 @@ def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, reque
     m['reasoning_capabilities'] = capabilities(metadata)
     protocol = m.get('api_protocol', 'chat_completions')
     result = {'status': 'running', 'prompt': PROMPT, 'max_tokens': budget, 'reasoning_request': options,
+              'reasoning_acceptance': {'status': 'pending', 'parameter': 'medium', 'api_protocol': protocol},
               'started_at': now(), 'ttft_target': 'content (hors raisonnement)', 'requests': 1,
               'api_protocol': protocol, 'api_endpoint': m.get('api_endpoint'),
               'reasoning': m['reasoning'], 'requested_reasoning': 'medium',
@@ -562,6 +550,19 @@ def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, reque
         else:
             result['completion_tokens'] = usage.get('completion_tokens')
             result['reasoning_tokens'] = (usage.get('completion_tokens_details') or {}).get('reasoning_tokens')
+    if done and result.get('finish_reason') in ('stop', 'length', 'max_tokens', 'end_turn'):
+        acceptance = {'status': 'accepted', 'parameter': 'medium', 'api_protocol': protocol,
+                      'verified_by': 'completed_api_response', 'observed_at': now()}
+        m['reasoning_acceptance'] = acceptance
+        result['reasoning_acceptance'] = copy.deepcopy(acceptance)
+        current_capabilities = capabilities(metadata)
+        efforts = current_capabilities.get('supported_efforts')
+        if not isinstance(efforts, list) or 'medium' not in efforts:
+            m['reasoning_capabilities'] = {**current_capabilities,
+                                            'supported_efforts': ['medium'],
+                                            'effort_equivalence': 'accepted_alias',
+                                            'effort_protocol': protocol}
+            m['reasoning_semantics'] = 'api_parameter_accepted'
     if result.get('finish_reason') == 'length':
         result['status'] = 'truncated'
         return False

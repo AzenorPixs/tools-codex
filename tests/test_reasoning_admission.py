@@ -37,7 +37,7 @@ class ReasoningAdmissionTests(unittest.TestCase):
                         self.assertEqual(engine.reasoning(model, 1024, metadata), parameters)
                         self.assertEqual(model['reasoning'], 'medium')
 
-    def test_high_or_xhigh_only_and_invalid_metadata_are_excluded(self):
+    def test_effort_metadata_does_not_prevent_testing_medium_parameter(self):
         invalid = (None, True, {}, [], [{'type': 'toggle'}], [{'type': 'budget_tokens'}],
                    [{'type': 'effort'}], [{'type': 'effort', 'values': None}],
                    [{'type': 'effort', 'values': 'medium'}],
@@ -54,6 +54,9 @@ class ReasoningAdmissionTests(unittest.TestCase):
                 with self.subTest(script=script, options=options):
                     metadata = {'reasoning': True, 'reasoning_options': options}
                     self.assertFalse(engine.effort_allowed(metadata))
+                    model = {'provider': 'opencodego', 'api_protocol': 'chat_completions'}
+                    self.assertEqual(engine.reasoning(model, 1024, metadata),
+                                     {'reasoning_effort': 'medium'})
             for levels in (['high'], ['xhigh'], ['high', 'xhigh'], ['low'], []):
                 self.assertFalse(engine.effort_allowed(
                     {'reasoning_capabilities': {'supported_efforts': levels}}))
@@ -73,8 +76,9 @@ class ReasoningAdmissionTests(unittest.TestCase):
                 with self.subTest(script=script, options=options):
                     metadata = {'reasoning_capabilities': options}
                     self.assertFalse(engine.effort_allowed(metadata))
-                    with self.assertRaises(RuntimeError):
-                        engine.reasoning({'provider': 'opencodego'}, 1024, metadata)
+                    self.assertEqual(engine.reasoning(
+                        {'provider': 'opencodego', 'api_protocol': 'responses'}, 1024, metadata),
+                        {'reasoning': {'effort': 'medium'}})
 
     def test_go_builder_reads_models_dev_medium_options_before_qualification(self):
         for script in TFL:
@@ -194,8 +198,14 @@ class ReasoningAdmissionTests(unittest.TestCase):
     def test_deepseek_direct_requires_medium_proof(self):
         for script in PLLM:
             module = load_script(script)
-            with self.assertRaisesRegex(RuntimeError, 'Medium'):
-                module.candidates_for({'mode': 'mode7'}, 'paid', None)
+            unsupported = {'provider': 'deepseek', 'model_id': 'deepseek-v4-flash',
+                           'field': 'reasoning', 'protocol': 'chat_completions',
+                           'status': 'unsupported', 'conclusion': 'DeepSeek mappe medium à high.'}
+            with patch.object(module.evidence_module.EvidenceResolver, 'resolve',
+                              return_value=unsupported):
+                candidate = module.candidates_for({'mode': 'mode7'}, 'paid', None)[0]
+            self.assertEqual(candidate['model_id'], 'deepseek-v4-flash')
+            self.assertEqual(candidate['model_investigations'][0]['status'], 'unsupported')
 
 
 if __name__ == '__main__':

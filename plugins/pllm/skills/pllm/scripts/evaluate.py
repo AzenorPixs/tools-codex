@@ -471,18 +471,44 @@ def sanitize_reasoning_history(data):
             if model.get('mode') == 'mode5' or performance.effort_allowed(candidate, require_recorded=True):
                 retained.append(candidate)
             else:
-                exclusions.append({'model_id': candidate.get('model_id'),
-                                   'cause': 'Medium non vérifiable ou non pris en charge'})
+                finding = next((item for item in candidate.get('model_investigations', [])
+                                if item.get('field') == 'reasoning'
+                                and item.get('status') in ('unsupported', 'unverifiable', 'required')), None)
+                attempt = candidate.get('performance_test') or {}
+                reason = (('Medium non pris en charge — ' if finding.get('status') == 'unsupported'
+                           else 'Medium non vérifiable — ') + finding.get('conclusion', '') if finding else
+                          attempt.get('reason') if attempt.get('status') in ('failed', 'truncated') else
+                          'Medium non vérifiable ou non pris en charge')
+                exclusion = {'model_id': candidate.get('model_id'), 'cause': reason}
+                if finding:
+                    exclusion['model_investigations'] = copy.deepcopy(candidate['model_investigations'])
+                exclusions.append(exclusion)
         if 'candidate_results' in model:
             model['candidate_results'] = retained
         identifier = model.get('model_id', model.get('model'))
         if (model.get('mode') != 'mode5' and identifier and identifier != 'Non évalué'
                 and not performance.effort_allowed(model, require_recorded=True)):
-            exclusions.append({'model_id': identifier, 'cause': 'Medium non vérifiable ou non pris en charge'})
+            finding = next((item for item in model.get('model_investigations', [])
+                            if item.get('field') == 'reasoning'
+                            and item.get('status') in ('unsupported', 'unverifiable', 'required')), None)
+            existing = next((item for item in reversed(exclusions)
+                             if item.get('model_id') == identifier), None)
+            if existing:
+                reason = existing['cause']
+            else:
+                attempt = model.get('performance_test') or {}
+                reason = (('Medium non pris en charge — ' if finding and finding.get('status') == 'unsupported'
+                           else 'Medium non vérifiable — ') + finding.get('conclusion', '') if finding else
+                          attempt.get('reason') if attempt.get('status') in ('failed', 'truncated') else
+                          'Medium non vérifiable ou non pris en charge')
+                exclusion = {'model_id': identifier, 'cause': reason}
+                if finding:
+                    exclusion['model_investigations'] = copy.deepcopy(model['model_investigations'])
+                exclusions.append(exclusion)
             model.update(state='Invalide', selected=False, model='Non évalué', model_id='Non évalué',
-                         cause='Aucun candidat avec Medium vérifiable',
+                         cause=reason,
                          ttft_seconds=None, tokens_per_second=None, last_successful_max_tokens=None,
-                         performance_test={'status': 'not_run', 'reason': 'Medium non vérifiable'})
+                         performance_test={'status': 'not_run', 'reason': reason})
 
 
 def publish(d, active=False, forced_mode=None):
@@ -771,7 +797,7 @@ def catalog_candidate(row, section, rank, generated_at, *, enforce_blacklist=Tru
         raise RuntimeError('Sortie TFL non admissible')
     if enforce_blacklist:
         blacklist.require_allowed(row['id'])
-    effort = performance.verified_effort(row) if require_medium else None
+    effort = 'medium' if require_medium else None
     if section == 'openrouter':
         prices = (finite(row['input_price']), finite(row['output_price']))
         exact_prices = performance.native_openrouter_prices(row)
@@ -821,7 +847,7 @@ def candidates_for(model, category, catalog_path, forced=None, key=None):
         candidate = {'model_id': 'deepseek-v4-flash', 'model': 'deepseek-v4-flash',
                  'provider': 'deepseek', 'throughput_scope': 'response_only',
                  'api_protocol': 'chat_completions', 'api_endpoint': 'https://api.deepseek.com/chat/completions',
-                 'is_free': False}
+                 'is_free': False, 'reasoning': 'medium'}
         evidence = evidence_module.EvidenceResolver(
             (ROOT / 'references/model-evidence.json',)).resolve(
                 'deepseek', candidate['model_id'], 'reasoning', candidate['api_protocol'])
@@ -930,9 +956,11 @@ def evaluate_candidate(model, key, category, memory, session_id):
     model.update(throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
                  measurement_protocol_version=performance.MEASUREMENT_PROTOCOL_VERSION)
     try:
-        evidence_module.recheck_findings(model.get('model_investigations', []),
-                                        'opencode_go' if model['provider'] == 'opencodego' else model['provider'],
-                                        model['model_id'], model.get('api_protocol', 'chat_completions'))
+        findings = [finding for finding in model.get('model_investigations', [])
+                    if finding.get('field') == 'context']
+        evidence_module.recheck_findings(findings,
+                                         'opencode_go' if model['provider'] == 'opencodego' else model['provider'],
+                                         model['model_id'], model.get('api_protocol', 'chat_completions'))
         metadata = {'reasoning_capabilities': model.get('reasoning_capabilities', {})}
         if model['provider'] == 'openrouter':
             metadata = next((item for item in get('https://openrouter.ai/api/v1/models', key)['data']
@@ -943,7 +971,6 @@ def evaluate_candidate(model, key, category, memory, session_id):
                     and 'supported_efforts' not in performance.capabilities(metadata)):
                 metadata = {**metadata, 'reasoning_capabilities': model['reasoning_capabilities']}
         model['reasoning_capabilities'] = performance.capabilities(metadata)
-        performance.verified_effort(metadata)
         if model['provider'] == 'openrouter':
             # Réappliquer le plafond à la frontière de génération, même pour un appel direct.
             source = model.get('model_source') or {}

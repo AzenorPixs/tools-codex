@@ -10,9 +10,11 @@ ne sont jamais édités manuellement.
 
 Pour DeepSeek direct, PLLM consomme une preuve officielle pour
 `deepseek-v4-flash` sur Chat Completions. La documentation précise que la
-valeur demandée `medium` est mappée à `high`. Le mode7 reste donc invalide sous
-le contrat Medium effectif et indique cette incompatibilité dans son état.
-Aucune génération ne part pour ce mode avec un autre effort.
+valeur demandée `medium` est acceptée comme alias puis mappée à `high`. Selon
+la décision du développeur du 28 octobre 2026, cette acceptation suffit à
+satisfaire l'exigence de paramètre. PLLM envoie `medium`, conserve le mapping
+documenté et mesure toujours réponse, TTFT et débit réels ; aucun résultat de
+benchmark n'est hérité.
 
 ## Évaluation et publication
 

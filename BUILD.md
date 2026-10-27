@@ -157,6 +157,9 @@ fournisseur restent applicables aux gratuits ; les tests hors ligne ne prouvent 
 Les diagnostics HTTP 400/429 et le Retry-After disponible figurent dans les
 rapports PLLM sans corps d'erreur brut. Les refus HTTP 400/429 n'entraînent plus d'essais aux
 budgets supérieurs ; une limitation conserve ses contraintes fournisseur.
+Un alias Medium mappé par le fournisseur vers High reste invalide ; le
+diagnostic exact et la preuve d'exclusion restent dans le JSON. Le mode7
+recontrôle son registre DeepSeek avant toute génération.
 Les champs JSON de diagnostic restent conservés ; l'adaptation des historiques
 PLLM est automatique et ne nécessite aucun nouveau secret.
 Les tests hors ligne couvrent des emplacements isolés ; un test réel

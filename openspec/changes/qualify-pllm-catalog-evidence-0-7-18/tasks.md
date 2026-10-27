@@ -3,8 +3,8 @@
 - [ ] 1.1 Valider le delta TFL/PLLM/release avec OpenSpec ciblé.
 - [ ] 1.2 Ajouter et vérifier les preuves officielles Medium pour les modèles
       et transports OpenCode Go applicables.
-- [ ] 1.3 Ajouter la preuve DeepSeek indiquant le mapping Medium vers High et
-      la tracer dans le diagnostic mode7.
+- [ ] 1.3 Tracer l'acceptation DeepSeek de Medium comme alias High et mesurer
+      réellement le mode7 sans prétendre que l'effort interne est Medium.
 
 ## 2. Alignement des distributions
 
