@@ -471,16 +471,16 @@ def sanitize_reasoning_history(data):
                 retained.append(candidate)
             else:
                 exclusions.append({'model_id': candidate.get('model_id'),
-                                   'cause': 'HIGH/XHIGH non vérifiable ou non pris en charge'})
+                                   'cause': 'Medium non vérifiable ou non pris en charge'})
         if 'candidate_results' in model:
             model['candidate_results'] = retained
         identifier = model.get('model_id', model.get('model'))
         if identifier and identifier != 'Non évalué' and not performance.effort_allowed(model):
-            exclusions.append({'model_id': identifier, 'cause': 'HIGH/XHIGH non vérifiable ou non pris en charge'})
+            exclusions.append({'model_id': identifier, 'cause': 'Medium non vérifiable ou non pris en charge'})
             model.update(state='Invalide', selected=False, model='Non évalué', model_id='Non évalué',
-                         cause='Aucun candidat avec HIGH/XHIGH vérifiable',
+                         cause='Aucun candidat avec Medium vérifiable',
                          ttft_seconds=None, tokens_per_second=None, last_successful_max_tokens=None,
-                         performance_test={'status': 'not_run', 'reason': 'HIGH/XHIGH non vérifiable'})
+                         performance_test={'status': 'not_run', 'reason': 'Medium non vérifiable'})
 
 
 def publish(d, active=False, forced_mode=None):
@@ -660,7 +660,7 @@ def initial_model(priority, provider):
     mode = f'mode{priority}'
     ttft, throughput = performance_limits({'mode': mode})
     return {'mode': mode, 'priority': priority, 'provider': provider,
-            'model': 'Non évalué', 'reasoning': 'high', 'state': 'Invalide',
+            'model': 'Non évalué', 'reasoning': 'medium', 'state': 'Invalide',
             'condition': f'TTFT < {ttft} s ET tokens/s > {throughput} ET ' + (
                 'gratuité vérifiée ET contexte >= 1M' if mode in FREE_MODES else
                 'candidat payant ET solde > 0' if mode == 'mode5' else
@@ -878,21 +878,9 @@ def evaluate_candidate(model, key, category, memory, session_id):
             check_category(model, key, category)
             stage = 'performance'
             model.update(ttft_seconds=None, tokens_per_second=None,
-                         performance_test={'status': 'not_run', 'max_tokens': budget, 'requests': 0, 'reasoning': model.get('reasoning', 'high')})
+                         performance_test={'status': 'not_run', 'max_tokens': budget, 'requests': 0, 'reasoning': model.get('reasoning', 'medium')})
             try:
-                try:
-                    complete = benchmark(model, key, budget, metadata, session_id=session_id)
-                except (urllib.error.HTTPError, ApiFailure) as error:
-                    diagnostic = http_diagnostic(error)
-                    if not performance.can_retry_xhigh(model, metadata, diagnostic):
-                        raise
-                    attempts.append({**copy.deepcopy(model['performance_test']), 'status': 'failed',
-                                     'http_error': copy.deepcopy(diagnostic), 'reasoning': 'high'})
-                    model['reasoning'] = 'xhigh'
-                    pending = list(budgets_for(model, memory))
-                    budget = pending.pop(0)
-                    check_category(model, key, category)
-                    complete = benchmark(model, key, budget, metadata, session_id=session_id)
+                complete = benchmark(model, key, budget, metadata, session_id=session_id)
                 if not complete:
                     raise RuntimeError('Budget du test épuisé : mesure inconclusive')
                 ttft = finite(model['ttft_seconds'])
@@ -959,7 +947,7 @@ def main(active=False, forced=None, tfl_catalog=None):
         if forced and model['mode'] != forced['mode']:
             continue
         model.update(evaluated_this_run=True, state='Invalide', cause='', selected=False,
-                     provider=provider, model='Non évalué', model_id='Non évalué', reasoning='high',
+                     provider=provider, model='Non évalué', model_id='Non évalué', reasoning='medium',
                      ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
                      last_successful_max_tokens=None, selection_category=None,
                      throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,

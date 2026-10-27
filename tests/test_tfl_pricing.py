@@ -41,7 +41,7 @@ def document(rows):
 def general_fixture(module):
     return (
         {'retrieved_at': '2026-10-25T01:00:00+02:00',
-         'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'general-model', 'context_length': 1_000_000}]},
+         'data': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'general-model', 'context_length': 1_000_000}]},
         {'source': module.CONTEXT_METADATA_URL, 'provider_id': 'opencode',
          'models_api': module.OPENCODE_API_URL, 'retrieved_at': '2026-10-25T01:00:00+02:00',
          'provider': {'api': 'https://opencode.ai/general-fixture/v1', 'npm': '@ai-sdk/openai-compatible'},
@@ -70,12 +70,12 @@ class PricingTests(unittest.TestCase):
                 'models': module.parse_go_pricing(document(rows))}
 
     def payload(self, model_id='minimax-m3.1-flash'):
-        return {'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': model_id, 'context_length': 1_000_000}]}
+        return {'data': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': model_id, 'context_length': 1_000_000}]}
 
     def openrouter(self, module):
         return {'pricing_source': module.OPENROUTER_API_URL,
                 'pricing_retrieved_at': '2026-10-25T01:00:01+02:00',
-                'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': model_id, 'context_length': 1_000_000,
+                'data': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': model_id, 'context_length': 1_000_000,
                           'architecture': {'output_modalities': ['text']},
                           'pricing': {'prompt': '0.00000003', 'completion': '0.00000013',
                                       'input_cache_read': '0.000000006'}}
@@ -191,7 +191,7 @@ class PricingTests(unittest.TestCase):
                     self.pricing(module, [('Model X', '$0.1', '$0.2', '-', '-'),
                                           ('Model-X', '$0.1', '$0.2', '-', '-')])
                 payload = self.payload()
-                payload['data'].append({'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'minimax_m3.1_flash', 'context_length': 1_000_000})
+                payload['data'].append({'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'minimax_m3.1_flash', 'context_length': 1_000_000})
                 with self.assertRaisesRegex(RuntimeError, 'plusieurs identifiants'):
                     module.build_rows(payload, {}, self.pricing(module))
 
@@ -300,7 +300,7 @@ class PricingTests(unittest.TestCase):
 
     def test_dynamic_catalog_keeps_new_free_and_boundary_models_with_audited_exclusions(self):
         def model(model_id, **changes):
-            value = {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': model_id, 'context_length': 1_000_000,
+            value = {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': model_id, 'context_length': 1_000_000,
                      'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
                      'architecture': {'input_modalities': ['text'], 'output_modalities': ['text']}}
             value.update(changes)

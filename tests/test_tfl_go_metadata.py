@@ -23,10 +23,10 @@ class GoMetadataTests(unittest.TestCase):
         return [(path, load_script(path)) for path in SCRIPTS]
 
     def fixture(self, module, model_id='new-model', sdk='@ai-sdk/openai-compatible'):
-        payload = {'retrieved_at': API_DATE, 'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': model_id, 'context_length': 1_000_000}]}
+        payload = {'retrieved_at': API_DATE, 'data': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': model_id, 'context_length': 1_000_000}]}
         metadata = {'source': module.CONTEXT_METADATA_URL, 'retrieved_at': METADATA_DATE,
                     'provider': {'npm': sdk, 'api': 'https://opencode.ai/published-base/v9'},
-                    'models': {model_id: {'reasoning': {'supported_efforts': ['high']}, 'limit': {'context': 1_000_000},
+                    'models': {model_id: {'reasoning': {'supported_efforts': ['medium']}, 'limit': {'context': 1_000_000},
                                           'modalities': {'input': ['text', 'image', 'video'],
                                                          'output': ['text']}}}}
         pricing = {'source': module.SOURCE_URL, 'retrieved_at': METADATA_DATE,

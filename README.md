@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.13`.
+Version de release : `0.7.14`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -35,7 +35,7 @@ Les six politiques sont évaluées par priorité :
 
 Les payants gardent TTFT <90 s et débit >15 tokens/s ; tous les gratuits,
 y compris le repli OpenRouter de 5, exigent <30 s et >20 tokens/s. Les filtres TFL,
-HIGH/XHIGH autorisé, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
+Medium, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
 aux limitations fournisseur. Essayer les payants 1/2/5 par coût moyen TFL
 croissant (hors pointe Go, base OpenRouter), avec ordre TFL à prix égal.
 Essayer les gratuits 3/4 dans l'ordre TFL Go exclusivement. Retenir le premier
@@ -44,8 +44,8 @@ succès aux tests actuels et ne pas tester les suivants du mode ; après un
 1 à 6 restent inchangées. En invocation normale, poursuivre les politiques ;
 active s'arrête à la première valide. Le contexte ≥1M est une capacité
 d'entrée vérifiée, sans envoi d'un million de tokens pendant le benchmark.
-Tous les benchmarks demandent HIGH ; XHIGH est le seul repli autorisé si
-HIGH est indisponible et XHIGH pris en charge. Les tokens/s représentent désormais une moyenne sur la requête complète,
+Tous les benchmarks demandent Medium ; aucun repli vers HIGH ou XHIGH n'est
+autorisé. Les tokens/s représentent désormais une moyenne sur la requête complète,
 attente et TTFT inclus, sans extrapolation entre fragments reçus. Le protocole
 8 conserve la portée de comptage Go ou OpenRouter/DeepSeek, trace la
 durée non arrondie et sépare les anciens succès en mémoire. Une réponse
@@ -57,8 +57,8 @@ commencent sans mesure ni apprentissage. Un fichier corrompu est préservé.
 Le schéma 2 nécessite une copie des anciennes données pour revenir à l'ancien
 évaluateur. Les forçages OpenRouter 31–33 deviennent 51–53 ; 31–33 et 41–43
 ciblent désormais la liste gratuite admissible des nouveaux modes 3/4.
-Pour Chat Completions OpenCode, HIGH est envoyé sans le paramètre thinking
-spécifique à d'autres contrats. Hors le repli d'effort XHIGH autorisé, les refus HTTP 400 et les limitations 429
+Pour Chat Completions OpenCode, Medium est envoyé sans le paramètre thinking
+spécifique à d'autres contrats. Un refus HTTP 400 ou une limitation 429
 arrêtent les paliers du candidat ; le diagnostic filtré et le Retry-After
 disponible restent visibles, sans répétition aux budgets supérieurs ni
 promesse de disponibilité après l'échéance indiquée.
@@ -68,8 +68,8 @@ officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,
 la date et les variantes tarifaires. Une collecte indispensable en échec
 préserve les rapports précédents sans reprendre silencieusement leurs prix.
 La sélection OpenRouter examine tout le catalogue API sans liste prédéfinie :
-contexte ≥ 1M, coût moyen de base ≤0,20 EUR/M au taux BCE vérifié, HIGH/XHIGH vérifiable, sorties admissibles et blacklist.
-Les gratuits vérifiés doivent aussi réussir les tests HIGH/XHIGH : réponse
+contexte ≥ 1M, coût moyen de base ≤0,20 EUR/M au taux BCE vérifié, Medium vérifiable, sorties admissibles et blacklist.
+Les gratuits vérifiés doivent aussi réussir les tests Medium : réponse
 complète, TTFT <30 s et débit >20 tokens/s. Les échecs sont retirés de models
 et leurs preuves sont conservées dans les exclusions JSON. Un nouveau modèle admissible apparaît sans modification du code.
 Pour OpenCode Go, modalités et routage sont également collectés depuis les
@@ -79,10 +79,10 @@ une contradiction ou une URL de routage non sûre bloque la publication.
 Une route documentée reste distincte d'un test réel de génération : les
 gratuits TFL sont désormais testés, les payants restent un catalogue tarifaire.
 Le rapport comprend deux tableaux fournisseurs : OpenCode Go puis OpenRouter,
-suivis du tableau détaillé des tests gratuits admissibles à HIGH/XHIGH.
+suivis du tableau détaillé des tests gratuits admissibles à Medium.
 OpenCode général n'est plus collecté, testé ou publié. Le JSON contient
 seulement opencode_go et openrouter. Les deux catalogues exigent contexte ≥1M
-et HIGH/XHIGH vérifiable ; Go conserve ≤0,50 USD/M et OpenRouter ≤0,20 EUR/M
+et Medium vérifiable ; Go conserve ≤0,50 USD/M et OpenRouter ≤0,20 EUR/M
 au dernier taux BCE publié. Les modes PLLM 1/2 utilisent exclusivement les
 payants Go et 3/4 les gratuits Go, anciens catalogues et rangs forcés compris.
 TFL ne consulte aucun quota pour ses tests gratuits. Une sélection vide après
@@ -149,8 +149,9 @@ interne TFL/PLLM ne subsiste.
 Pour les deux catalogues, un effort ou un contexte inconnu impose une
 analyse et une recherche du LLM dans les sources officielles. Un contexte
 encore invérifiable après investigation exclut le modèle. Les valeurs
-HIGH/XHIGH officiellement acceptées sont admissibles même équivalentes,
-comme pour MiMo ; les sources, dates et paramètres effectifs sont tracés.
+Medium doit être explicitement déclaré ou couvert par un `null` explicite ;
+une ancienne preuve HIGH/XHIGH seule ne suffit plus. Les sources, dates et
+paramètres effectifs sont tracés.
 Le générateur marque les investigations en attente et son rapport provisoire.
 Le [guide des preuves](skills/tfl/references/model-evidence.md) décrit le registre
 complémentaire et ses contrôles. Les seuils existants restent inchangés.

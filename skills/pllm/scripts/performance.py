@@ -324,17 +324,12 @@ def choose_effort(model, metadata):
     if (efforts is not None and (not isinstance(efforts, list) or any(not isinstance(value, str) for value in efforts))
             or ('supports_max_tokens' in options and not isinstance(options['supports_max_tokens'], bool))):
         raise RuntimeError('Métadonnées de raisonnement invalides')
-    requested = model.get('reasoning', 'high')
-    if requested not in ('high', 'xhigh'):
-        raise RuntimeError('Raisonnement autorisé : HIGH ou XHIGH uniquement')
+    requested = model.get('reasoning', 'medium')
+    if requested != 'medium':
+        raise RuntimeError('Seul le raisonnement Medium est autorisé')
     if isinstance(efforts, list) and requested not in efforts:
-        if requested == 'high' and 'xhigh' in efforts:
-            requested = 'xhigh'
-        else:
-            raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées')
-    if requested == 'high':
-        requested = verified
-    model.update(requested_reasoning='high', reasoning=requested)
+        raise RuntimeError('Medium non pris en charge dans les métadonnées')
+    model.update(requested_reasoning='medium', reasoning=verified)
     return requested
 
 
@@ -344,17 +339,15 @@ def verified_effort(*records):
     if 'supports_max_tokens' in options and not isinstance(options['supports_max_tokens'], bool):
         raise RuntimeError('Métadonnées de raisonnement invalides')
     if 'supported_efforts' not in options:
-        raise RuntimeError('HIGH/XHIGH non vérifiable : métadonnées d’effort absentes')
+        raise RuntimeError('Medium non vérifiable : métadonnées d’effort absentes')
     efforts = options['supported_efforts']
     if efforts is None:
-        return 'high'
+        return 'medium'
     if not isinstance(efforts, list) or any(not isinstance(value, str) for value in efforts):
         raise RuntimeError('Métadonnées de raisonnement invalides')
-    if 'high' in efforts:
-        return 'high'
-    if 'xhigh' in efforts:
-        return 'xhigh'
-    raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées')
+    if 'medium' in efforts:
+        return 'medium'
+    raise RuntimeError('Medium non pris en charge dans les métadonnées')
 
 
 def effort_allowed(record):
@@ -393,13 +386,7 @@ def reasoning(model, budget, metadata):
     efforts = options.get('supported_efforts')
     if (isinstance(efforts, list) and effort in efforts) or ('supported_efforts' in options and efforts is None):
         return {'reasoning': {'effort': effort}}
-    raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées OpenRouter')
-
-
-def can_retry_xhigh(model, metadata, diagnostic):
-    return (model.get('reasoning') == 'high' and diagnostic.get('http_status') == 400
-            and diagnostic.get('parameter') in ('reasoning_effort', 'reasoning.effort', 'output_config.effort')
-            and 'xhigh' in (capabilities(metadata).get('supported_efforts') or []))
+    raise RuntimeError('Medium non pris en charge dans les métadonnées OpenRouter')
 
 def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, request, now, api_error, clock, alarm):
     m.update(ttft_seconds=None, tokens_per_second=None, throughput_metric=THROUGHPUT_METRIC,
@@ -410,7 +397,7 @@ def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, reque
     result = {'status': 'running', 'prompt': PROMPT, 'max_tokens': budget, 'reasoning_request': options,
               'started_at': now(), 'ttft_target': 'content (hors raisonnement)', 'requests': 1,
               'api_protocol': protocol, 'api_endpoint': m.get('api_endpoint'),
-              'reasoning': m['reasoning'], 'requested_reasoning': 'high',
+              'reasoning': m['reasoning'], 'requested_reasoning': 'medium',
               'throughput_metric': THROUGHPUT_METRIC, 'throughput_window': THROUGHPUT_WINDOW,
               'measurement_protocol_version': MEASUREMENT_PROTOCOL_VERSION}
     if m['provider'] in ('opencodego', 'opencode'):

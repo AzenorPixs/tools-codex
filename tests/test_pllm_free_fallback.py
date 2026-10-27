@@ -17,7 +17,7 @@ from test_extension_qualification import load_script, ROOT, PLLM
 
 def row(name, section='opencode_go', free=False):
     price = 0 if free else 0.1
-    result = {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': name, 'context_length': 1_000_000, 'output_modalities': ['text']}
+    result = {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': name, 'context_length': 1_000_000, 'output_modalities': ['text']}
     if section == 'openrouter':
         result.update(input_price=price, output_price=price)
     else:
@@ -89,7 +89,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             model['performance_test']['status'] = 'completed' if complete else 'truncated'
             return complete
 
-        metadata = [{'id': item['id'], 'reasoning': {'supported_efforts': ['high']}}
+        metadata = [{'id': item['id'], 'reasoning': {'supported_efforts': ['medium']}}
                     for item in json.loads(path.read_text())['openrouter']['models']]
         with ExitStack() as stack:
             stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
@@ -366,7 +366,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             model = {'mode': 'mode1', 'model_id': 'fixture', 'provider': 'opencode',
                      'api_protocol': 'responses', 'api_endpoint': 'https://opencode.ai/zen/v1/responses'}
             with patch.object(module, 'request', return_value=stream), self.assertRaises(module.AuthenticationFailure) as error:
-                module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['high']}}, session_id='fixture')
+                module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['medium']}}, session_id='fixture')
             self.assertIn('HTTP 401', str(error.exception))
             self.assertNotIn('private-message', str(error.exception))
 
@@ -405,11 +405,11 @@ class PllmFreeFallbackTests(unittest.TestCase):
                          'api_protocol': 'responses', 'api_endpoint': 'https://opencode.ai/zen/v1/responses'}
                 with patch.object(module, 'request', return_value=stream) as request, \
                         patch.object(module.time, 'monotonic', side_effect=(0, 1, 2, 3, 4, 5)):
-                    self.assertTrue(module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['high']}}, session_id='stable-fixture'))
+                    self.assertTrue(module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['medium']}}, session_id='stable-fixture'))
                 self.assertEqual(model['ttft_seconds'], 2)
                 self.assertEqual(model['tokens_per_second'], 20.2)
                 self.assertEqual(model['throughput_scope'], 'reasoning_and_response')
-                self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'high'})
+                self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'medium'})
                 self.assertEqual(request.call_args.kwargs['extra_headers']['x-opencode-session'], 'stable-fixture')
                 self.assertNotIn('stable-fixture', json.dumps(model))
 
@@ -427,10 +427,10 @@ class PllmFreeFallbackTests(unittest.TestCase):
             with patch.object(module, 'request', return_value=stream) as request, \
                     patch.object(module.time, 'monotonic', side_effect=(0, 1, 2, 3, 4, 5)):
                 self.assertTrue(module.benchmark(model, 'offline-fixture', 1024,
-                                                {'reasoning': {'supported_efforts': ['high']}}))
+                                                {'reasoning': {'supported_efforts': ['medium']}}))
             self.assertEqual(model['tokens_per_second'], 4.2)
             self.assertEqual(model['throughput_scope'], 'response_only')
-            self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'high'})
+            self.assertEqual(request.call_args.args[2]['reasoning'], {'effort': 'medium'})
             self.assertNotIn('provider', request.call_args.args[2])
 
     def test_success_does_not_check_quota_for_next_candidate(self):
@@ -484,11 +484,11 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark' and event[1] == 'mode1'], ['paid-a'])
             self.assertEqual(data['selected_mode'], 'mode3')
 
-    def test_high_incompatible_metadata_prevents_generation(self):
+    def test_medium_incompatible_metadata_prevents_generation(self):
         for script in PLLM:
             module, _, _ = self.workspace(script)
             model = {'mode': 'mode5', 'provider': 'openrouter', 'model_id': 'fixture'}
-            with patch.object(module, 'request') as request, self.assertRaisesRegex(RuntimeError, 'HIGH et XHIGH non pris en charge'):
+            with patch.object(module, 'request') as request, self.assertRaisesRegex(RuntimeError, 'Medium non pris en charge'):
                 module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['low']}})
             request.assert_not_called()
 

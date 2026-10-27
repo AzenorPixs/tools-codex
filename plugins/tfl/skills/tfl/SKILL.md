@@ -127,7 +127,7 @@ jamais être présenté comme un appel de génération réussi. Un gratuit reten
 après une génération complète reçoit generation_tested=true avec ses preuves.
 
 Pour `responses`, le corps utilise `input`, `max_output_tokens`, `stream=true`,
-`store=false` et `reasoning.effort=high`. Pour `chat_completions`, il utilise
+`store=false` et `reasoning.effort=medium`. Pour `chat_completions`, il utilise
 `messages` et `max_tokens`. Toute requête OpenCode Go de complétion doit porter
 `x-opencode-session`. Une route absente ou inconnue doit être signalée et ne
 doit pas être remplacée silencieusement par une autre.
@@ -201,12 +201,11 @@ candidat gratuit avec scripts/performance.py, moteur local embarqué identique
 utilise la réponse seule. Aucune mesure commerciale ou historique ne valide
 la collecte courante.
 
-Tous les tests demandent HIGH ; XHIGH est le seul repli autorisé si HIGH est
-indisponible et XHIGH publié. Chat Completions utilise reasoning_effort,
-Responses reasoning.effort, Messages thinking adaptive et output_config.effort.
-OpenRouter exige une déclaration vérifiable de HIGH ou XHIGH ; un budget seul est exclu. Aucun repli Low/Medium. Un refus 400 propre à l'effort
-permet au plus un passage XHIGH annoncé, avec recalcul des paliers ; 401/403/429
-arrêtent le candidat. Les paliers sont 1024, 2048, 4096, 8192, 120 s par requête,
+Tous les tests demandent Medium, sans repli vers HIGH ou XHIGH. Chat Completions
+utilise reasoning_effort, Responses reasoning.effort, Messages thinking
+adaptive et output_config.effort. OpenRouter exige une déclaration vérifiable
+de Medium ; un budget seul est exclu. Un refus 400 propre à l'effort, comme
+401/403/429, arrête le candidat. Les paliers sont 1024, 2048, 4096, 8192, 120 s par requête,
 arrêt au premier succès. Le niveau effectif et les paramètres sont tracés.
 
 Les tests gratuits n'appellent jamais quota, crédit ou solde. Go
@@ -280,27 +279,28 @@ rapport manuel valide empêche encore le lancement planifié de PLLM ; aucune
 section générale opencode n’est exigée.
 
 
-## Admission stricte HIGH/XHIGH
+## Admission stricte Medium
 
-Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
-vérifiable avant test, sélection et affichage. Une liste supported_efforts
-contenant high/xhigh ou un null explicitement publié (tous les efforts) est
-admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
-budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
+avant test, sélection et affichage. Une liste supported_efforts contenant
+medium ou un null explicitement publié (tous les efforts) est admissible. Une
+clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
+ou un budget seul ne suffit pas. Aucun repli vers HIGH ou XHIGH n'est autorisé.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
 publiée explicitement avec ses exclusions et ne bloque pas les autres sections.
 
 Les niveaux publiés dans `reasoning_options` (type=effort, values) sont des
-preuves. HIGH/XHIGH officiellement acceptés restent admissibles même sans
-intensité distincte : tracer l'équivalence et envoyer les paramètres documentés
-du protocole utilisé, comme thinking.type=enabled pour l'équivalence MiMo.
+preuves. Medium officiellement accepté reste admissible même sans intensité
+distincte : tracer l'équivalence et envoyer les paramètres documentés du
+protocole utilisé, comme thinking.type=enabled pour une équivalence documentée.
+Une preuve historique HIGH/XHIGH seule ne prouve pas Medium.
 Une valeur absente, un budget ou un interrupteur seul n'invente pas cette preuve.
 
 ## Investigation obligatoire des efforts et contextes
 
-Pour tous les fournisseurs, « HIGH/XHIGH non vérifiable » ou « contexte non
+Pour tous les fournisseurs, « Medium non vérifiable » ou « contexte non
 vérifiable » impose une analyse et une recherche du LLM dans les sources
 officielles. Suivre [le protocole de preuve](references/model-evidence.md),
 compléter les conclusions sourcées dans le répertoire du rapport et relancer
@@ -319,7 +319,7 @@ inclus. Une source, une date ou un taux absent, invalide ou inaccessible bloque
 la publication sans repli historique. Conserver prix natifs USD, prix EUR,
 source, date de publication et date de récupération dans le JSON. Les prix
 OpenRouter affichés sont en €/M ; le taux daté accompagne le tableau.
-Go garde le plafond 0,50 USD/M. Le filtre HIGH/XHIGH s’applique
+Go garde le plafond 0,50 USD/M. Le filtre Medium s’applique
 avant benchmark aux gratuits et payants ; les exclus d’effort sont absents
 de tous les tableaux mais restent dans les audits JSON.
 

@@ -34,13 +34,13 @@ class GeneralOpenCodeTests(unittest.TestCase):
             policy_option=None, policy='auto', timeout=1, output_dir=output)))
         stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
         stack.enter_context(patch.object(module, 'fetch_models', return_value={
-            'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'go-only', 'context_length': 1_000_000}]}))
+            'data': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'go-only', 'context_length': 1_000_000}]}))
         stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value=go_metadata))
         stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=go_pricing))
         mock_general_collection(module, stack)
         stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value={
             'pricing_source': module.OPENROUTER_API_URL, 'pricing_retrieved_at': metadata['retrieved_at'],
-            'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'router-only', 'context_length': 1_000_000,
+            'data': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'router-only', 'context_length': 1_000_000,
                       'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
                       'architecture': {'output_modalities': ['text']}}]}))
 
@@ -162,7 +162,7 @@ class GeneralOpenCodeTests(unittest.TestCase):
             with self.subTest(path=path):
                 payload, metadata, pricing = general_fixture(module)
                 payload['data'].extend([{'id': 'muse-spark-1.2-contributor'},
-                                        {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'audio-model', 'context_length': 1_000_000}])
+                                        {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'audio-model', 'context_length': 1_000_000}])
                 metadata['models']['audio-model'] = {'modalities': {'output': ['text', 'audio']}}
                 pricing['models'] = module.parse_go_pricing(document([
                     ('General Model', '$0.1', '$0.2', '-', '-'),

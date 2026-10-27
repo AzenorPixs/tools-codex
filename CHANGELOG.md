@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Basculer TFL et PLLM vers Medium : exiger une preuve explicite, envoyer Medium sur chaque transport et arrêter les candidats sans repli High/XHigh. Conserver les anciennes mesures comme historique et aligner la release commune sur 0.7.14.
+- Aligner VERSION, pyproject.toml, README et les six plugins sur 0.7.14.
 - Déclarer les six commandes CM, PLLM, TFL, TCU, LM et PROMPT en majuscules dans leurs fichiers sources, déclencheurs et libellés ; compléter les métadonnées CM/PROMPT et conserver les identifiants techniques ainsi que les anciens alias.
 - Adapter TCU aux nouveaux noms et aux copies historiques avec leurs reçus : créer seulement le nouveau wrapper PROMPT.md absent, actualiser les copies existantes sans doublon ni renommage, préserver liens, modifications locales et sauvegardes. Les liens personnels vers les anciens chemins sources nécessitent une réorientation explicite.
 - Aligner VERSION, pyproject.toml, README et les six plugins sur 0.7.13. Cette correction des sources ne migre pas les profils installés et ne lance aucun benchmark fournisseur.

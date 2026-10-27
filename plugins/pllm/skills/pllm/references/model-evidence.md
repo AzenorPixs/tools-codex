@@ -14,10 +14,11 @@ d'une incapacité.
    d'abord le catalogue actuel et `reasoning_options` de models.dev, puis la
    documentation officielle du fournisseur ou du créateur du modèle. Vérifier
    l'applicabilité au service et au protocole réellement utilisés.
-2. Pour l'effort, chercher les valeurs officiellement acceptées de HIGH/XHIGH.
-   Leur équivalence à d'autres niveaux ou à l'activation du raisonnement est
-   admissible si elle est documentée. Tracer ce sens ; ne pas prétendre une
-   intensité distincte et ne pas considérer un HTTP 200 seul comme une preuve.
+2. Pour l'effort, chercher la prise en charge officielle de Medium. Une preuve
+   historique HIGH/XHIGH seule ne valide pas Medium. Son équivalence à
+   l'activation du raisonnement est admissible si elle est documentée. Tracer
+   ce sens ; ne pas prétendre une intensité distincte ni considérer un HTTP 200
+   seul comme une preuve.
 3. Pour le contexte, chercher une capacité chiffrée applicable au fournisseur.
    Ne pas déduire sa taille d'un prix, du nom du modèle ou d'un autre service.
    Le seuil reste 1 000 000 tokens. Aucune requête de cette taille n'est nécessaire.
@@ -43,16 +44,18 @@ Le fichier déclare `schema_version: 1` et `records`. Chaque entrée contient :
 | investigated_at | Date ISO 8601 avec fuseau |
 | conclusion | Synthèse de la recherche et de son applicabilité |
 | sources | URL HTTPS officielle, authority=official, sha256 du contenu brut et retrieved_at avec fuseau |
-| value | Pour verified : entier de contexte, ou objet supported_efforts contenant high/xhigh |
+| value | Pour verified : entier de contexte, ou objet supported_efforts contenant medium, ou null explicitement publié pour tous les efforts |
 
 L'objet d'effort peut préciser `effort_equivalence: accepted_alias` pour
 des niveaux acceptés équivalents. `thinking_enabled` décrit l'équivalence
-HIGH/XHIGH vers thinking.type=enabled, uniquement pour Chat Completions
+Medium vers thinking.type=enabled, uniquement pour Chat Completions
 OpenCode sur preuve applicable. Il n'invente aucune route ni ne transpose une
 preuve vers un autre fournisseur. Un budget ou un booléen seul reste insuffisant.
 
-Le registre de référence livré dans `references/model-evidence.json` décrit
-MiMo selon la décision du développeur du 26 octobre 2026. Le registre du
+Le registre de référence livré dans `references/model-evidence.json` conserve
+une ancienne preuve HIGH/XHIGH pour MiMo. Elle est historique et déclenche
+une nouvelle recherche pour établir Medium ; elle ne permet pas l'admission.
+Le registre du
 répertoire de rapport peut le compléter ou réviser une entrée exacte.
 L'agent rédige les conclusions après recherche ; le contrôle SHA-256 prouve
 seulement que la source n'a pas changé, pas l'interprétation sémantique du LLM.

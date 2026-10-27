@@ -145,7 +145,7 @@ class PllmPricePriorityTests(unittest.TestCase):
                 self.assertEqual([e[2] for e in events if e[0] == 'benchmark' and e[1] == model['mode']],
                                  ['expensive'])
 
-    def test_paid_go_without_high_or_xhigh_tries_next_candidate(self):
+    def test_paid_go_without_medium_tries_next_candidate(self):
         for script in PLLM:
             module, path, catalog = self.priced_catalog(script)
             catalog['opencode_go']['models'][1]['reasoning_capabilities'] = {'supported_efforts': ['low']}
@@ -154,7 +154,7 @@ class PllmPricePriorityTests(unittest.TestCase):
             for model in data['models'][:2]:
                 self.assertEqual(model['model_id'], 'expensive')
                 self.assertEqual([c['model_id'] for c in model['candidate_results']], ['expensive'])
-                self.assertIn('HIGH et XHIGH', model['candidate_exclusions'][0]['cause'])
+                self.assertIn('Medium', model['candidate_exclusions'][0]['cause'])
                 self.assertEqual([e[2] for e in events if e[0] == 'benchmark' and e[1] == model['mode']],
                                  ['expensive'])
 

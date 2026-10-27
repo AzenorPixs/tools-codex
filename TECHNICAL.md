@@ -201,7 +201,7 @@ tokens/s ; seuls les payants gardent TTFT <90 s et débit >15 tokens/s. Les crit
 Le mode5 garde exclusivement les payants OpenRouter avec crédit positif ;
 un épuisement le rend invalide sans repli gratuit. Mode6
 garde le contrôle de solde DeepSeek. Les gratuits restent soumis aux accès,
-HIGH/XHIGH autorisé, filtres TFL, protocoles et limitations HTTP du fournisseur.
+Medium, filtres TFL, protocoles et limitations HTTP du fournisseur.
 
 Les références des secrets sont conservées : policy=mode1 pour 1/3,
 policy=mode2 pour 2/4, ancien policy=mode3 pour 5 et ancien policy=mode4 pour 6.
@@ -256,14 +256,15 @@ palier d'un autre candidat n'est pas affiché. Les erreurs HTTP/SSE sont filtré
 et rendues dans État sans corps brut. active s'arrête silencieusement après
 le premier succès du premier mode valide ; les forçages gardent un seul candidat.
 
-Tous les benchmarks PLLM et les gratuits TFL demandent HIGH, avec le seul
-repli XHIGH si HIGH est indisponible et XHIGH pris en charge. Chat Completions
+Tous les benchmarks PLLM et les gratuits TFL demandent Medium, sans repli vers
+HIGH ou XHIGH. Chat Completions
 utilise reasoning_effort ; Responses reasoning.effort ; Messages thinking
 adaptive et output_config.effort ; DeepSeek thinking activé et reasoning_effort.
-OpenRouter exige une déclaration vérifiable de HIGH ou XHIGH ; un budget seul est exclu. Aucun niveau inférieur n'est utilisé. Le niveau
-effectif est tracé et participe à l'identité de mémoire ; une réussite Low
-n'amorce pas un test HIGH. Un refus 400 propre à l'effort permet au plus un
-repli XHIGH annoncé avec ses propres paliers ; 401/403/429 ne le déclenchent pas.
+OpenRouter exige une déclaration vérifiable de Medium ; un budget seul est
+exclu. Aucun autre niveau n'est utilisé. Le niveau effectif est tracé et
+participe à l'identité de mémoire ; une réussite High ou Low n'amorce pas un
+test Medium. Un refus 400 propre à l'effort arrête le candidat ; 401/403/429
+conservent leur traitement propre.
 Les erreurs HTTP sont lues au plus sur 64 Kio, fermées et filtrées sans corps
 brut, compte ou secret. Le diagnostic est réutilisable sans relire le corps.
 
@@ -414,7 +415,7 @@ conditions de contexte et les jours/horaires UTC publiés. Aucun seuil de
 contexte n'est inventé pour une variante temporelle. La requête modèles
 interroge tout le catalogue sans filtre de catégorie, modalité ni limite
 artificielle de nombre. La sélection est dynamique, sans liste d'identifiants :
-contexte ≥ 1M, HIGH/XHIGH vérifiable, moyenne API de base ≤0,20 EUR/M au taux BCE vérifié, modalités
+contexte ≥ 1M, Medium vérifiable, moyenne API de base ≤0,20 EUR/M au taux BCE vérifié, modalités
 de sortie et blacklist. Les prix négatifs, non finis ou débordants
 sont non exploitables. La provenance tarifaire des deux fournisseurs est
 horodatée. Une source indispensable invalide ou des tarifs Go contradictoires
@@ -641,33 +642,34 @@ Références officielles : [paquets et hooks](https://developers.openai.com/plug
 [lecture des quotas](https://learn.chatgpt.com/docs/app-server).
 
 
-## Admission stricte HIGH/XHIGH
+## Admission stricte Medium
 
-Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
-vérifiable avant test, sélection et affichage. Une liste supported_efforts
-contenant high/xhigh ou un null explicitement publié (tous les efforts) est
-admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
-budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
+avant test, sélection et affichage. Une liste supported_efforts contenant
+medium ou un null explicitement publié (tous les efforts) est admissible. Une
+clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
+ou un budget seul ne suffit pas. Aucun repli vers HIGH ou XHIGH n'est autorisé.
 Les niveaux publiés par models.dev dans `reasoning_options`, entrée
 `type=effort` et liste `values`, sont normalisés vers `supported_efforts`.
 Une liste vide, un budget, un interrupteur ou une déclaration ambiguë ne
 prouve aucun niveau ; `values=null` ne signifie pas tous les efforts.
-Une acceptation officielle HIGH/XHIGH reste admissible même sans intensité
+Une acceptation officielle de Medium reste admissible même sans intensité
 distincte. Une équivalence documentée peut utiliser thinking.type=enabled
-sur Chat Completions OpenCode, avec protocole et sémantique tracés.
+sur Chat Completions OpenCode, avec protocole et sémantique tracés. Une preuve
+historique HIGH/XHIGH seule n'établit pas la prise en charge de Medium.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
 publiée explicitement sans réintégrer de modèle exclu.
 
 
-## Contrat TFL/PLLM 0.7.12 et conversion OpenRouter
+## Contrat TFL/PLLM 0.7.14 et conversion OpenRouter
 
 TFL ne collecte ni ne publie plus OpenCode général. Le JSON contient seulement
 opencode_go et openrouter. PLLM 1/2 ne sélectionne que les payants Go et 3/4
 les gratuits Go, même si un ancien catalogue ou historique contient opencode.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
-puis les essais gratuits ayant une preuve HIGH/XHIGH. Aucun modèle exclu
+puis les essais gratuits ayant une preuve Medium. Aucun modèle exclu
 pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
 Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
 https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
@@ -675,7 +677,7 @@ le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
 prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
 publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
 et à la frontière de génération, y compris pour les anciens catalogues et
-les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
+les rangs forcés. Un budget seul n’équivaut plus à Medium.
 Go garde 0,50 USD/M. Les capacités absentes peuvent vider une
 section sans bloquer les autres collectes ni la publication. Chaque section
 conserve models, compteurs, sources et exclusions, avec selection_status

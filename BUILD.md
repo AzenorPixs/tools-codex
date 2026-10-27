@@ -154,15 +154,16 @@ succès aux tests actuels et ne pas tester les candidats suivants du mode.
 Après un échec, essayer le suivant admissible avec ses propres contrôles ;
 une erreur bloquante d'authentification ou de ressources arrête le mode.
 Le contexte ≥1M est une capacité d'entrée vérifiée, sans requête d'un million
-de tokens. Les paliers, seuils et HIGH/XHIGH actuels sont préservés.
+de tokens. Les paliers et seuils actuels sont préservés ; Medium devient
+l'effort demandé et vérifié.
 L'invocation normale poursuit les politiques ; active s'arrête à la première
 politique valide. Les rangs forcés restent ciblés, sauf qu'un gratuit forcé en
 mode5 est incompatible avec sa nouvelle catégorie exclusivement payante.
-Les priorités entre politiques 1 à 6 restent inchangées. Tous les benchmarks demandent HIGH, puis XHIGH seulement si HIGH est
-indisponible et XHIGH pris en charge ; aucun repli inférieur. Les restrictions
+Les priorités entre politiques 1 à 6 restent inchangées. Tous les benchmarks
+demandent Medium ; aucun repli vers HIGH ou XHIGH n'est autorisé. Les restrictions
 fournisseur restent applicables aux gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
 Les diagnostics HTTP 400/429 et le Retry-After disponible figurent dans les
-rapports PLLM sans corps d'erreur brut. Hors le repli d'effort XHIGH autorisé, ils n'entraînent plus d'essais aux
+rapports PLLM sans corps d'erreur brut. Les refus HTTP 400/429 n'entraînent plus d'essais aux
 budgets supérieurs ; une limitation conserve ses contraintes fournisseur.
 Les champs JSON de diagnostic restent conservés ; l'adaptation des historiques
 PLLM est automatique et ne nécessite aucun nouveau secret.
@@ -197,7 +198,7 @@ n'est pas une qualification de génération. Les tests de compatibilité avec
 PLLM ne lancent ni quotas ni benchmarks ; aucune dépendance SDK n'est installée.
 TFL ne collecte ni ne teste plus OpenCode général. Le JSON ne publie que
 opencode_go et openrouter et le rapport affiche leurs deux tableaux, huit
-colonnes chacun, puis les essais gratuits. Contexte ≥1M et HIGH/XHIGH restent
+colonnes chacun, puis les essais gratuits. Contexte ≥1M et Medium restent
 obligatoires ; Go ≤0,50 USD/M, OpenRouter ≤0,20 EUR/M au taux BCE vérifié.
 PLLM ignore les anciennes sections opencode pour tous les modes 1 à 4,
 y compris leurs rangs forcés. Les erreurs de sources indispensables restent bloquantes.
@@ -379,7 +380,7 @@ Chaque paquet PLLM/TFL contient son scripts/performance.py ; les quatre copies
 sont identiques et ne dépendent pas d'un autre plugin installé. Conserver ce
 fichier lors de la distribution autonome ou d'un paquet isolé.
 TFL génère désormais des réponses pour ses seuls gratuits admissibles en
-HIGH, avec XHIGH comme seul repli autorisé lorsque pris en charge. Exiger
+Medium, sans repli vers HIGH ou XHIGH. Exiger
 contexte ≥1M, prix nuls vérifiés, réponse complète, TTFT <30 s et débit >20.
 Les paliers sont 1024→2048→4096→8192 et 120 s par requête. Une invocation TFL
 peut donc durer plus longtemps et rencontrer les limites gratuites fournisseur.
@@ -391,8 +392,8 @@ exclusions et le tableau commun des tests. Une section devenue vide est
 publiée avec ses motifs sans bloquer les autres sections. La qualification est datée
 et dépend du compte choisi par TFL, même si un autre compte pourrait réussir.
 Les payants TFL ne sont pas benchmarkés. Une nouvelle invocation PLLM reteste
-ses candidats retenus avec ses propres comptes et le raisonnement HIGH/XHIGH.
-Les anciens résultats Low ne sont pas des réussites HIGH. Cette livraison
+ses candidats retenus avec ses propres comptes et le raisonnement Medium.
+Les anciens résultats High/XHigh ne sont pas des réussites Medium. Cette livraison
 locale est qualifiée hors ligne et n'exécute aucun benchmark fournisseur réel.
 
 
@@ -502,26 +503,26 @@ de test ne prouvent ni approbation des hooks, ni activation du profil réel,
 ni exécution observée à une échéance. Ces preuves restent distinctes.
 
 
-## Admission stricte HIGH/XHIGH
+## Admission stricte Medium
 
-Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
-vérifiable avant test, sélection et affichage. Une liste supported_efforts
-contenant high/xhigh ou un null explicitement publié (tous les efforts) est
-admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
-budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
+avant test, sélection et affichage. Une liste supported_efforts contenant
+medium ou un null explicitement publié (tous les efforts) est admissible. Une
+clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
+ou un budget seul ne suffit pas. Aucun repli vers HIGH ou XHIGH n'est autorisé.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
 publiée explicitement sans réintégrer de modèle exclu.
 
 
-## Contrat TFL/PLLM 0.7.12 et conversion OpenRouter
+## Contrat TFL/PLLM 0.7.14 et conversion OpenRouter
 
 TFL ne collecte ni ne publie plus OpenCode général. Le JSON contient seulement
 opencode_go et openrouter. PLLM 1/2 ne sélectionne que les payants Go et 3/4
 les gratuits Go, même si un ancien catalogue ou historique contient opencode.
 Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
-puis les essais gratuits ayant une preuve HIGH/XHIGH. Aucun modèle exclu
+puis les essais gratuits ayant une preuve Medium. Aucun modèle exclu
 pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
 Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
 https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
@@ -529,7 +530,7 @@ le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
 prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
 publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
 et à la frontière de génération, y compris pour les anciens catalogues et
-les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
+les rangs forcés. Un budget seul n’équivaut plus à Medium.
 Go garde 0,50 USD/M. Une sélection vide après filtrage ou essais
 gratuits n'empêche plus les autres collectes et leur publication. Les tableaux
 vides gardent leurs huit colonnes avec « Aucun modèle admissible » et une
@@ -545,9 +546,9 @@ deux listes models Go/OpenRouter non vides pour lancer PLLM. Les tests de cette 
 
 Livrer model_evidence.py avec chacun des quatre moteurs TFL/PLLM, le guide
 references/model-evidence.md et le registre de référence TFL. Les niveaux
-reasoning_options de models.dev sont normalisés. Une acceptation officielle
-HIGH/XHIGH suffit même sans intensité distincte ; le mapping documenté MiMo
-vers thinking activé est livré sans changer l'endpoint.
+reasoning_options de models.dev sont normalisés. Une preuve Medium suffit
+même sans intensité distincte. L'ancienne preuve MiMo HIGH/XHIGH reste
+historique et déclenche une nouvelle recherche ; elle ne prouve pas Medium.
 Une métadonnée de contexte ou d'effort inconnue exige une recherche du LLM
 dans les sources officielles pour les deux catalogues. Le registre du
 répertoire de rapport, model-evidence.json, complète les preuves livrées.

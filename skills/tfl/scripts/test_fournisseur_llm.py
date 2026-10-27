@@ -945,7 +945,7 @@ def format_openrouter_table(rows: list[dict], generated_at: str, *, excluded: li
     lines.append("")
     if not rows:
         lines.extend(format_empty_selection(excluded or []))
-    lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, HIGH/XHIGH vérifiable, coût moyen ≤ 0.20 €/M, classement croissant.")
+    lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, effort Medium vérifiable, coût moyen ≤ 0.20 €/M, classement croissant.")
     rates = exchange_rates or next((row.get('exchange_rates') for row in rows if row.get('exchange_rates')), None)
     if rates:
         lines.append(f"Taux BCE du {rates['date']} : 1 EUR = {rates['rates']['USD']} USD ; source : {performance.ECB_RATES_URL}.")
@@ -965,7 +965,7 @@ def openrouter_secret() -> str:
 
 def evaluate_free(model: dict, key: str, metadata: dict) -> dict:
     blacklist.require_allowed(model["model_id"])
-    model.update(state='Invalide', cause='', reasoning='high', requested_reasoning='high',
+    model.update(state='Invalide', cause='', reasoning='medium', requested_reasoning='medium',
                  evaluated_at=performance.now(), ttft_seconds=None, tokens_per_second=None,
                  performance_criteria=dict(performance.FREE_CRITERIA), quota_status='not_applicable',
                  throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
@@ -990,18 +990,7 @@ def evaluate_free(model: dict, key: str, metadata: dict) -> dict:
         while pending:
             budget = pending.pop(0)
             try:
-                try:
-                    complete = performance.benchmark(model, key, budget, metadata, session_id=session_id)
-                except (HTTPError, performance.ApiFailure) as error:
-                    diagnostic = performance.http_diagnostic(error)
-                    if not performance.can_retry_xhigh(model, metadata, diagnostic):
-                        raise
-                    attempts.append({**copy.deepcopy(model['performance_test']), 'status': 'failed',
-                                     'max_tokens': budget, 'reasoning': 'high', 'http_error': copy.deepcopy(diagnostic)})
-                    model['reasoning'] = 'xhigh'
-                    pending = list(performance.BUDGETS)
-                    budget = pending.pop(0)
-                    complete = performance.benchmark(model, key, budget, metadata, session_id=session_id)
+                complete = performance.benchmark(model, key, budget, metadata, session_id=session_id)
                 if not complete:
                     raise RuntimeError('Budget du test épuisé : mesure inconclusive')
                 try:
@@ -1049,7 +1038,7 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
             excluded.append({**row, 'reason': 'liste noire LM'})
             continue
         if not performance.effort_allowed(row):
-            excluded.append({**row, 'reason': 'HIGH/XHIGH non vérifiable ou non pris en charge',
+            excluded.append({**row, 'reason': 'Medium non vérifiable ou non pris en charge',
                              'exclusion_type': 'reasoning_effort'})
             continue
         row['is_free'] = performance.is_free(row, section)
@@ -1084,7 +1073,7 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
 
 def format_free_performance(audit: list[dict]) -> str:
     lines = ['## Tests de performance des modèles gratuits', '',
-             'Critères : contexte ≥1M, gratuité vérifiée, réponse complète, TTFT <30 s et débit >20 tokens/s. HIGH puis XHIGH si pris en charge ; aucun contrôle de quota.',
+             'Critères : contexte ≥1M, gratuité vérifiée, réponse complète, TTFT <30 s et débit >20 tokens/s. Medium vérifié ; aucun contrôle de quota.',
              'Débit moyen sur la requête complète, attente et TTFT inclus.', '',
              '| Fournisseur | Modèle / ID | TTFT (s) | Tokens/s | Raisonnement | État / cause |',
              '|---|---|---:|---:|---|---|']
@@ -1113,7 +1102,7 @@ def build_investigated(builder, payload, metadata, section, resolver):
             model = models[item['id']]
             reason = item['reason']
             field = None
-            if 'HIGH/XHIGH non vérifiable' in reason:
+            if 'Medium non vérifiable' in reason:
                 field = 'reasoning'
             elif 'contexte' in reason:
                 context = (positive_integer(model.get('context_length')) if section == 'openrouter'
@@ -1145,8 +1134,8 @@ def build_investigated(builder, payload, metadata, section, resolver):
                     item['context_source'] = 'documented_investigation'
                 if finding['status'] in ('unverifiable', 'unsupported') and 'reason' in item:
                     item['reason'] = ('contexte non vérifiable après investigation' if finding['field'] == 'context'
-                                      else 'HIGH/XHIGH non pris en charge après investigation' if finding['status'] == 'unsupported'
-                                      else 'HIGH/XHIGH non vérifiable après investigation')
+                                      else 'Medium non pris en charge après investigation' if finding['status'] == 'unsupported'
+                                      else 'Medium non vérifiable après investigation')
     return rows, excluded, list(investigations.values())
 
 
@@ -1241,7 +1230,7 @@ def main() -> int:
         "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS,
                     "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION,
                     "openrouter_maximum_average_eur_per_million_tokens": 0.20,
-                    "required_reasoning_efforts": ["high", "xhigh"]},
+                    "required_reasoning_efforts": ["medium"]},
         "lm_blacklist": {"model_ids": list(blacklisted_models)},
         "opencode_go": opencode_catalog,
         "openrouter": openrouter_catalog,

@@ -35,7 +35,7 @@ class OpenRouterEurTests(unittest.TestCase):
             module = load_script(script)
             def raw(name, price):
                 return {'id': name, 'context_length': 1_000_000,
-                        'reasoning': {'supported_efforts': ['high']},
+                        'reasoning': {'supported_efforts': ['medium']},
                         'pricing': {'prompt': price, 'completion': price}}
             rows, excluded = module.build_openrouter_rows({'data': [
                 raw('boundary', '0.0000002'), raw('over', '0.00000020000000000000001')]}, exchange_rates=fx)
