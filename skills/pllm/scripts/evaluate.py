@@ -822,7 +822,12 @@ def candidates_for(model, category, catalog_path, forced=None, key=None):
                  'provider': 'deepseek', 'throughput_scope': 'response_only',
                  'api_protocol': 'chat_completions', 'api_endpoint': 'https://api.deepseek.com/chat/completions',
                  'is_free': False}
-        performance.verified_effort(candidate)
+        evidence = evidence_module.EvidenceResolver(
+            (ROOT / 'references/model-evidence.json',)).resolve(
+                'deepseek', candidate['model_id'], 'reasoning', candidate['api_protocol'])
+        candidate['model_investigations'] = [evidence]
+        if evidence.get('status') == 'verified':
+            candidate['reasoning_capabilities'] = evidence['value']
         return [candidate]
     catalog = load_tfl_catalog(catalog_path)
     go = model['mode'] in ('mode1', 'mode2', 'mode3', 'mode4')

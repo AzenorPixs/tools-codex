@@ -1,6 +1,8 @@
 # Investigation des modèles
 
 Ce workflow s'applique à OpenCode Go et OpenRouter.
+Le module partagé accepte également `deepseek` pour le registre direct PLLM ;
+TFL ne collecte pas et n'utilise pas ce fournisseur.
 `model_investigations` dans le JSON TFL donne les champs encore inconnus.
 Le statut `required` exige une analyse et une recherche du LLM avant sa
 restitution finale ; une collecte CLI seule ne réalise pas cette recherche.
@@ -36,7 +38,7 @@ Le fichier déclare `schema_version: 1` et `records`. Chaque entrée contient :
 
 | Champ | Valeur |
 |---|---|
-| provider | opencode_go ou openrouter ; opencode est seulement accepté dans les registres historiques |
+| provider | opencode_go ou openrouter ; opencode et deepseek sont réservés aux registres PLLM/historiques |
 | model_id | Identifiant exact dans ce catalogue |
 | field | context ou reasoning |
 | protocol | null pour context ; chat_completions, responses ou messages pour reasoning |

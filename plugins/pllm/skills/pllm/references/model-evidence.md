@@ -1,6 +1,8 @@
 # Investigation des modèles
 
-Ce workflow s'applique à OpenCode Go et OpenRouter.
+Ce workflow consomme les preuves TFL OpenCode Go et OpenRouter. PLLM possède
+également un registre direct `deepseek` pour l'unique candidat du mode7 ; une
+preuve unsupported y conserve le motif d'exclusion et bloque toute génération.
 `model_investigations` dans le JSON TFL donne les champs encore inconnus.
 Le statut `required` exige une analyse et une recherche du LLM avant sa
 restitution finale ; une collecte CLI seule ne réalise pas cette recherche.
@@ -36,7 +38,7 @@ Le fichier déclare `schema_version: 1` et `records`. Chaque entrée contient :
 
 | Champ | Valeur |
 |---|---|
-| provider | opencode_go ou openrouter ; opencode est seulement accepté dans les registres historiques |
+| provider | opencode_go, openrouter ou deepseek ; opencode est seulement accepté dans les registres historiques |
 | model_id | Identifiant exact dans ce catalogue |
 | field | context ou reasoning |
 | protocol | null pour context ; chat_completions, responses ou messages pour reasoning |
@@ -63,6 +65,9 @@ seulement que la source n'a pas changé, pas l'interprétation sémantique du LL
 TFL relit les sources avant admission. Un contenu changé ou inaccessible
 réactive l'investigation sans réutiliser l'ancienne preuve. PLLM recontrôle
 ces sources avant génération et conserve les résultats d'investigation TFL.
+Une preuve `unsupported` est conservée dans l'audit avec sa conclusion et
+empêche la génération ; un paramètre aliasé vers un effort supérieur ne prouve
+pas l'effort Medium effectif.
 
 Les preuves ne qualifient ni accès au compte, ni génération, ni performance.
 Conserver tous les autres filtres et tests applicables. Ne lancer aucune

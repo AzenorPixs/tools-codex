@@ -131,6 +131,43 @@ class ModelEvidenceTests(unittest.TestCase):
         self.assertEqual(result['status'], 'verified')
         self.assertIsNone(result['value']['supported_efforts'])
 
+    def test_reference_records_cover_exact_current_go_models_and_protocols(self):
+        expected = {
+            ('opencode_go', 'qwen3.8-flash', 'reasoning', 'messages'):
+                ['low', 'medium', 'xhigh'],
+        }
+        for script in TFL:
+            module = load_script(script)
+            path = Path(script).parent.parent / 'references/model-evidence.json'
+            resolver = module.evidence_module.EvidenceResolver([path])
+            for key, levels in expected.items():
+                with self.subTest(script=script, key=key):
+                    self.assertEqual(resolver.records[key]['value']['supported_efforts'], levels)
+
+    def test_mode7_preserves_official_deepseek_medium_to_high_exclusion(self):
+        for script in PLLM:
+            module = load_script(script)
+            with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp:
+                root = Path(tmp)
+                references = root / 'references'
+                references.mkdir()
+                finding = record(provider='deepseek', status='unsupported',
+                                 model_id='deepseek-v4-flash',
+                                 conclusion='DeepSeek mappe medium à high ; Medium effectif indisponible.')
+                finding['protocol'] = 'chat_completions'
+                (references / 'model-evidence.json').write_text(
+                    json.dumps({'schema_version': 1, 'records': [finding]}), encoding='utf-8')
+                with patch.object(module, 'ROOT', root), \
+                     patch.object(module.evidence_module, 'fetch_source', return_value=BODY):
+                    candidate = module.candidates_for({'mode': 'mode7'}, 'paid', None)[0]
+                    model = {**candidate, 'mode': 'mode7', 'reasoning': 'medium',
+                             'performance_test': {'status': 'not_run'}, 'candidate_exclusions': []}
+                    result = module.evaluate_candidate(model, 'fixture', 'paid', {}, None)
+                self.assertEqual(result['state'], 'Invalide')
+                self.assertIn('DeepSeek mappe medium à high', result['cause'])
+                self.assertEqual(result['performance_test']['attempts'], [])
+                self.assertEqual(result['model_investigations'][0]['status'], 'unsupported')
+
     def test_provider_model_and_protocol_are_exact_without_cross_borrowing(self):
         for script in TFL:
             module = load_script(script)
@@ -210,6 +247,40 @@ class ModelEvidenceTests(unittest.TestCase):
                 self.resolver(module, [value])
         with self.assertRaisesRegex(RuntimeError, 'dupliquée'):
             self.resolver(module, [record(), record()])
+
+    def test_source_fetch_allows_only_same_origin_https_redirects(self):
+        class Response:
+            def __init__(self, url):
+                self.url = url
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return None
+
+            def geturl(self):
+                return self.url
+
+            def read(self, _limit):
+                return BODY
+
+        original = 'https://huggingface.co/zai-org/model/resolve/abc123/config.json'
+        redirected = 'https://huggingface.co/api/resolve-cache/models/zai-org/model/config.json?etag=abc'
+        for script in (*TFL, *PLLM):
+            module = load_script(script)
+            with self.subTest(script=script), \
+                 patch.object(module.evidence_module, 'urlopen', return_value=Response(redirected)):
+                self.assertEqual(module.evidence_module.fetch_source(original, 5), BODY)
+            for unsafe in ('http://huggingface.co/api/config.json',
+                           'https://127.0.0.1/private',
+                           'https://example.invalid/private',
+                           'https://huggingface.co:444/private',
+                           'https://user@huggingface.co/private'):
+                with self.subTest(script=script, redirected=unsafe), \
+                     patch.object(module.evidence_module, 'urlopen', return_value=Response(unsafe)), \
+                     self.assertRaisesRegex(RuntimeError, 'redirection'):
+                    module.evidence_module.fetch_source(original, 5)
 
 
 if __name__ == '__main__':

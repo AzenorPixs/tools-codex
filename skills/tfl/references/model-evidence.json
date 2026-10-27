@@ -3,31 +3,48 @@
   "records": [
     {
       "provider": "opencode_go",
+      "model_id": "qwen3.8-flash",
+      "field": "reasoning",
+      "protocol": "messages",
+      "status": "verified",
+      "value": {
+        "supported_efforts": ["low", "medium", "xhigh"]
+      },
+      "conclusion": "QwenCloud documente Qwen3.8 Flash et output_config.effort=medium dans son API Anthropic Messages. OpenCode Go publie Qwen3.8 Flash sur Messages.",
+      "investigated_at": "2026-10-28T00:04:00+01:00",
+      "sources": [
+        {
+          "url": "https://docs.qwencloud.com/api-reference/chat/anthropic",
+          "authority": "official",
+          "sha256": "0b34245337a9c87785828f77962cfdbe26ab924442a551673a05acb4467d36df",
+          "retrieved_at": "2026-10-28T00:04:00+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
       "model_id": "mimo-v2.6-flash",
       "field": "reasoning",
       "protocol": "chat_completions",
       "status": "verified",
       "value": {
-        "supported_efforts": [
-          "high",
-          "xhigh"
-        ],
+        "supported_efforts": ["medium"],
         "effort_equivalence": "thinking_enabled"
       },
-      "conclusion": "Xiaomi accepte HIGH/XHIGH sur Responses et les définit comme raisonnement activé sans intensité distincte. Chat Completions exprime ce même état par thinking.type=enabled. Équivalence admise explicitement par le développeur le 26 octobre 2026 ; route Go conservée, génération non testée.",
-      "investigated_at": "2026-10-26T14:26:13+01:00",
+      "conclusion": "Xiaomi documente medium comme effort accepté sur Responses et précise que tout niveau non-none active le même raisonnement sans intensité distincte. Son API OpenAI-compatible Chat Completions expose le basculeur thinking.type=enabled ; PLLM utilise cette équivalence documentée sur le transport Go publié.",
+      "investigated_at": "2026-10-28T00:04:00+01:00",
       "sources": [
         {
-          "url": "https://mimo.mi.com/static/docs/api/chat/responses.md",
+          "url": "https://mimo.mi.com/docs/en-US/api/chat/responses",
           "authority": "official",
-          "sha256": "483f91a304f24cf201ae4a29aa1a16925e02a688993b3202b1793e5a7d5f6a17",
-          "retrieved_at": "2026-10-26T14:26:13+01:00"
+          "sha256": "d76e3d1792914070c25a67ee8cd7e8cf1ffa5caea702819b0d1792176c0cd822",
+          "retrieved_at": "2026-10-28T00:04:00+01:00"
         },
         {
-          "url": "https://mimo.mi.com/static/docs/api/chat/openai-api.md",
+          "url": "https://mimo.mi.com/docs/api/text-generation/openai-api",
           "authority": "official",
-          "sha256": "5aa307fb7ab2f67c2cce954fff6bb36f5a59ce999a104649ace1e44aaf2ded1a",
-          "retrieved_at": "2026-10-26T14:26:13+01:00"
+          "sha256": "37e2cf89457a25c86689962cd4acd092005523351b020e95c952f404c887428b",
+          "retrieved_at": "2026-10-28T00:04:00+01:00"
         }
       ]
     }

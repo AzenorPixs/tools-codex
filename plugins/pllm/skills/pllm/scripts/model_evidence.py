@@ -10,7 +10,7 @@ from urllib.error import URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-PROVIDERS = ('opencode_go', 'opencode', 'openrouter')
+PROVIDERS = ('opencode_go', 'opencode', 'openrouter', 'deepseek')
 PROTOCOLS = ('chat_completions', 'responses', 'messages')
 MAX_BYTES = 2_000_000
 
@@ -42,10 +42,15 @@ def source_url(value):
 
 
 def fetch_source(url, timeout):
-    request = Request(source_url(url), headers={'Accept': 'text/html,text/markdown,application/json',
-                                               'User-Agent': 'TFL/1.0'})
+    original = urlsplit(source_url(url))
+    request = Request(url, headers={'Accept': 'text/html,text/markdown,application/json',
+                                    'User-Agent': 'TFL/1.0'})
     with urlopen(request, timeout=timeout) as response:
-        source_url(response.geturl())
+        redirected = urlsplit(response.geturl())
+        if (redirected.scheme != 'https' or redirected.hostname != original.hostname
+                or redirected.username is not None or redirected.password is not None
+                or redirected.fragment or redirected.port not in (None, 443)):
+            raise RuntimeError('Preuve : redirection de source hors origine interdite')
         raw = response.read(MAX_BYTES + 1)
     if len(raw) > MAX_BYTES:
         raise RuntimeError('Preuve : source trop volumineuse')
@@ -158,5 +163,8 @@ def recheck_findings(findings, provider, model_id, protocol, timeout=15):
         key = (provider, model_id, finding['field'], finding.get('protocol'))
         resolver.records[key] = finding
         checked = resolver.resolve(*key)
+        if checked['status'] == 'unsupported':
+            raise RuntimeError(checked['conclusion'])
         if checked['status'] != 'verified':
-            raise RuntimeError('Preuve supplémentaire non vérifiable : nouvelle investigation du LLM requise')
+            raise RuntimeError('Preuve supplémentaire non vérifiable : '
+                               + checked.get('conclusion', 'nouvelle investigation requise'))

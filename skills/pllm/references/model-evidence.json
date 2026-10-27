@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "provider": "deepseek",
+      "model_id": "deepseek-v4-flash",
+      "field": "reasoning",
+      "protocol": "chat_completions",
+      "status": "unsupported",
+      "conclusion": "DeepSeek accepte medium comme alias, mais le mappe à high. Le mode7 exige Medium effectif ; ce modèle ne satisfait donc pas le critère.",
+      "investigated_at": "2026-10-27T23:58:47+01:00",
+      "sources": [
+        {
+          "url": "https://api-docs.deepseek.com/api/create-chat-completion/",
+          "authority": "official",
+          "sha256": "5f89e4bafbec8808896d7890ad23ca4caaa8a19ff226d881efae63a61a12d169",
+          "retrieved_at": "2026-10-27T23:58:47+01:00"
+        },
+        {
+          "url": "https://api-docs.deepseek.com/quick_start/agent_integrations/",
+          "authority": "official",
+          "sha256": "50490e85b6a47700cef1c847cfb505afb136a0d45ce48f519255960c7f63b9f3",
+          "retrieved_at": "2026-10-27T23:58:47+01:00"
+        }
+      ]
+    }
+  ]
+}
