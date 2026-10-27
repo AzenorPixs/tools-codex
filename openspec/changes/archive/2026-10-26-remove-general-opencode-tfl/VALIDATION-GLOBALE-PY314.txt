@@ -1,0 +1,20 @@
+Python 3.14.10
+..............................................................................................................................................................................................................F....................................................................................................................
+======================================================================
+FAIL: test_actual_six_plugin_source_snapshot_includes_lm_and_shared_modules (test_tcu_update.TcuUpdateTests.test_actual_six_plugin_source_snapshot_includes_lm_and_shared_modules)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/devops/datas/tools-codex/tests/test_tcu_update.py", line 208, in test_actual_six_plugin_source_snapshot_includes_lm_and_shared_modules
+    self.assertEqual(remote['version'],'0.7.11')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '0.7.12' != '0.7.11'
+- 0.7.12
+?      ^
++ 0.7.11
+?      ^
+
+
+----------------------------------------------------------------------
+Ran 323 tests in 15.070s
+
+FAILED (failures=1)

@@ -1,7 +1,7 @@
 {
   "name": "pllm",
-  "version": "0.4.0",
-  "description": "\u00c9value la PLLM et applique de fa\u00e7on s\u00fbre sa s\u00e9lection aux sessions OpenCode.",
+  "version": "0.7.13",
+  "description": "Évalue la PLLM et applique de façon sûre sa sélection aux sessions OpenCode.",
   "author": {
     "name": "AzenorPixs"
   },
@@ -10,11 +10,12 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "PLLM",
-    "shortDescription": "\u00c9valuer et appliquer la PLLM.",
-    "longDescription": "PLLM \u00e9value les fournisseurs de mod\u00e8les et applique une s\u00e9lection valid\u00e9e \u00e0 OpenCode, avec rechargement s\u00fbr des identifiants.",
+    "shortDescription": "Évaluer et appliquer la PLLM.",
+    "longDescription": "PLLM évalue les fournisseurs de modèles et applique une sélection validée à OpenCode, avec rechargement sûr des identifiants.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "\u00c9value la PLLM puis applique la politique s\u00e9lectionn\u00e9e \u00e0 une session OpenCode autoris\u00e9e."
-  }
+    "defaultPrompt": "Évalue la PLLM puis applique la politique sélectionnée à une session OpenCode autorisée."
+  },
+  "hooks": "./hooks/hooks.json"
 }

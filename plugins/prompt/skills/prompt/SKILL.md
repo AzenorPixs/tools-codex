@@ -1,6 +1,6 @@
 ---
 name: prompt
-description: Lister ou lancer les prompts du projet courant via $prompt CODE ou /prompt CODE, avec codes en MAJUSCULE et référentiel défini exclusivement dans DEVOPS.md.
+description: Lister ou lancer les prompts du projet courant via $prompt CODE ou /PROMPT CODE, avec codes en MAJUSCULE et référentiel défini exclusivement dans DEVOPS.md.
 ---
 
 Ce skill lance le processus du prompt demandé ; une résolution de fichier ne
@@ -75,7 +75,10 @@ Le lancement d'un prompt piloté suit son propre protocole ; un lancement SCM
 reste une session de codage directe. LIST et les tests du dispatcher ne
 déclenchent ni RUN ni pilotage. Aucun prompt source n'est copié dans ce plugin.
 
-`/prompt` est une commande source et un déclencheur du skill, sans promesse
+`/PROMPT` est une commande source et un déclencheur du skill, sans promesse
 d'enregistrement d'une slash native. `$prompt` est l'invocation directement
 prise en charge. Maintenir ce SKILL.md et le résolveur identiques dans les
 distributions autonome et embarquée.
+
+La commande canonique est `/PROMPT` ; `/prompt` reste
+un alias compatible. L’identifiant technique du skill reste en minuscules.

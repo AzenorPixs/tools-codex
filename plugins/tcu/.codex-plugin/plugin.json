@@ -1,8 +1,10 @@
 {
   "name": "tcu",
-  "version": "0.4.0",
+  "version": "0.7.13",
   "description": "Met à jour les briques Tools Codex installées depuis la marketplace et GitHub.",
-  "author": {"name": "AzenorPixs"},
+  "author": {
+    "name": "AzenorPixs"
+  },
   "homepage": "https://github.com/AzenorPixs/tools-codex",
   "repository": "https://github.com/AzenorPixs/tools-codex",
   "skills": "./skills/",
@@ -14,5 +16,6 @@
     "category": "Productivity",
     "capabilities": [],
     "defaultPrompt": "Utilise $tcu pour mettre à jour les briques Tools Codex installées."
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

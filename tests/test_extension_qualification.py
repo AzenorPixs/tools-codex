@@ -1,5 +1,7 @@
 """Qualification hors ligne des correctifs CGP dans les deux distributions."""
 
+from eur_fixtures import FX
+
 from contextlib import ExitStack
 import importlib.util
 import io
@@ -10,11 +12,13 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+from test_tfl_pricing import mock_general_collection
 from unittest.mock import patch
 from urllib.error import HTTPError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+OPENROUTER_FIXTURE_IDS = ('fixture/first', 'fixture/second', 'fixture/third')
 PLLM = (ROOT / 'skills/pllm/scripts/evaluate.py',
         ROOT / 'plugins/pllm/skills/pllm/scripts/evaluate.py')
 TFL = (ROOT / 'skills/tfl/scripts/test_fournisseur_llm.py',
@@ -29,8 +33,9 @@ def load_script(path):
 
 
 def candidate(name):
-    return {'id': name, 'available': True, 'api_endpoint': 'https://example.invalid',
-            'api_protocol': 'responses'}
+    return {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': name, 'available': True, 'api_endpoint': 'https://opencode.ai/zen/go/v1/responses',
+            'api_protocol': 'responses', 'context_length': 1_000_000,
+            'reference_pricing_usd_per_million_tokens': {'input_off_peak': 0.1, 'output_off_peak': 0.2}}
 
 
 def rate_limit():
@@ -48,13 +53,17 @@ class ExtensionQualificationTests(unittest.TestCase):
         installed = base / 'pllm' / 'version-a' / 'skills' / 'pllm' / 'scripts' / script.name
         installed.parent.mkdir(parents=True)
         installed.write_bytes(script.read_bytes())
+        installed.with_name('performance.py').write_bytes(script.with_name('performance.py').read_bytes())
+        installed.with_name('model_blacklist.py').write_bytes(script.with_name('model_blacklist.py').read_bytes())
+        installed.with_name('model_evidence.py').write_bytes(script.with_name('model_evidence.py').read_bytes())
         module = load_script(installed)
         module.MEMORY_PATH = module.ROOT / 'data/pllm-performance-memory.json'
         catalog = base / 'tfl' / 'version-b' / 'skills' / 'tfl' / 'data' / 'tfl.json'
         catalog.parent.mkdir(parents=True)
         catalog.write_text(json.dumps({'generated_at': 'fixture-date',
                                       'opencode_go': {'models': [candidate('first'), candidate('second')]},
-                                      'openrouter': {'models': [{'id': 'router-fixture'}]}}), encoding='utf-8')
+                                      'openrouter': {'models': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'router-fixture', 'context_length': 1_000_000,
+                                                                 'input_price': 0.1, 'output_price': 0.2}]}}), encoding='utf-8')
         return module, catalog
 
     def run_evaluation(self, module, catalog, behavior=None, quota_failure=None, **kwargs):
@@ -72,16 +81,17 @@ class ExtensionQualificationTests(unittest.TestCase):
             model['performance_test'] = {'status': 'running', 'max_tokens': budget}
             if behavior:
                 behavior(model, budget)
-            model.update(ttft_seconds=70.4, tokens_per_second=20)
+            model.update(ttft_seconds=5 if model['mode'] in module.FREE_MODES else 70.4, tokens_per_second=25)
             model['performance_test']['status'] = 'completed'
             return True
 
         with ExitStack() as stack:
+            stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
             stack.enter_context(patch.object(module.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout=b'offline-fixture')))
             stack.enter_context(patch.object(module, 'quota', side_effect=quota))
             stack.enter_context(patch.object(module, 'benchmark', side_effect=benchmark))
             stack.enter_context(patch.object(module, 'get', return_value={'data': [
-                {'id': 'router-fixture', 'reasoning': {'supported_efforts': ['low']}}]}))
+                {'id': 'router-fixture', 'reasoning': {'supported_efforts': ['high']}}]}))
             stack.enter_context(patch.object(module, 'exchange_rates', return_value={'rates': {'USD': 1}}))
             stack.enter_context(patch.object(module.urllib.request, 'urlopen', side_effect=AssertionError('Réseau interdit pendant le test')))
             stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
@@ -118,13 +128,13 @@ class ExtensionQualificationTests(unittest.TestCase):
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
                 state = module.load_current()
-                self.assertEqual([m['mode'] for m in state['models']], ['mode1', 'mode2', 'mode3', 'mode4'])
+                self.assertEqual([m['mode'] for m in state['models']], [f'mode{i}' for i in range(1, 7)])
                 self.assertIsNone(state['selected_mode'])
                 self.assertTrue(all(m['state'] == 'Invalide' and m['quotas'] is None and m['ttft_seconds'] is None for m in state['models']))
                 self.assertFalse((module.ROOT / 'data').exists())
                 result, calls = self.run_evaluation(module, catalog, active=True)
                 self.assertEqual(result['selected_mode'], 'mode1')
-                self.assertEqual(calls, [('quota', 'first'), ('benchmark', 'first', 1024)])
+                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'first'), ('benchmark', 'first', 1024)])
                 self.assertTrue(all(not m['evaluated_this_run'] for m in result['models'][1:]))
                 self.assertTrue((module.ROOT / 'data/pllm-performance-memory.json').exists())
 
@@ -162,25 +172,35 @@ class ExtensionQualificationTests(unittest.TestCase):
         for script in PLLM:
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
-                result, calls = self.run_evaluation(module, catalog, forced={'mode': 'mode3'})
-                self.assertEqual(result['selected_mode'], 'mode3')
-                self.assertEqual(calls, [('quota', 'router-fixture'), ('benchmark', 'router-fixture', 1024)])
+                result, calls = self.run_evaluation(module, catalog, forced={'mode': 'mode5'})
+                self.assertEqual(result['selected_mode'], 'mode5')
+                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'router-fixture'), ('benchmark', 'router-fixture', 1024)])
 
     def test_all_modes_can_start_without_a_current_file(self):
         for script in PLLM:
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
+                payload = json.loads(catalog.read_text())
+                free = candidate('free-fixture')
+                free['reference_pricing_usd_per_million_tokens'] = {'input_off_peak': 0, 'output_off_peak': 0}
+                payload['opencode_go']['models'].append(free)
+                catalog.write_text(json.dumps(payload))
                 result, calls = self.run_evaluation(module, catalog)
-                self.assertTrue(all(m['evaluated_this_run'] and m['state'] == 'Valide' for m in result['models']))
-                self.assertEqual(len(calls), 8)
-                self.assertEqual(result['models'][3]['model'], 'deepseek-v4-flash')
+                self.assertTrue(all(m['evaluated_this_run'] for m in result['models']))
+                self.assertTrue(all(m['state'] == 'Valide' for m in result['models'][:5]))
+                self.assertEqual(result['models'][5]['state'], 'Invalide')
+                self.assertEqual(len(calls), 12)
+                self.assertTrue(all(len(m['candidate_results']) == 1 for m in result['models'][:5]))
+                self.assertEqual(result['models'][5]['candidate_results'], [])
+                self.assertEqual(result['models'][5]['model'], 'Non évalué')
+                self.assertIn('HIGH/XHIGH', result['models'][5]['cause'])
 
     def test_last_tier_fallback_requires_its_own_measurements(self):
         for script in PLLM:
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
                 first = module.load_current()['models'][0]
-                first.update(model_id='first', api_endpoint='https://example.invalid', api_protocol='responses', throughput_scope='reasoning_and_response')
+                first.update(model_id='first', api_endpoint='https://opencode.ai/zen/go/v1/responses', api_protocol='responses', throughput_scope='reasoning_and_response')
                 memory = {'schema_version': 1, 'policies': {'mode1': {
                     'identity': module.identity(first), 'last_successful_max_tokens': 8192}}}
                 module.MEMORY_PATH.parent.mkdir()
@@ -191,11 +211,11 @@ class ExtensionQualificationTests(unittest.TestCase):
                         raise rate_limit()
 
                 result, calls = self.run_evaluation(module, catalog, behavior, active=True)
-                self.assertEqual(calls, [('quota', 'first'), ('benchmark', 'first', 8192),
+                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'first'), ('benchmark', 'first', 8192),
                                          ('quota', 'second'), ('benchmark', 'second', 1024)])
                 selected = result['models'][0]
                 self.assertEqual((selected['model_id'], selected['state'], selected['last_successful_max_tokens']), ('second', 'Valide', 1024))
-                self.assertEqual([a['model_id'] for a in selected['performance_test']['attempts']], ['first', 'second'])
+                self.assertEqual([a['model_id'] for a in selected['candidate_results']], ['first', 'second'])
 
     def test_fallback_quota_failure_does_not_benchmark_or_select(self):
         for script in PLLM:
@@ -223,7 +243,8 @@ class ExtensionQualificationTests(unittest.TestCase):
                     self.assertIsNone(result['selected_mode'])
                     self.assertFalse(module.MEMORY_PATH.exists())
                     if forced:
-                        self.assertTrue(all(c[1] == 'first' for c in calls))
+                        self.assertEqual(calls[0], ('quota', 'Non évalué'))
+                        self.assertTrue(all(c[1] == 'first' for c in calls[1:]))
 
     def test_active_publication_remains_silent(self):
         for script in PLLM:
@@ -234,10 +255,17 @@ class ExtensionQualificationTests(unittest.TestCase):
                 self.assertEqual(output.getvalue(), '')
 
     def tfl_payload(self, module):
-        return {'data': [{'id': name, 'context_length': 1_000_000,
+        return {'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': name, 'context_length': 1_000_000,
                           'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
                           'architecture': {'output_modalities': ['text']}}
-                         for name in module.OPENROUTER_FIXED_IDS]}
+                         for name in OPENROUTER_FIXTURE_IDS]}
+
+    def tfl_go_pricing(self, module):
+        return {'source': module.SOURCE_URL, 'retrieved_at': '2026-10-25T01:00:00+02:00',
+                'models': module.parse_go_pricing(
+                    '<p>Token prices are per 1M tokens.</p><table><tr><th>Model</th>'
+                    '<th>Input</th><th>Output</th></tr><tr><td>Qwen3.8 Flash</td>'
+                    '<td>$0.15</td><td>$0.47</td></tr></table>')}
 
     def test_nonfinite_prices_and_overflows_are_excluded(self):
         for script in TFL:
@@ -246,7 +274,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 with self.subTest(script=script, price=str(price)[:20]):
                     payload = self.tfl_payload(module)
                     payload['data'][0]['pricing'] = {'prompt': price, 'completion': price}
-                    rows, excluded = module.build_openrouter_rows(payload)
+                    rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                     self.assertEqual(len(rows), 2)
                     self.assertIn('coût moyen non vérifiable', excluded[0]['reason'])
                     json.dumps({'rows': rows, 'excluded': excluded}, allow_nan=False)
@@ -257,12 +285,12 @@ class ExtensionQualificationTests(unittest.TestCase):
                 module = load_script(script)
                 payload = self.tfl_payload(module)
                 payload['data'][0]['pricing'] = {'prompt': '0.0000005', 'completion': '0.0000005'}
-                rows, excluded = module.build_openrouter_rows(payload)
+                rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 3)
                 self.assertEqual(rows[-1]['average'], 0.5)
                 self.assertEqual(excluded, [])
                 payload['data'][0]['pricing']['completion'] = '0.0000006'
-                rows, excluded = module.build_openrouter_rows(payload)
+                rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 2)
                 self.assertIn('seuil maximal', excluded[0]['reason'])
 
@@ -276,14 +304,16 @@ class ExtensionQualificationTests(unittest.TestCase):
                 for name in ('tfl.json', 'tfl.md'):
                     (output / name).write_text('preserved-fixture', encoding='utf-8')
                 with ExitStack() as stack:
-                    stack.enter_context(patch.dict(module.os.environ, {}, clear=True))
+                    stack.enter_context(patch.dict(module.os.environ, {'CODEX_HOME': str(output / 'codex-profile')}, clear=True))
                     stack.enter_context(patch.object(module, 'urlopen', side_effect=AssertionError('Réseau interdit pendant le test')))
                     stack.enter_context(patch.object(module, 'parse_args', return_value=SimpleNamespace(
                         policy_option=None, policy='auto', timeout=1, output_dir=output)))
                     stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={'data': []}))
-                    stack.enter_context(patch.object(module, 'fetch_context_metadata', return_value={}))
-                    stack.enter_context(patch.object(module, 'build_rows', return_value=([{'fixture': float('nan')}], [])))
+                    stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
+                    stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
+                    mock_general_collection(module, stack)
+                    stack.enter_context(patch.object(module, 'build_rows', return_value=([{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'nan-fixture', 'fixture': float('nan')}], [])))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=self.tfl_payload(module)))
                     stack.enter_context(patch.object(module, 'format_opencode_table', return_value='fixture'))
                     write = stack.enter_context(patch.object(module, 'atomic_write'))
@@ -304,14 +334,16 @@ class ExtensionQualificationTests(unittest.TestCase):
                 payload = self.tfl_payload(module)
                 payload['data'][0]['pricing']['prompt'] = 'NaN'
                 with ExitStack() as stack:
-                    stack.enter_context(patch.dict(module.os.environ, {}, clear=True))
+                    stack.enter_context(patch.dict(module.os.environ, {'CODEX_HOME': str(output / 'codex-profile')}, clear=True))
                     stack.enter_context(patch.object(module, 'urlopen', side_effect=AssertionError('Réseau interdit pendant le test')))
                     stack.enter_context(patch.object(module, 'parse_args', return_value=SimpleNamespace(
                         policy_option=None, policy='auto', timeout=1, output_dir=output)))
                     stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={
-                        'data': [{'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
-                    stack.enter_context(patch.object(module, 'fetch_context_metadata', return_value={}))
+                        'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
+                    stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
+                    stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
+                    mock_general_collection(module, stack)
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=payload))
                     stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
                     self.assertEqual(module.main(), 0)

@@ -1,0 +1,20 @@
+{
+  "archive": "openspec/changes/archive/2026-10-26-remove-general-opencode-tfl",
+  "archive_success": true,
+  "specs_updated": true,
+  "open_changes": 0,
+  "openspec_post_archive_standard": "10/10",
+  "openspec_post_archive_strict": "10/10",
+  "report_status": "verifie",
+  "report_sha256": "e94deadf4721b850e63f5830f6c1201f2b2514e7d557f345009b52fded3d5e0c",
+  "report_sections": 6,
+  "modified_existing_files": 52,
+  "new_archived_files": 20,
+  "total_project_deliverables": 72,
+  "final_global_test_executions": 646,
+  "completed_tasks": 11,
+  "blockers_file": "absent",
+  "scope_check": "conforme aux empreintes et trois specs synchronisées",
+  "lm_policy": "inkling et inkling-small actifs ; exclusions antérieures conservées",
+  "installed_sources": "non modifiées"
+}

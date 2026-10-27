@@ -1,18 +1,21 @@
 {
   "name": "prompt",
-  "version": "0.4.0",
+  "version": "0.7.13",
   "description": "Liste et lance les prompts du projet courant depuis son référentiel DEVOPS.md.",
-  "author": {"name": "AzenorPixs"},
+  "author": {
+    "name": "AzenorPixs"
+  },
   "homepage": "https://github.com/AzenorPixs/tools-codex",
   "repository": "https://github.com/AzenorPixs/tools-codex",
   "skills": "./skills/",
   "interface": {
-    "displayName": "Prompt",
+    "displayName": "PROMPT",
     "shortDescription": "Liste et lancement des prompts du projet.",
     "longDescription": "Résout le référentiel DEVOPS.md, conserve les RUN et prend en charge les variantes limitées à un change.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],
     "defaultPrompt": "Utilise $prompt LIST pour afficher les prompts du projet courant."
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

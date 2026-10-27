@@ -31,11 +31,16 @@ constituent ni des changes actifs ni une liste de fonctionnalités à réimplém
 
 ## Organisation
 
-Les commandes sources PLLM/TFL/TCU/prompt sont conservées dans :
+Les commandes sources CM/PLLM/TFL/TCU/LM/PROMPT sont conservées dans :
 
 ```text
 .codex/commands/
 ```
+
+Leurs noms canoniques sont CM.md, PLLM.md, TFL.md, TCU.md, LM.md et PROMPT.md.
+Les libellés affichés sont en majuscules ; les identifiants techniques des
+plugins et skills restent en minuscules. Les anciennes graphies de déclencheur
+restent des alias compatibles.
 
 Les plugins maison sont stockés dans des répertoires dédiés :
 
@@ -64,31 +69,38 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 
 | Type | Nom | Rôle |
 |---|---|---|
+| Plugin | `lm` | Gère la liste noire partagée, appliquée avant sélection et tests TFL/PLLM. |
 | Plugin | `prompt` | Liste et lance les prompts du projet depuis son DEVOPS et son index. |
 | Plugin | `tcu` | Met à jour les briques installées depuis marketplace et GitHub. |
 | Plugin | `cm` | Distribue le catalogue des commandes maison, invocable avec `$cm`. |
 | Plugin | `pllm` | Évalue une politique de modèles LLM et l'applique à une session OpenCode autorisée. |
-| Plugin | `tfl` | Produit le rapport comparatif des fournisseurs OpenCode Go et OpenRouter. |
+| Plugin | `tfl` | Compare exclusivement Go puis OpenRouter ; OpenCode général est retiré. |
 | Skill | `cgpt` | Affiche les quotas Codex disponibles. |
 | Skill | `coding-session-statistics` | Produit un bilan auditable d'une session de codage ou de pilotage. |
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
 | Skill | `tfl` | Expose le rapport TFL également en dehors du plugin. |
-| Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm`, `$tfl`, `$tcu` et `$prompt`. |
+| Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm`, `$tfl`, `$tcu`, `$lm` et `$prompt`. |
 | Skill | `prompt` (`$prompt`) | LIST et 38 actions en MAJUSCULE, dont les huit variantes à un change. |
-| Commande source | `/prompt` | Délègue au skill prompt avec LIST ou CODE ; ne crée pas une slash native. |
+| Skill | `lm` (`$lm`) | LIST, ADD et REMOVE ; mimo-v2.5 exclu par défaut. |
+| Commande source | `/LM` | Délègue au skill LM sans enregistrer automatiquement une slash native. |
+| Commande source | `/CM` | Délègue au catalogue CM, avec une seule entrée prompt et sans exécution. |
+| Commande source | `/PROMPT` | Délègue au skill prompt avec LIST ou CODE ; ne crée pas une slash native. |
 | Skill | `tcu` (`$tcu`) | Met à jour les briques présentes ; `check` contrôle sans écriture. |
 | Commande source | `/TCU` | Délègue au skill TCU ; ne crée pas une slash native. |
-| Commande source | `/pllm` | Instructions historiques de lancement de l'évaluation PLLM ; skill invocable avec `$pllm`. |
-| Commande source | `/tfl` | Instructions historiques de lancement du rapport TFL ; skill invocable avec `$tfl`. |
+| Commande source | `/PLLM` | Instructions historiques de lancement de l'évaluation PLLM ; skill invocable avec `$pllm`. |
+| Commande source | `/TFL` | Instructions historiques de lancement du rapport TFL ; skill invocable avec `$tfl`. |
 
-Les skills `cm`, `pllm`, `tfl`, `tcu` et `prompt` sont volontairement fournis sous forme autonome et
+Les skills `cm`, `pllm`, `tfl`, `tcu`, `lm` et `prompt` sont volontairement fournis sous forme autonome et
 embarquée afin de couvrir les deux modes de distribution. Le skill
 `coding-session-statistics` s'appuie sur `cgpt` pour les relevés de quota
 hebdomadaires lorsqu'ils sont demandés.
 
 TCU est le nom final de l'outil proposé initialement comme TFU. Il distingue
 les plugins de la marketplace et les copies autonomes issues de GitHub. Il
-actualise les briques présentes, sans modifier les checkouts de développement.
+actualise les briques présentes et peut installer le seul composant prompt
+absent : plugin, skill embarqué vérifié et wrapper. Les conflits locaux ne
+bloquent pas les opérations indépendantes ; ils restent visibles dans le
+bilan partiel. Les checkouts de développement ne sont pas modifiés.
 Le lien `.agents/skills/tcu` expose le skill autonome dans ce projet. Les modes
 de contrôle, sauvegardes et conflits sont décrits dans BUILD et TECHNICAL.
 
@@ -107,8 +119,8 @@ OpenSpec avant leur implémentation, conformément aux règles du dépôt.
 
 ## Lancement de prompts
 
-`/prompt LIST` affiche l'index déclaré par le DEVOPS.md du projet courant.
-`/prompt CODE` ou `$prompt CODE` charge le prompt correspondant et exécute
+`/PROMPT LIST` affiche l'index déclaré par le DEVOPS.md du projet courant.
+`/PROMPT CODE` ou `$prompt CODE` charge le prompt correspondant et exécute
 son processus jusqu'à ses conditions terminales ou une condition imposant
 une décision. Aucun prompt n'est embarqué dans Tools Codex.
 
@@ -116,3 +128,31 @@ GCM et GCMP sont les alias validés de GSCM.md et GSCMP.md. CISMP1 à CISMP8
 conservent le RUN demandé et le cycle normal de CISMP.md. Les variantes
 1CISMP1 à 1CISMP8 bornent le même RUN à un change complet, suivi de
 l'archivage, des statistiques puis de l'arrêt de la session de codage.
+
+## Liste noire des modèles
+
+LM partage CODEX_HOME/lm/blacklist.json entre toutes les installations TFL/PLLM,
+avec ~/.codex par défaut. Les valeurs initiales mimo-v2.5 et
+muse-spark-1.2-contributor sont appliquées sans création de fichier ; toutes
+les entrées sont retirables et une liste vide explicite reste vide. TFL et
+PLLM filtrent avant classement, sélection et génération, indépendamment des
+anciens catalogues ou succès mémorisés. Le stockage hors cache est conservé
+par TCU. LM constitue l'unique liste noire, sans exclusion permanente intégrée.
+
+Une métadonnée d'effort ou de contexte inconnue impose une analyse et une
+recherche du LLM dans les sources officielles pour les deux catalogues.
+Les valeurs HIGH/XHIGH officiellement acceptées restent admissibles même
+équivalentes ; leurs preuves et paramètres sont tracés. Un contexte encore
+invérifiable après investigation exclut le modèle.
+
+## Rafraîchissement utilisateur planifié
+
+Les six plugins embarquent un bootstrap SessionStart soumis à la confiance
+native de Codex. TCU applique le même bootstrap après vérification des sources ;
+les copies autonomes fournissent aussi l'installateur. Une seule installation
+utilisateur déclenche TFL puis PLLM normal à 00 h et 12 h Europe/Paris.
+L'application ou un CLI interactif Codex doit être ouvert pour cet utilisateur.
+Un quota Codex épuisé ou inconnu empêche TFL et PLLM ; le quota est relu avant
+PLLM. Les passages manqués ne sont pas rattrapés. L'installation n'exécute
+aucun LLM ; un échec TFL empêche PLLM et la réutilisation d'un ancien catalogue.
+La qualification des sources reste distincte de l'activation du timer réel.

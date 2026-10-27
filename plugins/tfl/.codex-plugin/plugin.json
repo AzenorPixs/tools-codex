@@ -1,7 +1,7 @@
 {
   "name": "tfl",
-  "version": "0.4.0",
-  "description": "G\u00e9n\u00e8re un rapport comparatif des mod\u00e8les OpenCode Go et OpenRouter.",
+  "version": "0.7.13",
+  "description": "Compare les catalogues et qualifie les modèles gratuits en HIGH/XHIGH.",
   "author": {
     "name": "AzenorPixs"
   },
@@ -10,11 +10,12 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "TFL",
-    "shortDescription": "Compare les mod\u00e8les OpenCode Go et OpenRouter.",
-    "longDescription": "TFL g\u00e9n\u00e8re un rapport filtr\u00e9 des mod\u00e8les disponibles, de leur contexte et de leurs tarifs.",
+    "shortDescription": "Compare Go puis OpenRouter, HIGH/XHIGH vérifiable.",
+    "longDescription": "TFL exige HIGH/XHIGH pour gratuits et payants, affiche Go puis OpenRouter à 0,20 EUR/M maximum ; collecte seulement Go et OpenRouter.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Utilise le plugin TFL pour g\u00e9n\u00e9rer le rapport OpenCode Go puis OpenRouter, toujours hors sandbox."
-  }
+    "defaultPrompt": "Utilise le plugin TFL pour générer les tableaux Go puis OpenRouter avec HIGH/XHIGH vérifiable et OpenRouter à 0,20 EUR/M maximum, toujours hors sandbox."
+  },
+  "hooks": "./hooks/hooks.json"
 }

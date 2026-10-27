@@ -1,0 +1,28 @@
+{
+  "policy_path": "/home/ade/.codex/lm/blacklist.json",
+  "models": [
+    "inkling",
+    "inkling-small",
+    "mimo-v2.5",
+    "muse-spark-1.2-contributor"
+  ],
+  "blocked_variants": [
+    "thinkingmachines/inkling",
+    "thinkingmachines/inkling:free",
+    "thinkingmachines/inkling-small",
+    "thinkingmachines/inkling-small:free"
+  ],
+  "verified_modules": [
+    "skills/lm/scripts/model_blacklist.py",
+    "plugins/lm/skills/lm/scripts/model_blacklist.py",
+    "skills/tfl/scripts/model_blacklist.py",
+    "plugins/tfl/skills/tfl/scripts/model_blacklist.py",
+    "skills/pllm/scripts/model_blacklist.py",
+    "plugins/pllm/skills/pllm/scripts/model_blacklist.py",
+    "/home/ade/.codex/skills/tfl/scripts/model_blacklist.py",
+    "/home/ade/.codex/skills/pllm/scripts/model_blacklist.py"
+  ],
+  "idempotence": "contenu et mtime inchangés après répétition des deux ADD",
+  "go_control": "beam-free autorisé",
+  "historical_reports": "non réécrits"
+}

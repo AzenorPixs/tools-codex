@@ -1,0 +1,6 @@
+Avant code : change ciblé strict valide.
+Baseline globale stricte : 10/10.
+Avant archive : global standard 11/11 et strict 11/11.
+Toutes les tâches de réalisation sont prouvées et cochées.
+Archive native réussie : specsUpdated=true ; 2 ajouts, 15 modifications, 1 retrait, 1 renommage.
+Après archive : global standard 10/10 et strict 10/10 ; aucun change actif.

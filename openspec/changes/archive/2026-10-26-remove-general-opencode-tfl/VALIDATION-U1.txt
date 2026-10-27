@@ -1,0 +1,14 @@
+........................................................................................................................F.....................................
+======================================================================
+FAIL: test_old_general_section_cannot_replace_a_current_section (test_llm_schedule.ScheduleTests.test_old_general_section_cannot_replace_a_current_section)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/devops/datas/tools-codex/tests/test_llm_schedule.py", line 142, in test_old_general_section_cannot_replace_a_current_section
+    self.assertFalse(self.config.exists())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 158 tests in 8.887s
+
+FAILED (failures=1)

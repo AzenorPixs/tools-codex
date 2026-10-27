@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-10-25T01:30:15+02:00",
+  "release": "0.5.6",
+  "script_sha256": "07d491b20ebb74640123c625dd92674bbab70d90dc265550d8f0584bc9282afa",
+  "order": [
+    "opencode_go",
+    "opencode",
+    "openrouter"
+  ],
+  "opencode_go_retained_count": 9,
+  "general_source_api": "https://opencode.ai/zen/v1/models",
+  "general_pricing_source": "https://opencode.ai/v2/docs/console/models/",
+  "general_metadata_provider": "opencode",
+  "general_source_model_count": 85,
+  "general_retained_count": 5,
+  "general_excluded_count": 80,
+  "general_models": [
+    {
+      "id": "beam-free",
+      "context_length": 1048576,
+      "average": 0.0,
+      "api_endpoint": "https://opencode.ai/inference/openai/v1/chat/completions",
+      "api_protocol": "chat_completions",
+      "routing_warning": null
+    },
+    {
+      "id": "nemotron-3.5-super-vl-free",
+      "context_length": 1048576,
+      "average": 0.0,
+      "api_endpoint": "https://opencode.ai/inference/openai/v1/chat/completions",
+      "api_protocol": "chat_completions",
+      "routing_warning": null
+    },
+    {
+      "id": "qwen3.8-flash",
+      "context_length": 1000000,
+      "average": 0.31,
+      "api_endpoint": "https://opencode.ai/inference/anthropic/v1/messages",
+      "api_protocol": "messages",
+      "routing_warning": null
+    },
+    {
+      "id": "glm-5.3-flash",
+      "context_length": 1000000,
+      "average": 0.325,
+      "api_endpoint": "https://opencode.ai/inference/openai/v1/chat/completions",
+      "api_protocol": "chat_completions",
+      "routing_warning": null
+    },
+    {
+      "id": "gpt-6-luna",
+      "context_length": 1050000,
+      "average": 0.475,
+      "api_endpoint": "https://opencode.ai/inference/openai/v1/responses",
+      "api_protocol": "responses",
+      "routing_warning": null
+    }
+  ],
+  "targeted_free_exclusions": [
+    {
+      "id": "deepseek-v4.1-flash-free",
+      "name": "deepseek-v4.1-flash-free",
+      "context_length": 200000,
+      "reason": "contexte 200000 tokens inférieur au seuil obligatoire de 1M"
+    },
+    {
+      "id": "glm-5.3-flash-free",
+      "name": "glm-5.3-flash-free",
+      "context_length": 200000,
+      "reason": "contexte 200000 tokens inférieur au seuil obligatoire de 1M"
+    }
+  ],
+  "openrouter_retained_count": 46,
+  "generation_de_tokens": false,
+  "consultation_quotas": false,
+  "installation_profil": false
+}

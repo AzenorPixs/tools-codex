@@ -1,0 +1,21 @@
+{
+  "name": "lm",
+  "version": "0.7.13",
+  "description": "Gère la liste noire commune des modèles exclus de TFL et PLLM.",
+  "author": {
+    "name": "AzenorPixs"
+  },
+  "homepage": "https://github.com/AzenorPixs/tools-codex",
+  "repository": "https://github.com/AzenorPixs/tools-codex",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "LM",
+    "shortDescription": "Liste noire partagée des modèles LLM.",
+    "longDescription": "Affiche, ajoute et retire les exclusions communes à TFL et PLLM, avec mimo-v2.5 par défaut.",
+    "developerName": "AzenorPixs",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Utilise $lm pour afficher la liste noire commune des modèles LLM."
+  },
+  "hooks": "./hooks/hooks.json"
+}

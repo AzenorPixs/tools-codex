@@ -26,11 +26,18 @@ reprend exactement la release de `VERSION`, qui reste la source de vérité.
 
 ## Arborescence
 
-Les commandes sources PLLM/TFL/TCU/prompt sont conservées dans :
+Les commandes sources CM/PLLM/TFL/TCU/LM/PROMPT sont conservées dans :
 
 ```text
 .codex/commands/
 ```
+
+Les six fichiers canoniques sont CM.md, PLLM.md, TFL.md, TCU.md, LM.md et
+PROMPT.md. Leurs déclencheurs sont /CM, /PLLM, /TFL, /TCU, /LM et /PROMPT ;
+les anciennes graphies en minuscules restent des alias. Chaque skill déclare
+son display_name en majuscules dans agents/openai.yaml, identique dans les
+deux distributions. Les identifiants techniques, chemins de skills et
+invocations $… restent en minuscules.
 
 Les plugins sont placés à la racine du dépôt :
 
@@ -69,7 +76,7 @@ exactement cette version.
 
 ## Structure des plugins actuels
 
-Les plugins `cm`, `pllm`, `tfl`, `tcu` et `prompt` possèdent un identifiant stable en kebab-case et
+Les plugins `cm`, `pllm`, `tfl`, `tcu`, `lm` et `prompt` possèdent un identifiant stable en kebab-case et
 utilisent actuellement le manifeste de compatibilité Codex suivant :
 
 ```text
@@ -77,14 +84,16 @@ plugins/<NOM_DU_PLUGIN>/.codex-plugin/plugin.json
 ```
 
 Le manifeste déclare le nom, la version, la présentation et le répertoire de
-skills embarqués. Les cinq plugins embarquent chacun le skill du même nom.
+skills embarqués. Les six plugins embarquent chacun le skill du même nom.
 PLLM et TFL incluent les scripts, références et données nécessaires à leur
-exécution. CM contient uniquement son manifeste et `skills/cm/SKILL.md` ; il
-ne déclare ni script, ni serveur MCP, ni application ou service externe.
+exécution. CM conserve son catalogue et embarque aussi le bootstrap du planning
+commun, comme les cinq autres plugins. Il ne déclare ni serveur MCP ni application.
 
 TCU embarque `skills/tcu/SKILL.md` et `skills/tcu/scripts/update.py`. Les deux
 copies autonomes et embarquées sont identiques. Le lien relatif
 `.agents/skills/tcu -> ../../skills/tcu` assure la découverte dans ce projet.
+Les deux distributions fournissent aussi `agents/openai.yaml` avec le nom
+d'affichage `TCU` pour les listes et pastilles de skills.
 
 Le plugin prompt embarque `skills/prompt/SKILL.md` et
 `skills/prompt/scripts/resolve_prompt.py`, identiques aux sources autonomes.
@@ -135,20 +144,25 @@ Les correspondances actuellement publiées sont :
 | `$pllm` | `skills/pllm/` | `plugins/pllm/` |
 | `$tfl` | `skills/tfl/` | `plugins/tfl/` |
 | `$tcu` (déclencheur `/TCU`) | `skills/tcu/` | `plugins/tcu/` |
-| `$prompt` (déclencheur `/prompt`) | `skills/prompt/` | `plugins/prompt/` |
+| `$lm` (déclencheur `/LM`) | `skills/lm/` | `plugins/lm/` |
+| `$prompt` (déclencheur `/PROMPT`) | `skills/prompt/` | `plugins/prompt/` |
 | `$cgpt` | `skills/cgpt/` | — |
 | `$coding-session-statistics` | `skills/coding-session-statistics/` | — |
 
 Le catalogue de `$cm` doit rester synchronisé avec les noms, syntaxes et
 responsabilités des entrées maison publiées. Sa consultation n'exécute pas
-PLLM, TFL, TCU ou un prompt. Elle ne vérifie pas que ces skills sont installés localement.
+PLLM, TFL, TCU, LM ou un prompt. Elle ne vérifie pas que ces skills sont installés localement.
+La colonne `Commande` référence les skills disponibles avec leurs noms
+lisibles, dont `TCU`, pour permettre leur présentation native dans Codex ;
+les syntaxes `$…` restent dans `Utilisation`.
 Après une modification de sa source autonome, la copie embarquée doit être
 synchronisée et comparée octet pour octet. Le chargement simultané du plugin
 CM et du skill autonome peut afficher deux entrées ; la procédure de
 distribution n'en supprime ou désactive aucune automatiquement.
-La commande source `.codex/commands/cm.md` est supprimée : `/cm` est remplacé
-par `$cm`. Les fichiers sources PLLM/TFL restent inchangés ; leur présence
-n'enregistre pas automatiquement des commandes slash natives dans Codex.
+La commande source `.codex/commands/CM.md` délègue au skill CM ; `/CM` est
+reconnu comme déclencheur du catalogue, qui garde une seule entrée prompt.
+La présence de ces wrappers ne crée pas une slash native automatiquement
+enregistrée dans Codex. `$cm` reste directement pris en charge.
 
 ## Prérequis d'exécution
 
@@ -159,23 +173,127 @@ décrivent des mécanismes et des accès ; aucune valeur d'identification ne doi
 | Composant | Prérequis locaux | Services externes nécessaires |
 |---|---|---|
 | `tfl` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS, exécution hors sandbox et répertoire de données inscriptible. Les accès aux fournisseurs sont configurés localement hors des sources. | OpenCode Go, models.dev et OpenRouter. |
-| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les quatre politiques sont initialisées si le fichier courant manque. | OpenCode Go, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
+| `pllm` | Python 3, `secret-tool` et accès au trousseau de l'hôte, accès réseau HTTPS et répertoire de données inscriptible. Le catalogue TFL est fourni par `--tfl-catalog CHEMIN` ou par le chemin voisin par défaut ; les six politiques sont initialisées si le fichier courant manque. | OpenCode Go pour 1 à 4, OpenRouter, DeepSeek et le service de taux de change de la BCE. |
 | `cgpt` | Python 3, répertoire de données inscriptible et outil Codex `mcp__codex_app__get_usage_limits`. | Aucun accès HTTP direct. |
 | `coding-session-statistics` | Historique persistant de la session. Le suivi de quota utilise `cgpt` ; les mesures de performance nécessitent une collecte planifiée dès le début de session. | Aucun accès HTTP direct obligatoire. |
 | `$cm` | Skill découvert dans le projet ou installé dans un emplacement reconnu. | Aucun. |
 | `$prompt` | Python 3.13/3.14, DEVOPS.md du projet courant et référentiel déclaré lisibles. | Aucun pour résoudre ; dépend ensuite du prompt choisi. |
 | `$tcu` | Python 3.13/3.14, CLI Codex, racines identifiées inscriptibles pour appliquer. | GitHub public HTTPS et marketplace officielle. |
+| Planning commun des six plugins | Python 3.13/3.14, CLI Codex, gestionnaire systemd utilisateur, TFL/PLLM installés et accès au trousseau de la session pour l'exécution. | Lecture des quotas Codex, puis services TFL/PLLM seulement si les conditions sont satisfaites. |
 
 Les plugins `pllm` et `tfl` écrivent leurs rapports dans leur répertoire
 `data/`. TFL accepte une redirection par `--output-dir` ; PLLM ne propose pas
 d'option équivalente et exige que son propre répertoire `data/` soit
 inscriptible. PLLM charge `data/pllm-current.json` avant l'évaluation ; si ce
-fichier manque, les quatre politiques sont initialisées sans mesures ni
+fichier manque, les six politiques sont initialisées sans mesures ni
 sélection historique. Un fichier courant invalide provoque un diagnostic et
-reste préservé. Les contrôles de quotas et de performance restent obligatoires.
+reste préservé. Les contrôles de ressources applicables et de performance restent obligatoires ;
+les gratuits 3/4 ne consultent aucun quota.
+
+PLLM définit six priorités : 1/2 payants Go, 3/4 gratuits Go avec les comptes de 1/2 respectivement, 5 ancien OpenRouter, 6 ancien
+DeepSeek. Les modes 1/2 contrôlent les trois périodes Go avant chaque requête ;
+un épuisement les rend rouges et invalides sans repli gratuit. Les modes 3/4
+ne consultent jamais quota ni solde, même entre paliers ; ils affichent
+`quota_status=not_applicable`, `quotas=null` et `Non applicable`.
+Ils exigent gratuité vérifiée, contexte ≥1M, réponse complète, comptage fiable,
+TTFT <30 s et débit >20 tokens/s. Tous les gratuits PLLM 3/4 exigent <30 s et >20
+tokens/s ; seuls les payants gardent TTFT <90 s et débit >15 tokens/s. Les critères sont publiés par politique dans `performance_criteria`.
+Le mode5 garde exclusivement les payants OpenRouter avec crédit positif ;
+un épuisement le rend invalide sans repli gratuit. Mode6
+garde le contrôle de solde DeepSeek. Les gratuits restent soumis aux accès,
+HIGH/XHIGH autorisé, filtres TFL, protocoles et limitations HTTP du fournisseur.
+
+Les références des secrets sont conservées : policy=mode1 pour 1/3,
+policy=mode2 pour 2/4, ancien policy=mode3 pour 5 et ancien policy=mode4 pour 6.
+Aucune migration de secret n'est nécessaire. Les historiques et mémoires
+passent au schéma 2 : après validation du schéma 1, anciens 3/4 vers 5/6,
+nouveaux 3/4 sans résultat ni apprentissage. La sélection est effacée lors de
+l'adaptation et les lignes anciennes sont non évaluées dans l'invocation.
+Les fichiers existants sont préservés jusqu'à publication ou nouvelle réussite ;
+les fichiers invalides ne sont pas écrasés. Le schéma 2 n'est pas lisible par
+l'ancien évaluateur : préserver une copie de ses données avant retour de version.
+
+Les routes et fournisseurs de chaque section sont conservés. Les candidats
+OpenCode Go utilisent la clé du compte associé au mode uniquement sur l'origine
+HTTPS OpenCode validée, un User-Agent PLLM et une session stable. Une restriction
+de client natif ou un refus de clé reste explicite ; le testeur ne fabrique pas
+une identité native et ne crée pas de secret. La configuration OpenCode reste
+inchangée. L'état historique accepte `opencode` pour les anciens 1/2 et les gratuits 3/4 ;
+les candidats courants 1/2 restent exclusivement payants Go et 3/4 gratuits Go,
+y compris lorsque les catalogues ou historiques contiennent opencode.
+
+Les tests déterminent l'admissibilité. Les payants 1/2/5 sont essayés par coût
+moyen TFL croissant : moyenne des prix d'entrée/sortie hors pointe Go ou de
+base OpenRouter. À prix égal, conserver l'ordre TFL stable. Les gratuits 3/4
+sont essayés dans l'ordre TFL Go exclusivement. Dans chaque mode, retenir le
+premier candidat conforme et ne pas tester les suivants ; après un échec,
+essayer le suivant sous réserve des contrôles bloquants. Mode6 garde son
+unique candidat direct sans tarif inventé. Les forçages de rang conservent
+leur cible, avec refus des gratuits en mode5 désormais exclusivement payant.
+Le coût vérifié est conservé dans average_price_usd_per_million_tokens et les
+prix/provenances dans model_source. Les moyennes décimales égales conservent
+leur égalité sans artefact d'addition binaire ; un prix non vérifiable reste
+exclu et aucun prix antérieur n'est hérité. Le contexte d'entrée ≥1M est une
+capacité TFL vérifiée ; le test borné n'envoie pas un million de tokens.
+Go comptent la sortie raisonnement+réponse ; OpenRouter/DeepSeek la
+réponse seule. Le protocole 8 divise ce comptage par la durée complète non
+arrondie de la requête, attente et TTFT inclus. Aucun premier token n'est
+soustrait. Une réponse complète en un bloc reste mesurable ; les durées ou
+comptages invalides rendent le débit indisponible. Les priorités restent fixes.
+Les rapports exposent request_seconds, throughput_metric=request_average_v1,
+throughput_window=request_total et measurement_protocol_version=8.
+duration_seconds est un affichage arrondi ; generation_seconds reste la
+fenêtre diagnostique entre fragments. Ces deux affichages ne servent pas de
+dénominateur. Aucun plafond ou minimum de durée artificiel ne corrige la valeur.
+La mémoire inclut ce profil dans l'identité : les anciennes réussites restent
+historiques sans amorcer le nouveau protocole. Un nouveau succès de même
+profil peut réutiliser son palier. Les anciens débits ne sont pas comparables ;
+les seuils numériques conservés peuvent produire un autre classement et une
+autre éligibilité.
+Le JSON additif conserve catégorie, exclusions, candidats et tentatives, ainsi
+que les quotas réels. La mémoire garde les succès par configuration ; un
+palier d'un autre candidat n'est pas affiché. Les erreurs HTTP/SSE sont filtrées
+et rendues dans État sans corps brut. active s'arrête silencieusement après
+le premier succès du premier mode valide ; les forçages gardent un seul candidat.
+
+Tous les benchmarks PLLM et les gratuits TFL demandent HIGH, avec le seul
+repli XHIGH si HIGH est indisponible et XHIGH pris en charge. Chat Completions
+utilise reasoning_effort ; Responses reasoning.effort ; Messages thinking
+adaptive et output_config.effort ; DeepSeek thinking activé et reasoning_effort.
+OpenRouter exige une déclaration vérifiable de HIGH ou XHIGH ; un budget seul est exclu. Aucun niveau inférieur n'est utilisé. Le niveau
+effectif est tracé et participe à l'identité de mémoire ; une réussite Low
+n'amorce pas un test HIGH. Un refus 400 propre à l'effort permet au plus un
+repli XHIGH annoncé avec ses propres paliers ; 401/403/429 ne le déclenchent pas.
+Les erreurs HTTP sont lues au plus sur 64 Kio, fermées et filtrées sans corps
+brut, compte ou secret. Le diagnostic est réutilisable sans relire le corps.
+
+scripts/performance.py embarque le même moteur dans les quatre distributions
+PLLM/TFL : seuils, gratuité vérifiable, paramètres et mesure streaming. Les
+plugins restent autonomes et leurs paquets isolés contiennent ce module.
+Les dépendances réseau/horloge sont injectées dans le parseur pour les tests.
+TFL teste tous les gratuits structurellement admissibles des deux catalogues,
+sans appel de quota, crédit ou solde. Il utilise la clé Go de sa politique
+pour Go et la clé OpenRouter existante (environnement, sinon trousseau
+historique du mode 5). Les valeurs restent en mémoire et hors des sorties.
+Les gratuits échoués sont retirés de models et conservés dans excluded_models
+et free_performance_results avec critères, dates, niveaux et tentatives.
+Les deux tableaux fournisseurs Go puis OpenRouter conservent huit colonnes ; un tableau
+commun des essais gratuits est ajouté. Une section vide après qualification
+est publiée avec son état et ses exclusions, sans bloquer les autres sections.
+Le filtre dépend du compte
+TFL utilisé : un autre compte peut avoir un accès différent, sans que PLLM
+réintègre automatiquement un candidat exclu du catalogue.
+
+Hors l'unique repli d'effort autorisé, HTTP 400 et HTTP 429 arrêtent les paliers de ce candidat, puis les autres
+candidats autorisés continuent avec leurs contrôles. Retry-After accepte
+secondes entières et dates HTTP avec fuseau ; une valeur inexploitable reste
+indisponible. Le JSON conserve http_error, délai et échéance ; État affiche
+le refus ou le réessai disponible en heure de Paris. Aucune attente jusqu'à
+un quota journalier ni reprise planifiée n'est créée. Les troncatures et les
+seuils mesurés continuent de permettre les paliers habituels, sans réduire le niveau requis.
 
 La résolution du catalogue par PLLM accepte `--tfl-catalog CHEMIN` pour
-OpenCode Go, OpenRouter et les replis. Sans option, elle conserve
+OpenCode Go, les gratuits 3/4 et OpenRouter 5. Sans option, elle conserve
 `../tfl/data/tfl.json` relatif au skill PLLM. Pour des plugins installés
 séparément, fournir explicitement le catalogue produit par TFL. Les tests
 hors ligne qualifient des emplacements séparés ; ils ne prouvent pas une
@@ -226,11 +344,14 @@ dans ces répertoires, dans les scripts des skills ou dans `pyproject.toml`.
 La lecture des sources, les contrôles documentaires et la validation OpenSpec
 ne prouvent ni le fonctionnement fournisseur ni l'installation des plugins.
 La suite hors ligne actuelle comprend `tests/test_pllm_ttft.py`,
+`tests/test_pllm_free_fallback.py`,
+`tests/test_pllm_http_diagnostics.py`, `tests/test_pllm_six_modes.py`, `tests/test_pllm_price_priority.py`, `tests/test_free_performance.py`, `tests/test_throughput_measurement.py`,
 `tests/test_extension_qualification.py`, `tests/test_tcu_update.py` et
 `tests/test_prompt_dispatch.py`, exécutables avec
 `python3 -B -m unittest discover -s tests -v`. Elle couvre les deux
 distributions, le catalogue explicite, l'initialisation, la préservation d'un
-historique corrompu et les replis après HTTP 429. Chaque remplaçant recalcule
+historique corrompu et les remplacements après HTTP 429, les six modes, leurs comptes, les
+seuils stricts 3/4, les forçages et les migrations de schéma. Chaque remplaçant recalcule
 ses paliers et exige ses propres mesures avant de devenir valide.
 TFL exclut les prix OpenRouter non finis et les débordements, puis prépare
 une sérialisation JSON stricte avant publication. Ces tests isolés ne
@@ -239,6 +360,75 @@ sur les branches 3.13 et 3.14 avec la suite applicable, la compilation de tous l
 scripts et tests, leurs imports et la résolution du fuseau Europe/Paris.
 Les résultats et versions exactes sont consignés dans le change et son
 rapport d'archive ; aucune compatibilité avec une autre branche n'est déduite.
+
+Les tarifs OpenCode Go sont collectés à chaque génération depuis les tableaux
+officiels de `https://opencode.ai/docs/go/`, par HTMLParser et urllib de la
+bibliothèque standard. L'unité par million, les montants courants, les
+correspondances et les doublons Go/Go Plus sont vérifiés ; les anciens prix
+barrés sont ignorés. Les variantes, prix de cache, source, date et empreinte
+de la documentation restent dans `opencode_go.pricing_reference`. Le prix
+de classement est le maximum des moyennes hors pointe entre les paliers de
+contexte disponibles. Les estimations de requêtes non collectées sont `null`
+avec un statut N/A ; aucun historique tarifaire ou d'estimation n'est repris.
+
+Les modalités Go sont collectées dans les déclarations API et dans
+`modalities.input/output` de models.dev, sans liste de modèles connus. Les
+déclarations concordantes utilisent la provenance API lorsqu'elle existe ;
+des déclarations contradictoires bloquent la publication. Une absence reste
+non vérifiée. Les sources et dates sont conservées dans `modalities_metadata`.
+Les filtres de sortie s'appliquent aux modalités ainsi récupérées.
+
+Le transport Go utilise une route API explicitement publiée ou les champs
+`npm`/`api` de models.dev, avec surcharge du modèle sur le fournisseur. Les
+contrats génériques reconnus sont openai-compatible → chat_completions,
+openai → responses (fabrique par défaut) et anthropic → messages. Aucun nom
+ni famille de modèle ne détermine le protocole ou l'endpoint. Un modèle non
+documenté, un SDK inconnu ou une base absente restent signalés sans repli.
+HTTPS, origine OpenCode, port HTTPS, absence d'identifiants utilisateur,
+query et fragment sont vérifiés avant publication des URL. Une URL non sûre
+ou une route explicite contradictoire avec son protocole bloque la génération.
+Les champs consommés par PLLM restent présents ; `routing_metadata` conserve
+source, date, SDK, portée des surcharges et référence du contrat de protocole.
+`routing_status=documented` et `generation_tested=false` distinguent la preuve
+documentaire d'un appel réel. `tests/test_tfl_go_metadata.py` couvre ces cas
+sur les deux distributions et vérifie la lecture des métadonnées par PLLM,
+sans quota ni benchmark.
+
+TFL collecte exclusivement Go et OpenRouter. Les collecteurs historiques
+OpenCode général ne sont plus appelés ; aucun modèle général, investigation,
+essai ou section opencode n'est publié. models.dev reste la source des seules
+métadonnées opencode-go utilisées pour Go. Les helpers de lecture historiques
+restent isolés et ne participent pas au parcours main.
+PLLM ne consomme que opencode_go pour les modes 1 à 4 : payants en 1/2,
+gratuits en 3/4. Une ancienne section opencode, même admissible, malformée ou
+seule disponible, n'est jamais un repli ; les rangs forcés restent bornés à Go.
+Les tests test_tfl_opencode_catalog.py et test_pllm_six_modes.py couvrent la
+publication à deux sections et l'absence d'appels généraux, y compris anciens
+résultats sélectionnés. Les sections Go/OpenRouter valides mais vides restent
+publiables avec leur état et leurs exclusions. Les seuils restent conservés.
+
+OpenRouter conserve la collecte `pricing.prompt/completion` et le classement
+sur les prix API de base, avec conversion par million. Les caches et les
+paliers `overrides` sont conservés dans `pricing_details`, y compris les
+conditions de contexte et les jours/horaires UTC publiés. Aucun seuil de
+contexte n'est inventé pour une variante temporelle. La requête modèles
+interroge tout le catalogue sans filtre de catégorie, modalité ni limite
+artificielle de nombre. La sélection est dynamique, sans liste d'identifiants :
+contexte ≥ 1M, HIGH/XHIGH vérifiable, moyenne API de base ≤0,20 EUR/M au taux BCE vérifié, modalités
+de sortie et blacklist. Les prix négatifs, non finis ou débordants
+sont non exploitables. La provenance tarifaire des deux fournisseurs est
+horodatée. Une source indispensable invalide ou des tarifs Go contradictoires
+font échouer la génération avant publication ; les rapports existants restent
+intacts. Aucun repli statique ou historique n'existe. Une correspondance
+tarifaire absente exclut le modèle avec son motif ; une route de génération
+Go inconnue est signalée sans protocole déduit. `tests/test_tfl_pricing.py`
+couvre ces comportements sur les deux distributions, hors réseau et trousseau.
+Cette suite couvre aussi l'arrivée et la disparition de modèles, les prix
+gratuits et les bornes, l'audit des exclusions et un catalogue de plus de
+1 000 modèles. Le JSON désigne cette sélection par
+`live-api-context-cost-modalities`. L'absence d'un ancien modèle n'est plus
+bloquante ; l'absence de tout résultat admissible est publiée explicitement
+avec ses exclusions et ne bloque plus les autres catalogues.
 
 Avant publication, chaque plugin doit être vérifié dans une nouvelle session
 Codex après son installation depuis la marketplace. La validation couvre au
@@ -268,8 +458,26 @@ autonomes à remplacer.
 Les racines par défaut sont CODEX_HOME/skills, ~/.agents/skills,
 CODEX_HOME/prompts et CODEX_HOME/commands, avec ~/.codex par défaut pour
 CODEX_HOME. `--skills-dir` et `--commands-dir` désignent des racines explicites.
-Les absents ne sont pas installés. Liens et checkouts de développement restent
-en conflit sans modification ; aucun git pull ni redémarrage de service.
+Seul prompt absent peut être installé via le CLI après validation de la
+source et du catalogue. Le manifeste, le skill et le résolveur installés sont
+vérifiés contre l’instantané GitHub. Un cache incomplet peut être réparé via
+le CLI ; aucun wrapper n’est écrit si cette vérification échoue. Les autres
+plugins absents et skills autonomes absents ne sont pas créés.
+
+Le wrapper issu de `.codex/commands/PROMPT.md` est déployé par défaut dans
+CODEX_HOME/prompts/PROMPT.md, ou dans le premier --commands-dir explicite.
+TCU accepte encore la source prompt.md d'une release antérieure si la source
+canonique manque. Une copie prompt.md existante reste mise à jour sous son
+nom actuel, sans doublon créé ni renommage. Si les deux graphies existent,
+elles sont vérifiées dans le même plan. Son reçu dédié
+`.tools-codex-prompt-origin.json` peut reprendre une preuve du reçu partagé
+sans l’écraser. Les plans génériques ignorent les deux graphies de PROMPT.
+Pour les autres commandes, une source canonique actualise également les
+copies historiques en minuscules présentes, avec leurs reçus et sans créer
+les commandes absentes. Le wrapper
+délègue au skill sans copier le référentiel métier désigné dans DEVOPS.md.
+Liens et checkouts de développement restent en conflit sans modification ;
+aucun git pull ni redémarrage de service.
 
 Le reçu `.tools-codex-origin.json` suit dépôt, SHA, release et empreintes. Une
 copie différente sans reçu exige `--adopt`, jamais ajouté implicitement. Une
@@ -288,7 +496,11 @@ Chaque remplacement autonome est atomique ; une erreur restaure les sources
 déjà remplacées et conserve la sauvegarde. Le cycle CLI n'est pas une
 transaction commune : succès partiels et états inconnus sont rapportés sans
 promesse d'annulation globale. Le bilan distingue cible et version observée,
-avec code non nul sur conflit ou échec. La suite TCU simule réseau et CLI et
+avec trois lignes distinctes pour le plugin, le skill embarqué et la commande
+prompt, et un code non nul sur conflit ou échec. Un conflit local ne bloque
+pas les canaux indépendants ni les plans locaux valides. Une erreur de
+source, de sauvegarde ou de cohérence CLI bloque les opérations non sûres.
+La suite TCU simule réseau et CLI et
 utilise des profils temporaires sous tests ; elle ne qualifie pas une mise à
 jour du profil réel ni une publication GitHub.
 
@@ -325,3 +537,175 @@ temporaires. Elle couvre les 38 correspondances, l'isolation des projets,
 les variantes de RUN, LIST, les liens lus sans modification et les erreurs.
 Les paquets isolés et LIST réel sont contrôlés séparément ; aucun RUN piloté
 ou prompt à effets réels n'est lancé pendant cette qualification.
+
+## Liste noire LM
+
+LM fournit un skill autonome et embarqué, le même module model_blacklist.py
+que TFL/PLLM, la commande source .codex/commands/LM.md et la découverte
+.agents/skills/lm -> ../../skills/lm. CM présente LM avec LIST, ADD et REMOVE.
+Le nom d'affichage est LM ; aucune slash native n'est automatiquement créée.
+
+Le fichier commun CODEX_HOME/lm/blacklist.json (repli ~/.codex) porte
+schema_version=1 et models, liste d'identifiants canoniques uniques.
+Sans fichier, mimo-v2.5 et muse-spark-1.2-contributor sont exclus en mémoire,
+sans écriture ; une liste vide
+valide reste vide. LIST ne modifie rien. ADD/REMOVE utilisent un verrou
+fcntl non bloquant et un remplacement atomique en UTF-8/LF. Les identifiants
+ASCII sont bornés à 256 caractères ; la casse, le préfixe fournisseur et
+les seuls suffixes :free/-free sont normalisés. Pas de rapprochement par
+sous-chaîne : mimo-v2.5-pro et mimo-v2.50 restent distincts.
+Un unique `~` initial est accepté devant un segment fournisseur valide suivi
+de `/`, comme `~unbiased/pareto-latest`. Il disparaît avec le préfixe lors de
+la canonicalisation : `~xiaomi/mimo-v2.5:free` reste exclu. La limite de 256
+caractères inclut ce marqueur ; `~model`, `~~vendor/model` et `vendor/~model`
+restent invalides. Les noms finaux différents restent des identités distinctes.
+Une politique illisible, dupliquée ou de schéma invalide bloque avant appel
+fournisseur et reste préservée. LM est l'unique liste noire ; toutes les
+entrées, y compris muse-spark, sont retirables. Le module est identique dans
+les six distributions LM/TFL/PLLM, sans dépendance entre plugins installés.
+
+TFL retire les interdits avant tri et tests gratuits dans ses deux sections,
+avec cause dans excluded_models et politique dans lm_blacklist.
+PLLM filtre aussi ses sélecteurs, replis, mode6 et frontières de génération,
+y compris un catalogue ancien ou un succès mémorisé. Les forçages interdits
+restent invalides sans remplacement ; les historiques interdits sont invalidés
+avant publication et absents des listes de candidats. La mémoire historique
+n'est pas détruite. LM ne réécrit pas les anciens rapports : l'effet concerne
+les prochaines invocations. Les priorités, ressources, seuils et protocole 8
+restent inchangés.
+
+TCU découvre LM via le catalogue et actualise ses copies présentes sans
+installer LM absent. Le fichier utilisateur hors cache reste préservé.
+Les tests test_lm_blacklist.py et les cas TCU utilisent des profils isolés,
+sans accès fournisseur ni installation réelle. Un retour vers 0.7.5 ignore
+la politique LM et ne conserve donc pas sa garantie d'exclusion.
+
+## Planning utilisateur TFL puis PLLM
+
+Chaque plugin déclare `hooks: ./hooks/hooks.json`. Son SessionStart lance
+`python3 "${PLUGIN_ROOT}/skills/<nom>/scripts/scheduler.py" install --hook`,
+en arrière-plan, avec délai de 60 s. Les six modules autonomes et leurs six
+copies embarquées sont identiques et sans effet à l'import. La confiance du
+hook est une décision native Codex, jamais ajoutée ou contournée par le code.
+Un bootstrap concurrent déjà occupé reste silencieux ; les autres erreurs
+conservent un diagnostic filtré. Aucun modèle n'est appelé à l'installation.
+
+TCU valide les déclarations et ressources des hooks dans l'instantané, sans
+exécuter le code téléchargé. `--apply` utilise son module local chargé pour
+le bootstrap ; `check` décrit seulement l'opération. Le bilan ajoute
+`llm-refresh`, canal `session_utilisateur`, sans version de plugin inventée.
+Des composants manquants restent en attente sans installation implicite.
+Un conflit local sur TFL ou PLLM préserve aussi le planning sans l'armer.
+Une erreur du planning produit un échec visible, même après une mise à jour
+de sources réussie. Le CLI continue à gérer lui-même le cache des plugins.
+
+Le timer `tools-codex-llm-refresh.timer` et son service sont dans
+`XDG_CONFIG_HOME/systemd/user` (repli `~/.config/systemd/user`). Le calendrier
+est `*-*-* 00,12:00:00 Europe/Paris`, `Persistent=false`, précision 1 s.
+Le runner stable, sa configuration, son reçu et son état sont conservés sous
+`CODEX_HOME/llm-refresh`. Les fichiers cibles ne sont remplacés que si leur
+empreinte correspond au reçu ; les liens et propriétaires étrangers sont
+refusés. Le retrait explicite ne touche que les fichiers reconnus et conserve
+les rapports. Les erreurs d'installation restaurent les fichiers précédents,
+sans promettre une transaction globale avec systemd.
+
+À chaque échéance : détecter l'application ou un CLI interactif Codex du même
+UID, lire le bucket `codex`, exécuter TFL, vérifier son nouveau catalogue,
+relire présence et quota, puis lancer PLLM normal avec `--tfl-catalog`.
+L'interface unifiée ChatGPT est reconnue seulement avec son backend Codex
+enfant vivant ; l'application générique seule ne prouve pas Codex ouvert.
+Les daemons, `codex exec`, helpers Electron et autres utilisateurs ne prouvent
+pas cette présence. Le runner ne démarre pas Codex et ne rattrape pas les
+passages manqués. Un verrou exclusif interdit deux séquences ; un verrou
+partagé `tcu.lock` empêche une application TCU pendant les deux étapes.
+
+Le quota est lu avec un client JSONL dédié : `initialize`, `initialized`, puis
+`account/rateLimits/read` sur `codex app-server --stdio`. Aucun appel de
+conversation, génération, connexion, achat ou réinitialisation n'est effectué.
+Le processus natif accède à ses propres identifiants ; le runner ne lit pas
+leur stockage. `rateLimitsByLimitId.codex` prime sur la vue historique ;
+Spark et les observations anciennes ne le remplacent pas. Une fenêtre à
+100 % utilisés ou plus bloque ; une fenêtre non exploitable produit un état
+inconnu et bloque aussi. Le processus de lecture est borné à 30 s et 1 Mio.
+
+Les étapes TFL et PLLM sont bornées à 3 600 s chacune, avec un budget service
+de 7 500 s. Leurs sorties brutes ne vont pas au journal ; les rapports usuels
+restent produits par leurs générateurs. `state.json` conserve seulement
+statut, date, étape et code/diagnostic fixe. Un catalogue absent, invalide ou
+non actualisé empêche PLLM. Les modes, seuils, paliers, transports et LM
+manuels restent inchangés. Les tests `test_llm_schedule.py` isolent profils,
+processus et fournisseurs et vérifient les unités avec les outils systemd.
+
+Références officielles : [paquets et hooks](https://developers.openai.com/plugins/build/plugins),
+[cycle des hooks](https://learn.chatgpt.com/docs/hooks),
+[lecture des quotas](https://learn.chatgpt.com/docs/app-server).
+
+
+## Admission stricte HIGH/XHIGH
+
+Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
+vérifiable avant test, sélection et affichage. Une liste supported_efforts
+contenant high/xhigh ou un null explicitement publié (tous les efforts) est
+admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
+budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Les niveaux publiés par models.dev dans `reasoning_options`, entrée
+`type=effort` et liste `values`, sont normalisés vers `supported_efforts`.
+Une liste vide, un budget, un interrupteur ou une déclaration ambiguë ne
+prouve aucun niveau ; `values=null` ne signifie pas tous les efforts.
+Une acceptation officielle HIGH/XHIGH reste admissible même sans intensité
+distincte. Une équivalence documentée peut utiliser thinking.type=enabled
+sur Chat Completions OpenCode, avec protocole et sémantique tracés.
+Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
+Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
+filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
+publiée explicitement sans réintégrer de modèle exclu.
+
+
+## Contrat TFL/PLLM 0.7.12 et conversion OpenRouter
+
+TFL ne collecte ni ne publie plus OpenCode général. Le JSON contient seulement
+opencode_go et openrouter. PLLM 1/2 ne sélectionne que les payants Go et 3/4
+les gratuits Go, même si un ancien catalogue ou historique contient opencode.
+Le rapport affiche Go en USD/M puis OpenRouter en EUR/M, huit colonnes chacun,
+puis les essais gratuits ayant une preuve HIGH/XHIGH. Aucun modèle exclu
+pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
+Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
+https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
+le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
+prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
+publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
+et à la frontière de génération, y compris pour les anciens catalogues et
+les rangs forcés. Un budget seul n’équivaut plus à HIGH/XHIGH.
+Go garde 0,50 USD/M. Les capacités absentes peuvent vider une
+section sans bloquer les autres collectes ni la publication. Chaque section
+conserve models, compteurs, sources et exclusions, avec selection_status
+(available ou empty) et exclusion_summary (motif vers nombre). Les tableaux
+vides gardent huit colonnes, annoncent « Aucun modèle admissible » et donnent
+la synthèse des exclusions, sans ligne de modèle fictive. Le taux BCE daté
+reste affiché même si OpenRouter est vide. Deux sélections vides issues de
+collectes valides produisent des fichiers frais et un code zéro ; aucune
+qualification historique n'est reprise. Les erreurs réelles restent bloquantes.
+Le planning conserve ses horaires et gardes ; son contrôle exige les deux
+listes models Go/OpenRouter non vides avant PLLM, sans exiger opencode. Les tests de cette release sont hors ligne, sans mise à jour
+de profil, activation du planning ni benchmark réel.
+
+## Investigation des métadonnées
+
+model_evidence.py est identique dans les quatre paquets TFL/PLLM. Le guide
+references/model-evidence.md définit la recherche obligatoire du LLM lorsque
+le contexte ou l'effort est invérifiable pour Go ou
+OpenRouter. Le registre de référence TFL est complété par
+<répertoire-du-rapport>/model-evidence.json : fournisseur, ID exact, champ,
+protocole, conclusion, sources officielles HTTPS, dates et empreintes SHA-256.
+Les preuves ne sont pas empruntées entre fournisseurs ou transports.
+TFL vérifie le contenu courant des sources avant admission ; PLLM le
+recontrôle à la frontière de génération. Une source différente ou inaccessible
+exige une nouvelle investigation ; le hash ne prouve pas l'interprétation
+sémantique du LLM. Une preuve documentaire ne vaut ni génération ni benchmark.
+Le JSON conserve model_investigations et investigation_status. Un statut
+required laisse le rapport provisoire et exige l'analyse de l'agent avant
+restitution définitive ou un blocage explicite. Une investigation complète
+sans contexte vérifiable exclut le modèle, sans inventer de limite.
+tests/test_model_evidence.py couvre les deux catalogues, les conclusions,
+les sources changées, le mapping MiMo et le recontrôle PLLM ; les scénarios
+de déploiement isolé incluent désormais ce module dans chaque paquet.
