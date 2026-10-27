@@ -55,7 +55,9 @@ def native_openrouter_prices(row):
         values = (exact['input'], exact['output'])
         if any(isinstance(value, bool) for value in values) or any(
                 not Decimal(str(value)).is_finite() or Decimal(str(value)) < 0
-                or float(value) != float(price) for value, price in zip(values, prices)):
+                or not math.isfinite(float(value)) or not math.isfinite(float(price))
+                or not math.isclose(float(value), float(price), rel_tol=1e-12, abs_tol=0.0)
+                for value, price in zip(values, prices)):
             raise ValueError('prix contradictoires')
     except (KeyError, TypeError, ValueError, InvalidOperation, OverflowError) as error:
         raise RuntimeError('Prix OpenRouter natifs contradictoires ou invalides') from error
@@ -353,7 +355,8 @@ def verified_effort(*records):
 def _recorded_effort_is_medium(value):
     if isinstance(value, dict):
         for key, item in value.items():
-            if key in ('reasoning_capabilities', 'model_investigations', 'model_source'):
+            if key in ('reasoning_capabilities', 'model_investigations', 'model_source',
+                       'user_override', 'performance_attempts'):
                 continue
             if key in ('effort', 'reasoning_effort', 'requested_reasoning'):
                 if not isinstance(item, str) or item.lower() != 'medium':

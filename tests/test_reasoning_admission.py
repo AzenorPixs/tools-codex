@@ -132,6 +132,33 @@ class ReasoningAdmissionTests(unittest.TestCase):
             eligible['reasoning_capabilities'] = {'supported_efforts': ['medium', 'high']}
             admitted = module.catalog_candidate(eligible, 'opencode_go', 1, 'date')
             self.assertEqual(admitted['reasoning'], 'medium')
+            legacy_override = {
+                **admitted,
+                'state': 'Valide',
+                'selected': True,
+                'user_override': {'model': 'qwen3.8-flash', 'reasoning': 'xhigh'},
+                'performance_attempts': [{
+                    'performance_test': {
+                        'reasoning_request': {'output_config': {'effort': 'xhigh'}}
+                    }
+                }],
+                'candidate_results': [{
+                    **admitted,
+                    'state': 'Valide',
+                    'user_override': {'model': 'qwen3.8-flash', 'reasoning': 'xhigh'},
+                    'performance_attempts': [{
+                        'performance_test': {
+                            'reasoning_request': {'output_config': {'effort': 'xhigh'}}
+                        }
+                    }],
+                }],
+                'candidate_exclusions': [],
+            }
+            self.assertTrue(module.performance.effort_allowed(legacy_override, require_recorded=True))
+            module.sanitize_reasoning_history({'models': [legacy_override]})
+            self.assertEqual(legacy_override['state'], 'Valide')
+            self.assertTrue(legacy_override['selected'])
+            self.assertEqual(len(legacy_override['candidate_results']), 1)
             stale = {**admitted, 'reasoning': 'high', 'requested_reasoning': 'high',
                      'performance_test': {'reasoning_request': {'reasoning_effort': 'high'}}}
             self.assertFalse(module.performance.effort_allowed(stale, require_recorded=True))
