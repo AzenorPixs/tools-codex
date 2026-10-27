@@ -25,7 +25,10 @@ REPO_URL = 'https://github.com/' + REPOSITORY
 MARKETPLACE = 'tools-codex'
 LIMIT = 32 * 1024 * 1024
 RECEIPT = '.tools-codex-origin.json'
-PROMPT_COMMAND = '.codex/commands/prompt.md'
+PROMPT_COMMAND = '.codex/commands/PROMPT.md'
+COMMAND_ALIASES = {name + '.md': name.lower() + '.md'
+                   for name in ('CM', 'PLLM', 'TFL', 'TCU', 'LM', 'PROMPT')}
+PROMPT_NAMES = ('PROMPT.md', 'prompt.md')
 PROMPT_SKILL = 'skills/prompt/SKILL.md'
 PROMPT_RESOLVER = 'skills/prompt/scripts/resolve_prompt.py'
 PROMPT_RECEIPT = '.tools-codex-prompt-origin.json'
@@ -201,6 +204,8 @@ def snapshot(fetcher=fetch) -> dict:
                         or f'skills/{name}/scripts/scheduler.py' not in files):
                     raise UpdateError('Bootstrap de planning incomplet ou non conforme')
         if 'prompt' in names:
+            if PROMPT_COMMAND not in files and '.codex/commands/prompt.md' in files:
+                files[PROMPT_COMMAND] = files['.codex/commands/prompt.md']
             for resource in (PROMPT_COMMAND, PROMPT_SKILL, PROMPT_RESOLVER):
                 if resource not in files or not files[resource].strip():
                     raise UpdateError('Composant prompt incomplet dans la source')
@@ -331,6 +336,13 @@ def prepare_local(item: dict, target: Path, selected: dict, remote: dict,
     return item
 
 
+def command_names(name: str) -> tuple[str, ...]:
+    canonical = name[:-3].upper() + '.md'
+    if canonical in COMMAND_ALIASES:
+        return canonical, COMMAND_ALIASES[canonical]
+    return (name,)
+
+
 def local_plan(remote: dict, roots: list[tuple[str, Path]], adopt: bool) -> list[dict]:
     plans = []
     seen = set()
@@ -355,15 +367,21 @@ def local_plan(remote: dict, roots: list[tuple[str, Path]], adopt: bool) -> list
                     item.update(status='conflit', cause='Origine du skill ambiguë')
                     continue
             else:
-                selected = {PurePosixPath(n).name: b for n, b in files.items()
-                            if n.startswith('.codex/commands/')
-                            and not (n == PROMPT_COMMAND and 'prompt' in remote['plugins'])
-                            and ((target / PurePosixPath(n).name).exists()
-                                 or (target / PurePosixPath(n).name).is_symlink())}
+                commands = {PurePosixPath(n).name: b for n, b in files.items()
+                            if n.startswith('.codex/commands/')}
+                selected = {}
+                for name, data in commands.items():
+                    if name in PROMPT_NAMES and 'prompt' in remote['plugins']:
+                        continue
+                    variants = command_names(name)
+                    data = commands.get(variants[0], data)
+                    for rel in variants:
+                        if (target / rel).exists() or (target / rel).is_symlink():
+                            selected[rel] = data
                 if not selected:
                     continue
             prepare_local(item, target, selected, remote, adopt,
-                          ignore_names={'prompt.md'} if kind == 'commands' and 'prompt' in remote['plugins'] else frozenset())
+                          ignore_names=set(PROMPT_NAMES) if kind == 'commands' and 'prompt' in remote['plugins'] else frozenset())
     return plans
 
 
@@ -374,15 +392,19 @@ def prompt_command_plans(home: Path, roots: list, remote: dict, adopt: bool) -> 
     plans = []
     seen = set()
     for i, root in enumerate(folders):
-        path = root / 'prompt.md'
-        key = str(path.absolute())
-        if key in seen or (i > 0 and not path.exists() and not path.is_symlink()):
+        names = [name for name in PROMPT_NAMES
+                 if (root / name).exists() or (root / name).is_symlink()]
+        key = str(root.absolute())
+        if key in seen or (i > 0 and not names):
             continue
         seen.add(key)
+        if not names:
+            names = [PROMPT_NAMES[0]]
+        path = root / names[0]
         item = {'brique': str(path), 'canal': 'github', 'composant': 'prompt', 'ressource': 'commande',
                 'avant': None, 'apres': None, 'cible': remote['version'], 'status': 'absent',
                 'operation': 'mettre_a_jour' if path.exists() or path.is_symlink() else 'installer'}
-        plans.append(prepare_local(item, root, {'prompt.md': remote['files'][PROMPT_COMMAND]},
+        plans.append(prepare_local(item, root, {name: remote['files'][PROMPT_COMMAND] for name in names},
                                    remote, adopt, PROMPT_RECEIPT, allow_create=True, inherit_name=RECEIPT))
     return plans
 

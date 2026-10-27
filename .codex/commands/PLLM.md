@@ -2,7 +2,8 @@
 description: Évaluer les six politiques PLLM avec prix prioritaire des payants qualifiés et performances des gratuits
 ---
 
-Utilise obligatoirement la skill `pllm` installée par Tools Codex.
+Utilise obligatoirement la skill `pllm` installée par Tools Codex pour `/PLLM`
+(alias `/pllm`).
 
 À chaque invocation, exécute réellement le script d’évaluation :
 
@@ -22,15 +23,14 @@ sans aucun appel de quota ou solde, contexte ≥1M, réponse complète, TTFT <30
 et débit >20 tokens/s. Modes 5/6 : anciens OpenRouter/DeepSeek, contrôles et
 seuils payants conservés (<90 s, >15 tokens/s comme 1/2), gratuits à <30 s et >20 tokens/s. Mode5 reste exclusivement payant ; un crédit épuisé le rend invalide sans repli gratuit. Les forçages OpenRouter 31–33 deviennent
 51–53 ; 31–33 et 41–43 ciblent la liste gratuite admissible de 3/4.
-Tous les tests demandent HIGH, puis XHIGH uniquement si HIGH est indisponible
-et XHIGH pris en charge ; aucun repli inférieur.
+Tous les tests demandent exclusivement Medium, sans repli vers un autre effort.
 Essayer les payants 1/2/5 par coût moyen TFL croissant (hors pointe Go,
 prix de base OpenRouter), avec ordre TFL stable à prix égal. Essayer les
 gratuits 3/4 dans l'ordre TFL Go exclusivement. Retenir le premier succès aux
 tests actuels et arrêter le parcours du mode ; après échec, essayer le suivant
 admissible avec ses propres contrôles. Le contexte ≥1M est une capacité
 d'entrée vérifiée, sans requête d'un million de tokens. Les paliers, seuils
-payants/gratuits et HIGH/XHIGH restent inchangés.
+payants/gratuits et les autres seuils restent inchangés.
 Les priorités restent 1 à 6, l'authentification et les limites HTTP sont
 explicites, active reste silencieux. Les secrets gardent leurs références
 historiques ; les anciens historiques sont adaptés sans sélection actuelle héritée.
@@ -48,15 +48,14 @@ CAB avant la reprise.
 
 Argument reçu : `$ARGUMENTS`
 
-Exclure gratuits et payants sans preuve publiée HIGH/XHIGH avant test et
+Exclure gratuits et payants sans preuve publiée de Medium avant test et
 affichage, y compris dans les essais gratuits ; garder les motifs JSON.
 OpenRouter applique la moyenne de base ≤0,20 EUR/M au dernier taux BCE
 publié vérifié ; aucune conversion historique implicite.
 
-Les preuves TFL et les niveaux reasoning_options sont conservés. HIGH/XHIGH
-officiellement acceptés sont admissibles même sans intensité distincte ;
-utiliser et tracer uniquement les paramètres équivalents documentés pour
-le protocole publié. Toute métadonnée d'effort ou de contexte inconnue impose
+Les preuves TFL et les niveaux reasoning_options publiés sont conservés.
+Seule une capacité Medium vérifiée est admissible ; utiliser et tracer les
+paramètres Medium propres au protocole publié. Toute métadonnée d'effort ou de contexte inconnue impose
 une analyse et une recherche du LLM selon le protocole de preuve du skill,
 quel que soit le fournisseur. Un contexte encore invérifiable après
 investigation exclut le modèle. Respecter la restitution exacte du script.

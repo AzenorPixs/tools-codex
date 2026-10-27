@@ -118,7 +118,7 @@ class TcuUpdateTests(unittest.TestCase):
             'name': 'prompt', 'version': '0.3.0', 'skills': './skills/'}).encode()
         self.files['skills/prompt/SKILL.md'] = b'---\nname: prompt\ndescription: Fixture\n---\nPrompt fixture\n'
         self.files['skills/prompt/scripts/resolve_prompt.py'] = b'raise RuntimeError("fixture must stay inactive")\n'
-        self.files['.codex/commands/prompt.md'] = b'Utilise le skill prompt. Arguments: $ARGUMENTS\n'
+        self.files['.codex/commands/PROMPT.md'] = b'Utilise le skill prompt. Arguments: $ARGUMENTS\n'
         self.remote = self.m.snapshot(self.fetcher)
 
     def prompt_entry(self, release='0.3.0', enabled=True):
@@ -205,7 +205,7 @@ class TcuUpdateTests(unittest.TestCase):
         def fetch(url):
             return json.dumps({'sha':'a'*40}).encode() if url.endswith('/commits/HEAD') else zip_bytes(files)
         remote = self.m.snapshot(fetch)
-        self.assertEqual(remote['version'],'0.7.12')
+        self.assertEqual(remote['version'],'0.7.16')
         self.assertEqual(remote['plugins'], {'cm','lm','tfl','pllm','prompt','tcu'})
         for name in ('lm','tfl','pllm'):
             self.assertIn('skills/'+name+'/scripts/model_blacklist.py',remote['files'])
@@ -574,16 +574,104 @@ class TcuUpdateTests(unittest.TestCase):
         command = next(r for r in report['briques'] if r.get('ressource') == 'commande')
         self.assertEqual(command['operation'], 'installer')
         self.assertIsNone(command['apres'])
+        self.assertEqual(command['brique'], str(self.home / 'prompts/PROMPT.md'))
+
+    def test_historical_command_names_keep_their_receipts_and_do_not_create_duplicates(self):
+        commands = self.base / 'commands'
+        commands.mkdir()
+        hashes = {}
+        for name in ('CM', 'PLLM', 'TFL'):
+            rel = name.lower() + '.md'
+            (commands / rel).write_bytes(b'tracked command')
+            hashes[rel] = self.m.digest(b'tracked command')
+            self.files['.codex/commands/' + name + '.md'] = name.encode() + b' canonical source'
+        (commands / self.m.RECEIPT).write_text(json.dumps({
+            'schema': 1, 'repository': self.m.REPOSITORY, 'sha': 'b' * 40,
+            'version': '0.2.3', 'hashes': hashes}))
+        report = self.execute(apply=True, roots=[('commands', commands)])
+        self.assertTrue(report['succes'])
+        for name in ('CM', 'PLLM', 'TFL'):
+            rel = name.lower() + '.md'
+            self.assertEqual((commands / rel).read_bytes(), name.encode() + b' canonical source')
+            self.assertFalse((commands / (name + '.md')).exists())
+        self.assertEqual(set(json.loads((commands / self.m.RECEIPT).read_text())['hashes']), set(hashes))
+        self.assertFalse((commands / 'TCU.md').exists())
+
+    def test_uppercase_command_source_keeps_legacy_local_edits_and_links(self):
+        self.files['.codex/commands/CM.md'] = b'new canonical command'
+        for linked in (False, True):
+            with self.subTest(linked=linked):
+                commands = self.base / ('linked' if linked else 'edited')
+                commands.mkdir()
+                path = commands / 'cm.md'
+                if linked:
+                    original = self.base / 'linked-command-source.md'
+                    original.write_bytes(b'local command')
+                    path.symlink_to(original)
+                else:
+                    path.write_bytes(b'local command')
+                (commands / self.m.RECEIPT).write_text(json.dumps({
+                    'schema': 1, 'repository': self.m.REPOSITORY, 'sha': 'b' * 40,
+                    'version': '0.2.3', 'hashes': {'cm.md': self.m.digest(b'old command')}}))
+                report = self.execute(apply=True, adopt=True, roots=[('commands', commands)])
+                self.assertFalse(report['succes'])
+                self.assertEqual(path.read_bytes(), b'local command')
+                self.assertEqual(path.is_symlink(), linked)
+                self.assertFalse((commands / 'CM.md').exists())
+
+    def test_historical_prompt_receipt_updates_in_place_without_duplicate(self):
+        self.enable_prompt()
+        commands = self.home / 'prompts'
+        commands.mkdir(parents=True)
+        (commands / 'prompt.md').write_bytes(b'tracked legacy prompt')
+        (commands / self.m.PROMPT_RECEIPT).write_text(json.dumps({
+            'schema': 1, 'repository': self.m.REPOSITORY, 'sha': 'b' * 40,
+            'version': '0.2.3', 'hashes': {'prompt.md': self.m.digest(b'tracked legacy prompt')}}))
+        report = self.execute(apply=True)
+        self.assertTrue(report['succes'])
+        self.assertEqual((commands / 'prompt.md').read_bytes(), self.files[self.m.PROMPT_COMMAND])
+        self.assertFalse((commands / 'PROMPT.md').exists())
+        self.assertEqual(set(json.loads((commands / self.m.PROMPT_RECEIPT).read_text())['hashes']), {'prompt.md'})
+        self.assertTrue(any(p.read_bytes() == b'tracked legacy prompt'
+                            for p in Path(report['backup']).rglob('prompt.md')))
+
+    def test_both_prompt_names_are_verified_together(self):
+        self.enable_prompt()
+        commands = self.home / 'prompts'
+        commands.mkdir(parents=True)
+        for name in ('PROMPT.md', 'prompt.md'):
+            (commands / name).write_bytes(b'tracked prompt')
+        (commands / self.m.PROMPT_RECEIPT).write_text(json.dumps({
+            'schema': 1, 'repository': self.m.REPOSITORY, 'sha': 'b' * 40,
+            'version': '0.2.3', 'hashes': {name: self.m.digest(b'tracked prompt')
+                                        for name in ('PROMPT.md', 'prompt.md')}}))
+        self.assertTrue(self.execute(apply=True)['succes'])
+        for name in ('PROMPT.md', 'prompt.md'):
+            self.assertEqual((commands / name).read_bytes(), self.files[self.m.PROMPT_COMMAND])
+        receipt = (commands / self.m.PROMPT_RECEIPT).read_bytes()
+        (commands / 'prompt.md').write_bytes(b'local edit')
+        report = self.execute(apply=True, adopt=True)
+        self.assertFalse(report['succes'])
+        self.assertEqual((commands / 'prompt.md').read_bytes(), b'local edit')
+        self.assertEqual((commands / self.m.PROMPT_RECEIPT).read_bytes(), receipt)
+
+    def test_previous_release_with_lowercase_prompt_source_is_still_readable(self):
+        self.enable_prompt()
+        self.files['.codex/commands/prompt.md'] = self.files.pop(self.m.PROMPT_COMMAND)
+        report = self.execute(apply=True)
+        self.assertTrue(report['succes'])
+        self.assertEqual((self.home / 'prompts/PROMPT.md').read_bytes(),
+                         self.files['.codex/commands/prompt.md'])
 
     def test_prompt_installation_manages_plugin_skill_and_command_only(self):
         self.enable_prompt()
         report = self.execute(apply=True)
         self.assertTrue(report['succes'])
         self.assertEqual([c for c in self.calls if c[0] == 'add'], [['add', 'prompt@tools-codex', '--json']])
-        command = self.home / 'prompts/prompt.md'
+        command = self.home / 'prompts/PROMPT.md'
         self.assertEqual(command.read_bytes(), self.files[self.m.PROMPT_COMMAND])
         receipt = json.loads((command.parent / self.m.PROMPT_RECEIPT).read_text())
-        self.assertEqual(set(receipt['hashes']), {'prompt.md'})
+        self.assertEqual(set(receipt['hashes']), {'PROMPT.md'})
         self.assertFalse((command.parent / self.m.RECEIPT).exists())
         self.assertFalse((self.skills / 'prompt').exists())
         rows = [r for r in report['briques'] if r['brique'] in {'prompt', 'prompt/skill'}]
@@ -602,8 +690,8 @@ class TcuUpdateTests(unittest.TestCase):
         report = self.execute(apply=True)
         self.assertTrue(report['succes'])
         self.assertFalse(any(c[0] == 'add' for c in self.calls))
-        self.assertEqual((self.home / 'prompts/prompt.md').read_bytes(), b'Nouvelle commande prompt\n')
-        self.assertTrue(any(p.read_bytes() == original for p in Path(report['backup']).rglob('prompt.md')))
+        self.assertEqual((self.home / 'prompts/PROMPT.md').read_bytes(), b'Nouvelle commande prompt\n')
+        self.assertTrue(any(p.read_bytes() == original for p in Path(report['backup']).rglob('PROMPT.md')))
         command = next(r for r in report['briques'] if r.get('ressource') == 'commande')
         self.assertEqual(command['status'], 'mis_a_jour')
 
@@ -623,7 +711,7 @@ class TcuUpdateTests(unittest.TestCase):
         self.assertFalse(report['succes'])
         self.assertTrue(linked.is_symlink())
         self.assertEqual(original.read_bytes(), b'development source')
-        self.assertEqual((commands / 'prompt.md').read_bytes(), self.files[self.m.PROMPT_COMMAND])
+        self.assertEqual((commands / 'PROMPT.md').read_bytes(), self.files[self.m.PROMPT_COMMAND])
         self.assertEqual((updated / 'skills/cm/data/report.json').read_bytes(), b'preserved quotas')
         self.assertEqual(next(r for r in report['briques'] if r['brique'] == 'cm')['apres'], '0.3.0')
         self.assertEqual(next(r for r in report['briques'] if r['brique'] == 'prompt')['apres'], '0.3.0')
@@ -676,7 +764,7 @@ class TcuUpdateTests(unittest.TestCase):
     def test_prompt_tracked_wrapper_changes_are_not_forced(self):
         self.enable_prompt()
         self.assertTrue(self.execute(apply=True)['succes'])
-        path = self.home / 'prompts/prompt.md'
+        path = self.home / 'prompts/PROMPT.md'
         path.write_bytes(b'local edit')
         report = self.execute(apply=True, adopt=True)
         self.assertFalse(report['succes'])
@@ -695,7 +783,7 @@ class TcuUpdateTests(unittest.TestCase):
 
     def test_command_sources_are_publishable_without_local_codex_files(self):
         commands = ['.codex/commands/' + name for name in
-                    ('cm.md', 'TCU.md', 'prompt.md', 'pllm.md', 'tfl.md')]
+                    ('CM.md', 'PLLM.md', 'TFL.md', 'TCU.md', 'LM.md', 'PROMPT.md')]
         local_files = ['.codex/config.toml', '.codex/private-local.txt',
                        '.codex/state/runtime.json']
         for path in commands:
@@ -730,7 +818,7 @@ class TcuUpdateTests(unittest.TestCase):
         with patch.object(self, 'prompt_cache', side_effect=corrupt):
             report = self.execute(apply=True)
         self.assertFalse(report['succes'])
-        self.assertFalse((self.home / 'prompts/prompt.md').exists())
+        self.assertFalse((self.home / 'prompts/PROMPT.md').exists())
         skill = next(r for r in report['briques'] if r['brique'] == 'prompt/skill')
         self.assertEqual(skill['status'], 'incomplet')
         self.assertIsNone(skill['apres'])
@@ -748,7 +836,7 @@ class TcuUpdateTests(unittest.TestCase):
         with patch.object(self, 'runner', side_effect=failing):
             report = self.execute(apply=True)
         self.assertFalse(report['succes'])
-        self.assertFalse((self.home / 'prompts/prompt.md').exists())
+        self.assertFalse((self.home / 'prompts/PROMPT.md').exists())
         self.assertEqual(next(r for r in report['briques'] if r['brique'] == 'prompt')['apres'], '0.3.0')
         self.assertIn('échec', report['erreur'])
 
@@ -758,7 +846,7 @@ class TcuUpdateTests(unittest.TestCase):
         commands = self.base / 'new command root'
         report = self.execute(apply=True, roots=[('skills', self.skills), ('commands', commands)])
         self.assertTrue(report['succes'])
-        self.assertEqual((commands / 'prompt.md').read_bytes(), self.files[self.m.PROMPT_COMMAND])
+        self.assertEqual((commands / 'PROMPT.md').read_bytes(), self.files[self.m.PROMPT_COMMAND])
         self.assertFalse((self.home / 'prompts').exists())
         self.assertEqual((local / 'SKILL.md').read_bytes(), self.files[self.m.PROMPT_SKILL])
         self.assertEqual((local / 'scripts/resolve_prompt.py').read_bytes(), self.files[self.m.PROMPT_RESOLVER])

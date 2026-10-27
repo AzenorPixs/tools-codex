@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Corriger le filtrage PLLM qui rejetait les preuves Medium à cause d'anciens overrides/tentatives et OpenRouter à cause des arrondis binaires des prix ; conserver les décimales TFL de référence et aligner la release commune sur 0.7.16.
+- Rendre effectif le contrat Medium dans les états PLLM anciens : invalider les requêtes et tentatives mesurées avec un autre effort même si la capacité du modèle inclut Medium, vider les résultats livrés devenus incompatibles et aligner les commandes, spécifications actives, documentation, distributions et release commune sur 0.7.15.
+- Basculer TFL et PLLM vers Medium : exiger une preuve explicite, envoyer Medium sur chaque transport et arrêter les candidats sans repli High/XHigh. Conserver les anciennes mesures comme historique et aligner la release commune sur 0.7.14.
+- Aligner VERSION, pyproject.toml, README et les six plugins sur 0.7.14.
+- Déclarer les six commandes CM, PLLM, TFL, TCU, LM et PROMPT en majuscules dans leurs fichiers sources, déclencheurs et libellés ; compléter les métadonnées CM/PROMPT et conserver les identifiants techniques ainsi que les anciens alias.
+- Adapter TCU aux nouveaux noms et aux copies historiques avec leurs reçus : créer seulement le nouveau wrapper PROMPT.md absent, actualiser les copies existantes sans doublon ni renommage, préserver liens, modifications locales et sauvegardes. Les liens personnels vers les anciens chemins sources nécessitent une réorientation explicite.
+- Aligner VERSION, pyproject.toml, README et les six plugins sur 0.7.13. Cette correction des sources ne migre pas les profils installés et ne lance aucun benchmark fournisseur.
+
 - Retirer entièrement OpenCode général du parcours TFL : disponibilité, tarifs, métadonnées, qualification gratuite et publication JSON/Markdown. Conserver les seuls catalogues Go et OpenRouter et leurs filtres.
 - Limiter PLLM 1/2 aux payants Go et 3/4 aux gratuits Go, même avec un ancien catalogue, un résultat historique général ou un rang forcé. Le planning contrôle désormais les deux sections courantes, sans changer ses horaires ni ses autres gardes.
 - Ajouter les familles inkling et inkling-small dans la liste LM utilisateur à la demande explicite du développeur ; préserver les autres entrées et les défauts distribués. L'exclusion couvre leurs variantes payantes/gratuites actuelles, sans joker fournisseur.

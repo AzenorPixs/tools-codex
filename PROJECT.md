@@ -31,11 +31,16 @@ constituent ni des changes actifs ni une liste de fonctionnalités à réimplém
 
 ## Organisation
 
-Les commandes sources CM/PLLM/TFL/TCU/LM/prompt sont conservées dans :
+Les commandes sources CM/PLLM/TFL/TCU/LM/PROMPT sont conservées dans :
 
 ```text
 .codex/commands/
 ```
+
+Leurs noms canoniques sont CM.md, PLLM.md, TFL.md, TCU.md, LM.md et PROMPT.md.
+Les libellés affichés sont en majuscules ; les identifiants techniques des
+plugins et skills restent en minuscules. Les anciennes graphies de déclencheur
+restent des alias compatibles.
 
 Les plugins maison sont stockés dans des répertoires dédiés :
 
@@ -78,12 +83,12 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Skill | `prompt` (`$prompt`) | LIST et 38 actions en MAJUSCULE, dont les huit variantes à un change. |
 | Skill | `lm` (`$lm`) | LIST, ADD et REMOVE ; mimo-v2.5 exclu par défaut. |
 | Commande source | `/LM` | Délègue au skill LM sans enregistrer automatiquement une slash native. |
-| Commande source | `/cm` | Délègue au catalogue CM, avec une seule entrée prompt et sans exécution. |
-| Commande source | `/prompt` | Délègue au skill prompt avec LIST ou CODE ; ne crée pas une slash native. |
+| Commande source | `/CM` | Délègue au catalogue CM, avec une seule entrée prompt et sans exécution. |
+| Commande source | `/PROMPT` | Délègue au skill prompt avec LIST ou CODE ; ne crée pas une slash native. |
 | Skill | `tcu` (`$tcu`) | Met à jour les briques présentes ; `check` contrôle sans écriture. |
 | Commande source | `/TCU` | Délègue au skill TCU ; ne crée pas une slash native. |
-| Commande source | `/pllm` | Instructions historiques de lancement de l'évaluation PLLM ; skill invocable avec `$pllm`. |
-| Commande source | `/tfl` | Instructions historiques de lancement du rapport TFL ; skill invocable avec `$tfl`. |
+| Commande source | `/PLLM` | Instructions historiques de lancement de l'évaluation PLLM ; skill invocable avec `$pllm`. |
+| Commande source | `/TFL` | Instructions historiques de lancement du rapport TFL ; skill invocable avec `$tfl`. |
 
 Les skills `cm`, `pllm`, `tfl`, `tcu`, `lm` et `prompt` sont volontairement fournis sous forme autonome et
 embarquée afin de couvrir les deux modes de distribution. Le skill
@@ -114,8 +119,8 @@ OpenSpec avant leur implémentation, conformément aux règles du dépôt.
 
 ## Lancement de prompts
 
-`/prompt LIST` affiche l'index déclaré par le DEVOPS.md du projet courant.
-`/prompt CODE` ou `$prompt CODE` charge le prompt correspondant et exécute
+`/PROMPT LIST` affiche l'index déclaré par le DEVOPS.md du projet courant.
+`/PROMPT CODE` ou `$prompt CODE` charge le prompt correspondant et exécute
 son processus jusqu'à ses conditions terminales ou une condition imposant
 une décision. Aucun prompt n'est embarqué dans Tools Codex.
 
@@ -136,9 +141,10 @@ par TCU. LM constitue l'unique liste noire, sans exclusion permanente intégrée
 
 Une métadonnée d'effort ou de contexte inconnue impose une analyse et une
 recherche du LLM dans les sources officielles pour les deux catalogues.
-Les valeurs HIGH/XHIGH officiellement acceptées restent admissibles même
-équivalentes ; leurs preuves et paramètres sont tracés. Un contexte encore
-invérifiable après investigation exclut le modèle.
+Seule une preuve de prise en charge de Medium permet l'admission ; les anciens
+succès mesurés avec un autre effort restent historiques et ne prouvent pas
+Medium. Les preuves et paramètres effectifs sont tracés. Un contexte ou effort encore invérifiable
+après investigation exclut le modèle.
 
 ## Rafraîchissement utilisateur planifié
 

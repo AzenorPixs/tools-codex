@@ -23,22 +23,23 @@ OpenCode Go puis OpenRouter ; le JSON SHALL NOT contenir de section opencode.
 
 ### Requirement: Seuils de sélection vérifiables
 TFL SHALL retenir un contexte vérifiable ≥1M et un coût moyen entrée/sortie
-≤0,50 USD/M hors pointe pour Go ; OpenRouter SHALL appliquer ≤0,20 EUR/M au taux BCE vérifié. Prix ou contextes inconnus SHALL être exclus.
-Les gratuits vérifiés SHALL réussir une réponse complète en HIGH ou son repli
-XHIGH autorisé, TTFT <30 s et débit >20 tokens/s avant inclusion dans models.
-Leurs échecs SHALL rester dans excluded_models avec leurs preuves.
+≤0,50 USD/M hors pointe pour Go ; OpenRouter SHALL appliquer ≤0,20 EUR/M au
+taux BCE vérifié. Prix ou contextes inconnus SHALL être exclus. Les gratuits
+vérifiés SHALL réussir une réponse complète en Medium, TTFT <30 s et débit
+>20 tokens/s avant inclusion dans models. Leurs échecs SHALL rester dans
+excluded_models avec leurs preuves.
 
 #### Scenario: Modèle hors seuils
-- **WHEN** le contexte ou le coût d'un modèle examiné ne satisfait pas les seuils vérifiables
+- **WHEN** le contexte, le coût ou l'effort Medium d'un modèle examiné ne satisfait pas les seuils vérifiables
 - **THEN** il est exclu avec son motif dans le catalogue JSON
 
 #### Scenario: Gratuit échoué ou non mesurable
-- **WHEN** le gratuit échoue sur un seuil, le raisonnement, l'accès, HTTP ou la mesure
+- **WHEN** le gratuit échoue sur un seuil, l'effort Medium, l'accès, HTTP ou la mesure
 - **THEN** il est exclu de models avec sa cause, ses tentatives et ses mesures disponibles
 
 #### Scenario: Seuils gratuits stricts
 - **WHEN** le TTFT atteint 30 s ou le débit atteint au plus 20 tokens/s
-- **THEN** le gratuit est exclu même si ses prix et contexte sont admissibles
+- **THEN** le gratuit est exclu même si ses prix, contexte et effort Medium sont admissibles
 
 ### Requirement: Prix finis et JSON strict
 TFL SHALL exclure avec un motif les prix OpenRouter non finis ou dont la
@@ -86,8 +87,12 @@ sans effet sur les autres résultats admissibles.
 
 ### Requirement: Classement et colonnes communes
 TFL SHALL classer les modèles de chaque catalogue par coût moyen croissant.
-Les deux tableaux fournisseurs SHALL garder les colonnes rang, modèle/ID, contexte,
-sortie, prix d'entrée, prix de sortie, coût moyen et code couleur. TFL SHALL ajouter un tableau commun des essais gratuits, avec fournisseur, modèle, TTFT, débit, raisonnement et état/cause, incluant les échecs dont l'effort est vérifiable ; les exclus HIGH/XHIGH SHALL rester seulement dans le JSON.
+Les deux tableaux fournisseurs SHALL garder les colonnes rang, modèle/ID,
+contexte, sortie, prix d'entrée, prix de sortie, coût moyen et code couleur.
+TFL SHALL ajouter un tableau commun des essais gratuits, avec fournisseur,
+modèle, TTFT, débit, raisonnement et état/cause, incluant les échecs dont
+l'effort Medium est vérifiable ; les exclus faute de preuve Medium SHALL
+rester seulement dans le JSON.
 
 #### Scenario: Comparaison des tableaux fournisseurs
 - **WHEN** les deux tableaux fournisseurs sont restitués
@@ -295,26 +300,30 @@ de publication atomique SHALL rester inchangés.
 - **AND** les modèles interdits restent absents des listes retenues et des tests gratuits
 
 ### Requirement: Effort vérifiable avant admission
-TFL SHALL exiger une capacité HIGH ou XHIGH vérifiable pour chaque gratuit
-ou payant, avant génération et classement. HIGH SHALL être préféré et XHIGH
-SHALL être le seul repli. Les modèles exclus SHALL rester auditables dans
-le JSON et SHALL NOT apparaître dans les tableaux, essais gratuits compris.
+TFL SHALL exiger une capacité Medium vérifiable pour chaque gratuit ou
+payant, avant génération et classement. Les modèles exclus SHALL rester
+auditables dans le JSON et SHALL NOT apparaître dans les tableaux, essais
+gratuits compris.
 
 #### Scenario: Modèle payant ou gratuit sans preuve
-- **WHEN** HIGH et XHIGH ne sont pas vérifiables dans les sources publiées
+- **WHEN** Medium n'est pas vérifiable dans les sources publiées
 - **THEN** le modèle est exclu avant toute génération, absent des tableaux et motivé dans le JSON
 
 #### Scenario: Preuve publiée et métadonnées invalides
-- **WHEN** supported_efforts publie une liste contenant high ou xhigh, ou null explicite signifiant tous les efforts
+- **WHEN** supported_efforts publie une liste contenant medium, ou null explicite signifiant tous les efforts
 - **THEN** le candidat satisfait le filtre d'effort sous réserve des autres critères
 - **AND** une clé absente, une valeur invalide, un booléen reasoning ou supports_max_tokens seul reste exclu
 
-#### Scenario: XHIGH seul ou tous les efforts
-- **WHEN** seuls XHIGH ou tous les efforts via null explicite sont publiés
-- **THEN** le modèle est admissible respectivement en XHIGH ou HIGH sous réserve des autres critères
+#### Scenario: Medium absent
+- **WHEN** supported_efforts publie une liste qui ne contient pas medium
+- **THEN** le candidat est exclu avant le test
+
+#### Scenario: Tous les efforts explicitement pris en charge
+- **WHEN** supported_efforts publie explicitement null
+- **THEN** le candidat peut être testé en Medium sous réserve des autres critères
 
 #### Scenario: Budget seul
-- **WHEN** le modèle ne publie qu'un budget de raisonnement sans preuve d'effort HIGH/XHIGH
+- **WHEN** le modèle ne publie qu'un budget de raisonnement sans preuve d'effort Medium
 - **THEN** il est exclu sans équivalence de niveau inventée
 
 ### Requirement: Plafond OpenRouter en EUR
@@ -344,7 +353,7 @@ autres sections. Les filtres et validations indispensables SHALL rester inchang�
 - **THEN** le rapport affiche Go puis OpenRouter, aucun tableau général, et le JSON conserve les deux sections
 
 #### Scenario: Aucune preuve d'effort dans une section
-- **WHEN** tous ses candidats sont exclus faute de preuve HIGH/XHIGH
+- **WHEN** tous ses candidats sont exclus faute de preuve Medium
 - **THEN** TFL publie la sélection vide et ses motifs sans réutiliser d'anciennes qualifications
 - **AND** les exclus restent absents des tableaux et des essais gratuits
 
@@ -397,15 +406,15 @@ la restitution finale, ou déclarer explicitement son blocage.
 - **THEN** elle ne permet aucune admission et une nouvelle investigation est requise
 
 ### Requirement: Efforts publiés et équivalences documentées
-Les niveaux de reasoning_options type=effort/values SHALL être normalisés.
-HIGH/XHIGH officiellement acceptés SHALL être admissibles même si plusieurs
-niveaux produisent le même comportement. Une équivalence documentée vers un
-interrupteur SHALL être tracée avec son protocole, ses paramètres et ses
-sources, sans inventer un endpoint ni une intensité distincte.
+Les niveaux reasoning_options type=effort/values SHALL être normalisés.
+Medium SHALL être admissible uniquement s'il est déclaré ou si null explicite
+signifie tous les efforts. Une équivalence documentée vers un interrupteur
+SHALL être tracée avec son protocole, ses paramètres et ses sources, sans
+inventer un endpoint ni une intensité distincte.
 
-#### Scenario: HIGH équivaut au raisonnement activé
-- **WHEN** les sources officielles du modèle établissent cette équivalence sur le protocole utilisé
-- **THEN** HIGH est admissible et le paramètre équivalent documenté est envoyé
+#### Scenario: Medium équivaut au raisonnement activé
+- **WHEN** les sources officielles du modèle établissent une équivalence Medium sur le protocole utilisé
+- **THEN** Medium est admissible et le paramètre équivalent documenté est envoyé
 - **AND** les autres critères et contrôles restent obligatoires
 
 ### Requirement: Source unique LM
@@ -425,3 +434,37 @@ investigations et essais publiés SHALL concerner exclusivement Go/OpenRouter.
 - **WHEN** les trois collecteurs généraux sont configurés pour échouer s'ils sont appelés
 - **THEN** une collecte Go/OpenRouter valide réussit sans aucun appel général
 - **AND** le JSON, le Markdown et stdout ne contiennent aucun modèle général
+
+### Requirement: Effort courant exclusivement Medium
+
+TFL SHALL n'évaluer, classer et publier que des candidats admissibles en
+Medium. Chaque benchmark SHALL transmettre Medium selon le protocole déclaré
+et SHALL échouer explicitement si cet effort n'est pas pris en charge.
+Un refus SHALL NOT entraîner de nouvelle requête avec un effort différent.
+Les métadonnées fournisseur qui déclarent plusieurs capacités restent des
+preuves source ; elles SHALL NOT modifier l'effort demandé ni qualifier une
+mesure réalisée avec un autre effort.
+
+#### Scenario: Plusieurs capacités publiées
+
+- **WHEN** les métadonnées d'un candidat déclarent Medium et d'autres capacités
+- **THEN** TFL demande Medium et n'envoie aucune autre valeur d'effort
+- **AND** seul un benchmark réussi avec Medium peut entrer dans le catalogue
+
+#### Scenario: Medium indisponible ou refusé
+
+- **WHEN** Medium n'est pas vérifiable, n'est pas pris en charge ou est refusé
+  par le transport
+- **THEN** le candidat est exclu du catalogue avec sa cause
+- **AND** aucune requête de repli n'est effectuée
+
+### Requirement: Prix décimaux canoniques malgré l'arrondi flottant
+TFL SHALL utiliser les prix décimaux natifs comme référence du classement et des plafonds. Une projection numérique flottante SHALL être acceptée seulement si elle est finie, non négative et équivalente à la valeur décimale avec une tolérance relative de 1e-12 et sans tolérance absolue.
+
+#### Scenario: Arrondi binaire de la projection tarifaire
+- **WHEN** le prix numérique vaut `0.049999999999999996` et son prix décimal canonique vaut `0.05000000`
+- **THEN** la projection est cohérente et le classement et les plafonds utilisent `0.05000000`
+
+#### Scenario: Écart tarifaire réel
+- **WHEN** le prix numérique vaut `0.051` et son prix décimal canonique vaut `0.05000000`
+- **THEN** TFL exclut le candidat comme prix contradictoire avant classement ou génération

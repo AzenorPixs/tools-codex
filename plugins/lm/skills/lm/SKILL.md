@@ -39,3 +39,6 @@ Le stockage utilisateur hors cache est préservé lors des mises à jour TCU.
 `/LM` est un déclencheur du skill et une commande source ; ce fichier
 n'enregistre pas automatiquement une slash native. `$lm` est directement
 invocable après découverte ou installation du skill.
+
+La commande canonique est `/LM` ; `/lm` reste
+un alias compatible. L’identifiant technique du skill reste en minuscules.

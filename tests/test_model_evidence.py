@@ -23,7 +23,7 @@ def record(provider='opencode_go', field='reasoning', status='verified', **chang
               'sources': [{'url': 'https://official.example/docs', 'authority': 'official',
                            'sha256': hashlib.sha256(BODY).hexdigest(), 'retrieved_at': DATE}]}
     if status == 'verified':
-        result['value'] = 1_000_000 if field == 'context' else {'supported_efforts': ['high', 'xhigh']}
+        result['value'] = 1_000_000 if field == 'context' else {'supported_efforts': ['medium', 'xhigh']}
     result.update(changes)
     return result
 
@@ -63,7 +63,7 @@ class ModelEvidenceTests(unittest.TestCase):
                     self.assertEqual(excluded, [])
                     self.assertEqual(rows[0]['context_length'], 1_000_000)
                     self.assertEqual(rows[0]['context_source'], 'documented_investigation')
-                    self.assertEqual(rows[0]['reasoning'], 'high')
+                    self.assertEqual(rows[0]['reasoning'], 'medium')
                     self.assertEqual([f['status'] for f in findings], ['verified', 'verified'])
                     self.assertEqual(len(calls), 1)
                     self.assertNotIn('context_length', payload['data'][0])
@@ -115,6 +115,22 @@ class ModelEvidenceTests(unittest.TestCase):
                 self.assertEqual(result['status'], 'required')
                 self.assertNotIn('value', result)
 
+    def test_high_only_evidence_remains_historical_and_requires_medium_research(self):
+        for script in TFL:
+            module = load_script(script)
+            resolver = self.resolver(module, [record(value={'supported_efforts': ['high', 'xhigh']})])
+            result = resolver.resolve('opencode_go', 'new-model', 'reasoning', 'chat_completions')
+            self.assertEqual(result['status'], 'required')
+            self.assertNotIn('value', result)
+            self.assertIn('Medium', result['conclusion'])
+
+    def test_explicit_all_efforts_evidence_proves_medium(self):
+        module = load_script(TFL[0])
+        resolver = self.resolver(module, [record(value={'supported_efforts': None})])
+        result = resolver.resolve('opencode_go', 'new-model', 'reasoning', 'chat_completions')
+        self.assertEqual(result['status'], 'verified')
+        self.assertIsNone(result['value']['supported_efforts'])
+
     def test_provider_model_and_protocol_are_exact_without_cross_borrowing(self):
         for script in TFL:
             module = load_script(script)
@@ -125,15 +141,15 @@ class ModelEvidenceTests(unittest.TestCase):
                          ('opencode_go', 'new-model', 'reasoning', 'responses')):
                 self.assertEqual(resolver.resolve(*args)['status'], 'required')
 
-    def test_documented_thinking_equivalence_preserves_high_and_route(self):
+    def test_documented_thinking_equivalence_preserves_medium_and_route(self):
         for script in (*TFL, *PLLM):
             module = load_script(script)
-            metadata = {'reasoning_capabilities': {'supported_efforts': ['high', 'xhigh'],
+            metadata = {'reasoning_capabilities': {'supported_efforts': ['medium', 'xhigh'],
                         'effort_equivalence': 'thinking_enabled', 'effort_protocol': 'chat_completions'}}
             model = {'provider': 'opencodego', 'api_protocol': 'chat_completions',
                      'api_endpoint': 'https://opencode.ai/published/chat/completions'}
             self.assertEqual(module.performance.reasoning(model, 1024, metadata), {'thinking': {'type': 'enabled'}})
-            self.assertEqual(model['reasoning'], 'high')
+            self.assertEqual(model['reasoning'], 'medium')
             self.assertEqual(model['reasoning_semantics'], 'documented_equivalent')
             self.assertEqual(model['api_endpoint'], 'https://opencode.ai/published/chat/completions')
             with self.assertRaises(RuntimeError):
@@ -145,7 +161,7 @@ class ModelEvidenceTests(unittest.TestCase):
             payload, metadata, prices = go_fixtures.GoMetadataTests().fixture(module)
             payload['data'][0].pop('reasoning_capabilities')
             metadata['models']['new-model']['reasoning'] = True
-            proof = record(value={'supported_efforts': ['high', 'xhigh'],
+            proof = record(value={'supported_efforts': ['medium', 'xhigh'],
                                   'effort_equivalence': 'thinking_enabled'})
             resolver = self.resolver(module, [proof])
             rows, excluded, findings = module.build_investigated(
@@ -183,9 +199,9 @@ class ModelEvidenceTests(unittest.TestCase):
 
     def test_invalid_or_ambiguous_registry_stays_blocking(self):
         module = load_script(TFL[0])
-        invalid = [record(value={'supported_efforts': ['medium']}),
-                   record(value={'supported_efforts': None}), record(sources=[]),
-                   record(value={'supported_efforts': ['high'], 'effort_equivalence': 'invented'})]
+        invalid = [record(value={'supported_efforts': []}), record(sources=[]),
+                   record(value={'supported_efforts': [1]}),
+                   record(value={'supported_efforts': ['medium'], 'effort_equivalence': 'invented'})]
         unsafe = record()
         unsafe['sources'][0]['url'] = 'https://user:private@official.example/docs'
         invalid.append(unsafe)

@@ -76,9 +76,8 @@ def validate_record(record):
                     raise ValueError('contexte')
             else:
                 levels = value['supported_efforts']
-                if (not isinstance(levels, list) or not levels
-                        or any(not isinstance(level, str) for level in levels)
-                        or not set(levels) & {'high', 'xhigh'}
+                if ((levels is not None and (not isinstance(levels, list) or not levels
+                                             or any(not isinstance(level, str) for level in levels)))
                         or value.get('effort_equivalence') not in (None, 'thinking_enabled', 'accepted_alias')
                         or (value.get('effort_equivalence') == 'thinking_enabled'
                             and (record['provider'] == 'openrouter' or record['protocol'] != 'chat_completions'))):
@@ -137,6 +136,11 @@ class EvidenceResolver:
             if self.cache[url] != source['sha256']:
                 result['conclusion'] = 'Source modifiée ou inaccessible : nouvelle investigation du LLM requise.'
                 return result
+        if (record['status'] == 'verified' and field == 'reasoning'
+                and record['value']['supported_efforts'] is not None
+                and 'medium' not in record['value']['supported_efforts']):
+            result['conclusion'] = 'La preuve historique ne couvre pas Medium ; une nouvelle preuve est requise.'
+            return result
         result.update(status=record['status'], conclusion=record['conclusion'])
         if record['status'] == 'verified':
             result['value'] = record['value']

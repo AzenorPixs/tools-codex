@@ -2,7 +2,7 @@
 description: Afficher le catalogue des commandes maison Tools Codex
 ---
 
-Utilise le skill `cm` pour cette demande `/cm`. Affiche son catalogue en
+Utilise le skill `cm` pour cette demande `/CM` (alias `/cm`). Affiche son catalogue en
 français avec les colonnes Commande, Utilisation et Description. Conserve
 une seule entrée prompt. Ne lance aucune des actions du catalogue.
 

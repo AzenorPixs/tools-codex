@@ -2,7 +2,8 @@
 description: Générer le rapport LLM Go puis OpenRouter
 ---
 
-Utilise obligatoirement la skill `tfl` installée par Tools Codex.
+Utilise obligatoirement la skill `tfl` installée par Tools Codex pour `/TFL`
+(alias `/tfl`).
 
 L’exécution de TFL DOIT toujours être effectuée hors sandbox pour permettre
 l’accès réseau aux APIs OpenCode Go et OpenRouter. Dans Codex, demande une
@@ -19,8 +20,8 @@ Exécute la commande depuis le répertoire du skill TFL installé. Le tableau Op
 DOIT être produit et affiché en premier, puis OpenRouter. Les deux tableaux
 DOIVENT conserver huit colonnes, Go en USD/M et OpenRouter en EUR/M.
 OpenCode général n’est plus collecté, testé ou publié ; le JSON contient Go et OpenRouter.
-Tester les gratuits des deux catalogues en HIGH, puis XHIGH si HIGH est
-indisponible et XHIGH pris en charge, sans contrôle de quota. Exiger contexte
+Tester les gratuits des deux catalogues exclusivement en Medium, sans repli
+vers un autre effort et sans contrôle de quota. Exiger contexte
 ≥1M, gratuité vérifiée, réponse complète, TTFT <30 s et débit >20 tokens/s.
 Exclure les échecs de models, conserver leurs preuves et afficher le tableau
 commun des essais gratuits après les deux tableaux fournisseurs.
@@ -30,7 +31,7 @@ affichées.
 
 Argument reçu : `$ARGUMENTS`
 
-Exclure gratuits et payants sans preuve publiée HIGH/XHIGH avant test et
+Exclure gratuits et payants sans preuve publiée de Medium avant test et
 affichage, y compris dans les essais gratuits ; garder les motifs JSON.
 OpenRouter applique la moyenne de base ≤0,20 EUR/M au dernier taux BCE
 publié vérifié ; aucune conversion historique implicite.
@@ -40,7 +41,7 @@ vérifiable impose l'analyse et la recherche du LLM suivant
 `references/model-evidence.md` du skill. Compléter les preuves officielles
 et relancer le générateur ; ne pas restituer un rapport provisoire comme
 définitif sans investigation terminée ou blocage explicite. Un contexte
-invérifiable après investigation exclut le modèle. HIGH/XHIGH officiellement
-acceptés restent valides même s'ils sont équivalents à d'autres niveaux ou
-à thinking activé ; tracer et respecter les paramètres du protocole publié.
+invérifiable après investigation exclut le modèle. Une capacité publiée
+supplémentaire ne modifie pas l'effort demandé : tracer et respecter les
+paramètres Medium du protocole publié.
 LM est l'unique liste noire, avec toutes ses entrées retirables.

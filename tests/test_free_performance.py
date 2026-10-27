@@ -1,4 +1,4 @@
-"""Qualification gratuite commune et HIGH/XHIGH, sans réseau ni trousseau réel."""
+"""Qualification gratuite commune en Medium, sans réseau ni trousseau réel."""
 from contextlib import ExitStack
 import copy
 import io
@@ -23,7 +23,7 @@ def candidate(name, section='opencode_go', free=True):
         prices['average' if section == 'opencode' else 'average_off_peak'] = 0 if free else .1
     else:
         row['average'] = 0 if free else .1
-    row['reasoning_capabilities'] = {'supported_efforts': ['high', 'xhigh']}
+    row['reasoning_capabilities'] = {'supported_efforts': ['medium', 'high', 'xhigh']}
     return row
 
 
@@ -32,7 +32,7 @@ class FreePerformanceTests(unittest.TestCase):
     run_evaluation = fixtures.PllmFreeFallbackTests.run_evaluation
 
     def successful_benchmark(self, model, key, budget, metadata, session_id=None):
-        self.assertIn(model['reasoning'], ('high', 'xhigh'))
+        self.assertEqual(model['reasoning'], 'medium')
         model.update(ttft_seconds=1, tokens_per_second=40,
                      performance_test={'status': 'completed', 'max_tokens': budget})
         return True
@@ -96,10 +96,10 @@ class FreePerformanceTests(unittest.TestCase):
             self.assertEqual(len(retained),1)
             self.assertEqual(excluded,[])
 
-    def test_absent_key_or_high_support_excludes_without_generation(self):
+    def test_absent_key_or_high_only_support_excludes_without_generation(self):
         for script in TFL:
             module=load_script(script)
-            for key,efforts in (('', ['high']),('offline-key',['low'])):
+            for key,efforts in (('', ['medium']),('offline-key',['high', 'xhigh'])):
                 row=candidate('free','openrouter')
                 row['reasoning_capabilities']={'supported_efforts':efforts}
                 excluded=[]
@@ -109,22 +109,23 @@ class FreePerformanceTests(unittest.TestCase):
                 benchmark.assert_not_called()
                 self.assertTrue(excluded[0]['reason'])
 
-    def test_high_and_xhigh_metadata_and_transport_contracts(self):
+    def test_medium_metadata_and_transport_contracts(self):
         for script in (*PLLM,*TFL):
             engine=load_script(script).performance
             for provider,protocol,field in (('opencodego','responses','reasoning'),
                                              ('opencode','chat_completions','reasoning_effort'),
                                              ('opencodego','messages','output_config')):
                 model={'provider':provider,'api_protocol':protocol}
-                options=engine.reasoning(model,1024,{'reasoning':{'supported_efforts':['xhigh']}})
-                self.assertEqual(model['reasoning'],'xhigh')
-                self.assertEqual(options[field],'xhigh' if field=='reasoning_effort' else {'effort':'xhigh'})
-            with self.assertRaisesRegex(RuntimeError, 'HIGH/XHIGH'):
+                options=engine.reasoning(model,1024,{'reasoning':{'supported_efforts':['medium']}})
+                self.assertEqual(model['reasoning'],'medium')
+                self.assertEqual(options[field],'medium' if field=='reasoning_effort' else {'effort':'medium'})
+            with self.assertRaisesRegex(RuntimeError, 'Medium'):
                 engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supports_max_tokens':True}})
-            self.assertEqual(engine.reasoning({'provider':'deepseek'},1024,{'reasoning': {'supported_efforts': ['high']}}),
-                             {'reasoning_effort':'high','thinking':{'type':'enabled'}})
-            with self.assertRaisesRegex(RuntimeError,'HIGH et XHIGH'):
-                engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supported_efforts':['low']}})
+            self.assertEqual(engine.reasoning({'provider':'deepseek'},1024,{'reasoning': {'supported_efforts': ['medium']}}),
+                             {'reasoning_effort':'medium','thinking':{'type':'enabled'}})
+            for unsupported in (['low'], ['high'], ['xhigh'], ['high', 'xhigh']):
+                with self.assertRaisesRegex(RuntimeError,'Medium'):
+                    engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supported_efforts':unsupported}})
 
     def test_pllm_free_modes_use_strict_limits_router_paid_keeps_original_limits(self):
         for script in PLLM:
@@ -137,42 +138,36 @@ class FreePerformanceTests(unittest.TestCase):
             self.assertEqual(free['models'][2]['performance_criteria'],{'ttft_lt_seconds':30,'tokens_per_second_gt':20})
             paid,_,_=self.run_evaluation(module,path,benchmark_behavior=behavior,forced={'mode':'mode5'})
             self.assertEqual(paid['models'][4]['state'],'Valide')
-            self.assertEqual(paid['models'][4]['reasoning'],'high')
+            self.assertEqual(paid['models'][4]['reasoning'],'medium')
             self.assertEqual(paid['models'][4]['performance_criteria'],{'ttft_lt_seconds':90,'tokens_per_second_gt':15})
 
-    def test_pllm_high_rejection_can_retry_xhigh_with_its_own_tier(self):
+    def test_pllm_medium_rejection_does_not_retry_another_effort_or_tier(self):
         for script in PLLM:
             module,path,catalog=self.workspace(script)
-            catalog['opencode_go']['models'][0]['reasoning_capabilities']={'supported_efforts':['high','xhigh']}
+            catalog['opencode_go']['models'][0]['reasoning_capabilities']={'supported_efforts':['medium','high','xhigh']}
             path.write_text(json.dumps(catalog))
             calls=[]
             def behavior(model,budget):
                 calls.append((model['reasoning'],budget))
-                if model['reasoning']=='high':
-                    raise failure(400,{'error':{'code':'invalid_value','param':'reasoning_effort'}})
-                model.update(ttft_seconds=1,tokens_per_second=40)
-                return True
+                raise failure(400,{'error':{'code':'invalid_value','param':'reasoning_effort'}})
             data,_,_=self.run_evaluation(module,path,benchmark_behavior=behavior,forced={'mode':'mode3'})
-            self.assertEqual(calls,[('high',1024),('xhigh',1024)])
-            self.assertEqual(data['models'][2]['state'],'Valide')
-            self.assertEqual(data['models'][2]['reasoning'],'xhigh')
-            self.assertEqual(module.load_memory()['policies']['mode3']['identity']['reasoning'],'xhigh')
+            self.assertEqual(calls,[('medium',1024)])
+            self.assertEqual(data['models'][2]['state'],'Invalide')
+            self.assertEqual(data['models'][2]['reasoning'],'medium')
 
-    def test_tfl_high_rejection_retries_only_documented_xhigh(self):
+    def test_tfl_medium_rejection_does_not_retry_another_effort_or_tier(self):
         for script in TFL:
             module=load_script(script)
             calls=[]
             def bench(model,key,budget,metadata,session_id=None):
                 calls.append((model['reasoning'],budget))
-                if model['reasoning']=='high':
-                    raise failure(400,{'error':{'code':'unsupported_parameter','param':'reasoning_effort'}})
-                return self.successful_benchmark(model,key,budget,metadata,session_id)
+                raise failure(400,{'error':{'code':'unsupported_parameter','param':'reasoning_effort'}})
             audit=[]
             with patch.object(module.performance,'benchmark',side_effect=bench):
                 rows=module.qualify_free_models([candidate('free')],[],'opencode_go','offline-key',audit)
-            self.assertEqual(calls,[('high',1024),('xhigh',1024)])
-            self.assertEqual(rows[0]['reasoning'],'xhigh')
-            self.assertEqual(len(audit[0]['performance_test']['attempts']),2)
+            self.assertEqual(calls,[('medium',1024)])
+            self.assertEqual(rows,[])
+            self.assertEqual(len(audit[0]['performance_test']['attempts']),1)
 
     def test_price_variants_cannot_be_misclassified_as_free(self):
         for script in (*PLLM,*TFL):
@@ -270,7 +265,7 @@ class FreePerformanceTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,'Métadonnées de raisonnement invalides'):
                     engine.reasoning({'provider':'opencodego'},1024,{'reasoning':options})
 
-    def test_low_memory_cannot_start_a_high_benchmark_at_an_old_tier(self):
+    def test_old_effort_memory_cannot_start_medium_benchmark_at_an_old_tier(self):
         for script in PLLM:
             module,path,_=self.workspace(script)
             previous=module.load_current()['models'][2]
@@ -282,7 +277,7 @@ class FreePerformanceTests(unittest.TestCase):
                 'identity':module.identity(previous),'last_successful_max_tokens':8192}}}))
             data,events,_=self.run_evaluation(module,path,forced={'mode':'mode3'})
             self.assertEqual([event[3] for event in events if event[0]=='benchmark'],[1024])
-            self.assertEqual(data['models'][2]['reasoning'],'high')
+            self.assertEqual(data['models'][2]['reasoning'],'medium')
 
     def test_tfl_sections_emptied_by_free_tests_are_published_without_blocking_others(self):
         for script in TFL:

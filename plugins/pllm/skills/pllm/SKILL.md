@@ -1,6 +1,6 @@
 ---
 name: pllm
-description: Évaluer en temps réel les modèles à chaque invocation de /pllm et déterminer la politique convergente de priorité des modèles LLM pour les agents de codage. Utiliser pour /pllm, PLLM ou une demande explicite de gestion de ses modes et conditions de validité.
+description: Évaluer en temps réel les modèles à chaque invocation de /PLLM et déterminer la politique convergente de priorité des modèles LLM pour les agents de codage. Utiliser pour /PLLM, PLLM ou une demande explicite de gestion de ses modes et conditions de validité.
 ---
 
 # PLLM — Politique de priorité des modèles LLM
@@ -19,7 +19,7 @@ Ils restent gratuits indépendamment des ressources des comptes associés.
 
 Les gratuits 3/4 exigent TTFT <30 s et débit >20 tokens/s. Les payants
 1/2/5/6 gardent TTFT <90 s et débit >15 tokens/s. Tous exigent réponse complète,
-comptage fiable, HIGH/XHIGH autorisé et filtres TFL. Le contexte d'entrée ≥1M
+comptage fiable, Medium autorisé et filtres TFL. Le contexte d'entrée ≥1M
 est vérifié pour les candidats du catalogue ; le benchmark n'envoie pas un
 million de tokens. Les paliers et le protocole de mesure actuels sont conservés.
 
@@ -55,7 +55,7 @@ identifiant de session et ne pas usurper une identité de client natif.
 
 - Priorité : 1 (priorité la plus haute actuellement définie).
 - Modèle : premier candidat payant TFL OpenCode Go conforme, essayé par coût croissant.
-- Raisonnement : HIGH.
+- Raisonnement : Medium.
 - Fournisseur : OpenCode Go (`opencodego`).
 - TTFT : évalué par le test, en secondes.
 - Tokens/s : évalué par le test.
@@ -80,7 +80,7 @@ Ces informations sont des métadonnées de recherche, pas la clé. Ne pas recré
 
 ### Accès d’exécution requis
 
-Chaque invocation réelle de `/pllm` doit pouvoir accéder au trousseau de
+Chaque invocation réelle de `/PLLM` doit pouvoir accéder au trousseau de
 l’hôte via `secret-tool` et aux endpoints HTTPS des fournisseurs. Si une
 exécution en bac à sable échoue avec `Operation not permitted`, `Could not
 connect` ou une erreur équivalente lors de l’accès au trousseau ou au réseau,
@@ -110,15 +110,15 @@ silencieuse depuis le nom du modèle.
 
 Les modèles Muse Spark 1.3, Muse Spark 1.2, GPT 5.6 Luna et Grok 4.6 utilisent
 `POST /responses`, avec `input`, `max_output_tokens` et
-`reasoning.effort=high`. Les modèles déclarés `chat_completions` utilisent
+`reasoning.effort=medium`. Les modèles déclarés `chat_completions` utilisent
 `POST /chat/completions` avec `messages` et `max_tokens`. Les modèles déclarés
 `messages` utilisent `POST /messages`; ce protocole est documenté par TFL mais
 est benchmarké par PLLM avec le parseur SSE Anthropic dédié.
-Pour `chat_completions` OpenCode Go, HIGH est envoyé uniquement via
-`reasoning_effort=high`, sans `thinking`. Ce paramètre reste réservé aux
+Pour `chat_completions` OpenCode Go, Medium est envoyé uniquement via
+`reasoning_effort=medium`, sans `thinking`. Ce paramètre reste réservé aux
 contrats qui le requièrent : thinking adaptatif et output_config.effort de Messages et activation
 thinking pour DeepSeek direct. Responses et OpenRouter gardent leurs propres
-représentations HIGH ; ne pas déduire le corps du nom du modèle.
+représentations Medium ; ne pas déduire le corps du nom du modèle.
 
 Pour Muse, ne jamais envoyer une requête vers `/chat/completions` : le contrôle
 réalisé renvoie HTTP 500, alors que `/responses` fonctionne. Une route absente
@@ -131,9 +131,9 @@ observées en 404 sont documentés dans
 [references/opencode-go-api.md](references/opencode-go-api.md). Cette référence
 reste indicative : les réponses en temps réel de l’API font autorité.
 
-Pour Muse, le corps correct est celui de Responses : `input` structuré, `max_output_tokens`, `stream=true`, `store=false` et `reasoning.effort=high`, avec le User-Agent `PLLM-coding-agent/1.0` et un identifiant stable `x-opencode-session`.
+Pour Muse, le corps correct est celui de Responses : `input` structuré, `max_output_tokens`, `stream=true`, `store=false` et `reasoning.effort=medium`, avec le User-Agent `PLLM-coding-agent/1.0` et un identifiant stable `x-opencode-session`.
 
-Hors l'unique repli d'effort XHIGH autorisé, un HTTP 400 ou 429 arrête les paliers du candidat dans cette invocation.
+Un HTTP 400 ou 429 arrête les paliers du candidat dans cette invocation ; aucun repli d'effort n'est autorisé.
 Continuer les autres candidats de la catégorie autorisée après leurs contrôles.
 Un HTTP 429 ne déplace jamais un candidat payant 1/2 vers les gratuits 3/4.
 Conserver son Retry-After exploitable et afficher le réessai indiqué, sans
@@ -172,7 +172,7 @@ performance restent obligatoires partout.
 
 ### Mode 2 — priorité 2
 
-- Premier payant TFL Go conforme dans l'ordre de coût croissant, HIGH, fournisseur `opencodego`.
+- Premier payant TFL Go conforme dans l'ordre de coût croissant, Medium, fournisseur `opencodego`.
 - Référence existante : `service=pllm`, `policy=mode2`, `provider=opencodego`,
   `account=az.github@pixs.fr`.
 - Contrôler les trois périodes Go avec ce compte avant chaque requête.
@@ -181,7 +181,7 @@ performance restent obligatoires partout.
 
 ### Mode 3 — priorité 3 — gratuits du compte 1
 
-- Tous les gratuits vérifiés TFL `opencode_go` exclusivement, HIGH.
+- Tous les gratuits vérifiés TFL `opencode_go` exclusivement, Medium.
 - Utiliser exactement la référence de secret du mode 1, sans nouveau secret.
 - Aucun appel de quota ou de solde. Quotas JSON `null`,
   `quota_status=not_applicable` et affichage `Non applicable`.
@@ -206,12 +206,12 @@ performance restent obligatoires partout.
 - Validité : solde >0, réponse complète, TTFT <90 s et débit réponse seule
   >15 tokens/s. Un crédit épuisé ou un contrôle refusé interdit le test,
   sans repli gratuit. Une invocation ultérieure relit le crédit.
-- Utiliser les métadonnées OpenRouter actuelles pour HIGH/XHIGH autorisé.
+- Utiliser les métadonnées OpenRouter actuelles pour vérifier Medium.
   Si le catalogue doit être actualisé, appliquer TFL avec ses accès autorisés.
 
 ### Mode 6 — priorité 6 — ancien mode 4 DeepSeek direct
 
-- DeepSeek V4 Flash, `deepseek-v4-flash`, HIGH, fournisseur `deepseek`.
+- DeepSeek V4 Flash, `deepseek-v4-flash`, Medium, fournisseur `deepseek`.
 - Référence inchangée : `service=pllm`, `policy=mode4`, `provider=deepseek`,
   `account=az.deepseek@pixs.fr` ; conserver ces attributs historiques.
 - Contrôle : `GET https://api.deepseek.com/user/balance`,
@@ -221,7 +221,7 @@ performance restent obligatoires partout.
 - Les crédits achetés et la consommation cumulée indisponibles ne remplacent
   jamais le contrôle du solde.
 
-Pour tous les modes, demander HIGH et vérifier sa représentation API ; XHIGH est le seul repli autorisé lorsqu'il est pris en charge. Ne jamais remplacer silencieusement ce réglage par un niveau différent. Si le niveau demandé est incompatible, déclarer `Invalide` avec la cause. Ne pas reprendre les anciens soldes, quotas ou statuts comme résultats actuels.
+Pour tous les modes, demander exclusivement Medium et vérifier sa représentation API. Si Medium est incompatible, déclarer `Invalide` avec la cause. Ne pas reprendre les anciens soldes, quotas ou statuts comme résultats actuels.
 
 ## Évaluation et restitution
 
@@ -243,7 +243,7 @@ modèle. Conserver dans `performance_test` le nom de l’en-tête et le motif d�
 
 Pour 1/2, le test de génération ne suffit pas à établir les utilisations sur 5 heures, une semaine et un mois : obtenir ces valeurs de quotas avant de conclure. Ce contrôle ne s’applique jamais aux gratuits 3/4. Les modes 1/2 utilisent les payants Go ; les modes 3/4 les gratuits Go du catalogue TFL actualisé.
 
-Chaque invocation de `/pllm` déclenche une nouvelle évaluation réelle des modèles définis, authentifiée auprès de leur fournisseur. Ne pas se limiter à afficher la politique, proposer un test ultérieur ou réutiliser des résultats précédents comme mesures actuelles. L’invocation autorise les requêtes de test nécessaires ; ne pas redemander une confirmation de principe pour lancer le test.
+Chaque invocation de `/PLLM` déclenche une nouvelle évaluation réelle des modèles définis, authentifiée auprès de leur fournisseur. Ne pas se limiter à afficher la politique, proposer un test ultérieur ou réutiliser des résultats précédents comme mesures actuelles. L’invocation autorise les requêtes de test nécessaires ; ne pas redemander une confirmation de principe pour lancer le test.
 
 Ordre obligatoire pour chaque modèle à chaque invocation :
 
@@ -290,7 +290,7 @@ Le rapport utilisateur contient un seul tableau Markdown multi-colonnes, avec un
 
 ### Contrat pour les futures commandes
 
-Lire `data/pllm-current.json` dans le dossier du skill PLLM effectivement utilisé en priorité. Vérifier sa version et son horodatage : il décrit la politique évaluée à cette date, pas une garantie de disponibilité permanente. Une demande d’actualisation exige une nouvelle invocation de `/pllm`, avec contrôles applicables avant performance, sans quota en 3/4. Une simple lecture du catalogue ne lance pas de test.
+Lire `data/pllm-current.json` dans le dossier du skill PLLM effectivement utilisé en priorité. Vérifier sa version et son horodatage : il décrit la politique évaluée à cette date, pas une garantie de disponibilité permanente. Une demande d’actualisation exige une nouvelle invocation de `/PLLM`, avec contrôles applicables avant performance, sans quota en 3/4. Une simple lecture du catalogue ne lance pas de test.
 
 Classer `models` et les lignes du tableau par `priority` croissante : 1 est la priorité la plus haute. Les priorités doivent être explicites et uniques ; ne pas les déduire du coût ou des performances. Les modes 1 à 6 ont respectivement les priorités 1 à 6. Toute future entrée doit recevoir une priorité définie par l’utilisateur.
 
@@ -306,7 +306,7 @@ La sélection publiée indique le modèle éligible pour les commandes consommat
 
 Cette procédure s’applique uniquement lorsqu’une session de codage OpenCode est
 explicitement autorisée à adopter la PLLM publiée. Une simple invocation ou
-présentation de `/pllm` ne modifie jamais OpenCode.
+présentation de `/PLLM` ne modifie jamais OpenCode.
 
 Une interdiction de fermer ou redémarrer OpenCode concerne son processus et
 l’interface visible du développeur. Elle n’interdit pas le chargement d’une
@@ -369,7 +369,7 @@ python3 scripts/evaluate.py 3 --tfl-catalog /chemin/vers/tfl.json
 ```
 
 Le chemin explicite est utilisé pour Go, les gratuits Go 3/4 et OpenRouter 5.
-TFL retire désormais de models les gratuits échoués à ses tests HIGH/XHIGH,
+TFL retire désormais de models les gratuits échoués à ses tests Medium,
 avec leurs preuves dans excluded_models. Le catalogue dépend du compte TFL
 utilisé ; un échec avec ce compte peut rendre un candidat absent pour un autre
 compte jusqu'à une nouvelle collecte TFL. PLLM ne réintègre pas les exclus et
@@ -397,7 +397,7 @@ ne permettent jamais de déclarer valide un modèle sans mesures concluantes.
 
 À chaque invocation, exécuter `python3 scripts/evaluate.py`, chemin relatif au dossier de ce skill. Le script contrôle les quotas applicables avant chaque test (jamais en 3/4), mesure les réponses en streaming et publie le JSON et le Markdown. Il parcourt les candidats jusqu'au premier succès de chaque mode ; une invocation forcée ne remplace jamais son candidat.
 
-Le test utilise le même prompt de tri fusion Python et de trois assertions pour tous les modes. Les paliers autorisés sont exactement **1 024 → 2 048 → 4 096 → 8 192 tokens**, raisonnement et réponse compris. Sans réussite mémorisée pour cette configuration, commencer à 1 024. Après une troncature ou un seuil mesuré non satisfait, passer au palier suivant après les contrôles applicables, sans quota en 3/4. Hors l'unique repli d'effort XHIGH autorisé, HTTP 400 et 429 arrêtent ce candidat sans augmenter son budget ; les règles 401/403 restent applicables. Si un contrôle indispensable échoue, arrêter sans lancer ce test ; un épuisement interdit 1/2/5/6 sans repli gratuit. Arrêter le mode au premier succès du candidat ; après son échec à 8 192 ou un refus compatible avec la poursuite, essayer le candidat suivant autorisé. Aucun palier à 8 912 ni tentative supplémentaire. Chaque requête est limitée à 120 secondes ; le TTFT requis reste <30 s pour les gratuits et <90 s pour les payants.
+Le test utilise le même prompt de tri fusion Python et de trois assertions pour tous les modes. Les paliers autorisés sont exactement **1 024 → 2 048 → 4 096 → 8 192 tokens**, raisonnement et réponse compris. Sans réussite mémorisée pour cette configuration, commencer à 1 024. Après une troncature ou un seuil mesuré non satisfait, passer au palier suivant après les contrôles applicables, sans quota en 3/4. Un HTTP 400 ou 429 arrête ce candidat sans augmenter son budget ni changer d'effort ; les règles 401/403 restent applicables. Si un contrôle indispensable échoue, arrêter sans lancer ce test ; un épuisement interdit 1/2/5/6 sans repli gratuit. Arrêter le mode au premier succès du candidat ; après son échec à 8 192 ou un refus compatible avec la poursuite, essayer le candidat suivant autorisé. Aucun palier à 8 912 ni tentative supplémentaire. Chaque requête est limitée à 120 secondes ; le TTFT requis reste <30 s pour les gratuits et <90 s pour les payants.
 
 Le parseur streaming et les seuils sont fournis par scripts/performance.py,
 embarqué et identique dans PLLM et TFL. Les imports n'effectuent aucun appel réseau.
@@ -406,15 +406,13 @@ Mémoriser par politique dans `data/pllm-performance-memory.json` le dernier pal
 
 La nouvelle mémoire est initialement vide : aucun ancien résultat n’est transformé artificiellement en apprentissage du nouveau protocole.
 
-Pour OpenRouter, suivre les supported_efforts publiés : HIGH en priorité,
-XHIGH si HIGH est absent et XHIGH annoncé. Si seul supports_max_tokens=true
-est exposé, HIGH utilise floor(0,80 × max_tokens), XHIGH floor(0,95 × max_tokens)
-lorsque ce contrat l'autorise. Ne jamais envoyer effort et budget ensemble.
-Un HTTP 400 précisément lié à l'effort permet au plus un passage à XHIGH
-annoncé ; aucun repli sur 401/403/429, seuil, troncature ou autre paramètre.
-Le palier est recalculé pour la configuration XHIGH, sans mémoire Low/HIGH
-empruntée. Aucun niveau inférieur n'est autorisé. Les paramètres demandés et
-le niveau effectif sont tracés, sans promettre une profondeur interne mesurée.
+Pour OpenRouter, suivre les `supported_efforts` publiés et exiger Medium, ou
+un `null` explicite signifiant tous les efforts. `supports_max_tokens=true`
+seul ne prouve pas Medium. Ne jamais envoyer un effort différent ou appliquer
+un repli vers un autre effort. Un refus HTTP 400 arrête le candidat. Le palier est
+recalculé selon l'identité Medium, sans réutiliser une mémoire d'un autre effort.
+Les paramètres demandés et le niveau effectif sont tracés, sans promettre
+une profondeur interne mesurée.
 Source : https://openrouter.ai/docs/guides/best-practices/reasoning-tokens .
 
 La TTFT porte toujours sur le premier contenu visible ; le premier raisonnement
@@ -460,16 +458,16 @@ Les couleurs sont informatives, indépendantes de la validité : un solde rouge 
 
 ## Sortie utilisateur limitée à un tableau multi-colonnes
 
-Lors d’une invocation normale de `/pllm`, restituer un seul tableau Markdown multi-colonnes avec une ligne par politique dans l’ordre de priorité 1 à 6. Le Markdown est obligatoire car l’interface échappe le HTML brut. Les colonnes sont `Politique`, `Identifiant API`, `Fournisseur`, `TTFT (s)`, `Tokens/s`, `État`, `Dernier palier réussi` et `Évalué le`. Afficher ensuite six lignes de ressources (non applicables en 3/4), une pour chaque PLLM.
+Lors d’une invocation normale de `/PLLM`, restituer un seul tableau Markdown multi-colonnes avec une ligne par politique dans l’ordre de priorité 1 à 6. Le Markdown est obligatoire car l’interface échappe le HTML brut. Les colonnes sont `Politique`, `Identifiant API`, `Fournisseur`, `TTFT (s)`, `Tokens/s`, `État`, `Dernier palier réussi` et `Évalué le`. Afficher ensuite six lignes de ressources (non applicables en 3/4), une pour chaque PLLM.
 
 Les colonnes `Modèle`, `Raisonnement`, `Priorité`, `Mode`, `Cause`, `Sélectionné`, `Quotas / solde` et `Condition` ne sont pas ajoutées ; le diagnostic figure dans `État`. La condition reste disponible dans le JSON et peut être fournie sur demande. Les cellules TTFT et tokens/s valent `-` si le test n’a pas été exécuté ou si la mesure est indisponible. Afficher TTFT et tokens/s avec une seule décimale. Afficher l’horodatage sous la forme `DD-MM-YY HH:mm`. L’état reste coloré par 🟢 `Valide` ou 🔴 `Invalide`, complété dans la même cellule par gratuit en 3/4 ou le diagnostic sûr.
 
-Pour `/pllm active`, le fichier Markdown contient uniquement la ligne de la première politique valide, sa ligne de quotas / solde et l’encart actif, ou `Aucune politique valide` si aucune politique n’est valide. Cette publication reste silencieuse : aucun tableau n’est restitué dans la conversation. Le JSON conserve `selected_mode`, `selection_status`, `selected` et `condition` pour les commandes consommatrices et les demandes détaillées.
+Pour `/PLLM active`, le fichier Markdown contient uniquement la ligne de la première politique valide, sa ligne de quotas / solde et l’encart actif, ou `Aucune politique valide` si aucune politique n’est valide. Cette publication reste silencieuse : aucun tableau n’est restitué dans la conversation. Le JSON conserve `selected_mode`, `selection_status`, `selected` et `condition` pour les commandes consommatrices et les demandes détaillées.
 
 
 ## Argument `active` — sélection silencieuse
 
-`/pllm active` exécute `python3 scripts/evaluate.py active`. Évaluer les politiques par priorité croissante avec les contrôles et paliers mémorisés habituels. Après le premier candidat conforme du mode, arrêter dès la première politique `Valide` : ne consulter ni quotas ni performances des politiques suivantes.
+`/PLLM active` exécute `python3 scripts/evaluate.py active`. Évaluer les politiques par priorité croissante avec les contrôles et paliers mémorisés habituels. Après le premier candidat conforme du mode, arrêter dès la première politique `Valide` : ne consulter ni quotas ni performances des politiques suivantes.
 
 Actualiser `pllm-current.json` et `pllm-current.md` sans sortie console ni tableau dans la conversation. En mode active, le Markdown contient uniquement la ligne de la politique sélectionnée, sa ligne de quotas / solde et l’encart actif pour les autres commandes. Si aucune politique ne satisfait les conditions, publier « Aucune politique valide » et `selected_mode=null` ; ne pas conserver une ancienne sélection.
 
@@ -504,23 +502,24 @@ valide pas un modèle interdit et une cible forcée interdite reste refusée.
 Maintenir ce module identique dans les six distributions LM/TFL/PLLM.
 
 
-## Admission stricte HIGH/XHIGH
+## Admission stricte Medium
 
-Tout modèle gratuit ou payant doit publier une capacité HIGH ou XHIGH
-vérifiable avant test, sélection et affichage. Une liste supported_efforts
-contenant high/xhigh ou un null explicitement publié (tous les efforts) est
-admissible. Une clé absente, une valeur invalide, un booléen reasoning ou un
-budget seul ne suffit pas. HIGH est préféré ; XHIGH est le seul repli.
+Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
+avant test, sélection et affichage. Une liste supported_efforts contenant
+medium ou un null explicitement publié (tous les efforts) est admissible. Une
+clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
+ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide ne
 fournit aucun candidat pour le mode concerné.
 
-Les niveaux `reasoning_options` type=effort/values sont reconnus. HIGH/XHIGH
-officiellement acceptés sont admissibles même sans intensité distincte ;
+Les niveaux `reasoning_options` type=effort/values sont reconnus. Medium
+officiellement accepté reste admissible même sans intensité distincte ;
 conserver l'équivalence documentée, le protocole et les paramètres effectifs.
 PLLM conserve les preuves du catalogue et recontrôle leurs sources avant
-génération. L'équivalence MiMo HIGH vers thinking.type=enabled ne modifie
+génération. Une preuve historique qui ne couvre pas Medium ne prouve pas sa prise en charge.
+L'équivalence documentée vers thinking.type=enabled ne modifie
 aucun endpoint et ne constitue pas une preuve de performance.
 
 ## Investigation obligatoire des métadonnées inconnues
@@ -549,3 +548,6 @@ contrôles de ressources et seuils de performance restent inchangés. Le retrait
 du catalogue général TFL supprime la section JSON opencode ; les modes 1/2
 restent exclusivement payants Go et 3/4 exclusivement gratuits Go, même avec
 un ancien catalogue contenant opencode.
+
+La commande canonique est `/PLLM` ; `/pllm` reste
+un alias compatible. L’identifiant technique du skill reste en minuscules.

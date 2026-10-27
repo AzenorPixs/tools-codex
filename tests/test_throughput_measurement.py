@@ -37,13 +37,13 @@ class ThroughputMeasurementTests(unittest.TestCase):
     def run_stream(self, script, events, ticks, provider='openrouter', protocol='chat_completions', done=True, model=None):
         engine=load_script(script).performance
         model=model if model is not None else {}
-        model.update(provider=provider,model_id='measurement-fixture',reasoning='high',
+        model.update(provider=provider,model_id='measurement-fixture',reasoning='medium',
                      api_protocol=protocol,api_endpoint='https://opencode.ai/zen/v1/'+protocol)
         with patch.object(engine,'request',return_value=stream(events,done)) as request, \
              patch.object(engine.time,'monotonic',side_effect=ticks), \
              patch.object(engine.signal,'alarm'):
             complete=engine.benchmark(model,'offline-fixture',1024,
-                                      {'reasoning':{'supported_efforts':['high']}},session_id='private-session')
+                                      {'reasoning':{'supported_efforts':['medium']}},session_id='private-session')
         return complete,model,request
 
     def test_mercury_burst_uses_full_request_instead_of_microsecond_span(self):
@@ -103,7 +103,7 @@ class ThroughputMeasurementTests(unittest.TestCase):
                 self.assertEqual(model['ttft_seconds'],1)
                 self.assertEqual(model['performance_test']['ttft_reasoning_seconds'],.1)
                 self.assertEqual(model['throughput_scope'],'reasoning_and_response')
-                self.assertEqual(request.call_args.args[2]['reasoning'],{'effort':'high'})
+                self.assertEqual(request.call_args.args[2]['reasoning'],{'effort':'medium'})
                 self.assertNotIn('private-session',json.dumps(model))
 
     def test_messages_uses_the_same_total_window(self):
@@ -116,7 +116,7 @@ class ThroughputMeasurementTests(unittest.TestCase):
             _,model,request=self.run_stream(script,events,(0,.1,.2,1,1.5,1.8,2),
                                             provider='opencode',protocol='messages',done=False)
             self.assertEqual(model['tokens_per_second'],50.5)
-            self.assertEqual(request.call_args.args[2]['output_config'],{'effort':'high'})
+            self.assertEqual(request.call_args.args[2]['output_config'],{'effort':'medium'})
             self.assertNotIn('stream_options',request.call_args.args[2])
 
     def test_invalid_total_duration_never_publishes_a_rate_or_stale_measure(self):
@@ -157,7 +157,7 @@ class ThroughputMeasurementTests(unittest.TestCase):
                 with patch.object(module.performance,'request',return_value=stream(response_events(100 if burst else 400),False)), \
                      patch.object(module.performance.time,'monotonic',side_effect=ticks), \
                      patch.object(module.performance.signal,'alarm'):
-                    return module.performance.benchmark(model,'offline-fixture',budget,{'reasoning': {'supported_efforts': ['high']}},session_id='fixture')
+                    return module.performance.benchmark(model,'offline-fixture',budget,{'reasoning': {'supported_efforts': ['medium']}},session_id='fixture')
             data,_,_=self.run_evaluation(module,path,benchmark_behavior=behavior,active=True)
             self.assertEqual(data['models'][0]['model_id'],'paid-b')
             self.assertEqual(data['models'][0]['tokens_per_second'],400)

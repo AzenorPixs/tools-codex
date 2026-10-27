@@ -245,7 +245,7 @@ class LmBlacklistTests(unittest.TestCase):
                 self.assertEqual(rows, [])
                 self.assertIn('LM', excluded[0]['reason'])
             rows, excluded = module.build_openrouter_rows({'data': [{'id': 'xiaomi/mimo-v2.5'},
-                {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id':'allowed','context_length':1_000_000,'pricing':{'prompt':'0.0000001','completion':'0.0000001'}}]}, exchange_rates=FX)
+                {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id':'allowed','context_length':1_000_000,'pricing':{'prompt':'0.0000001','completion':'0.0000001'}}]}, exchange_rates=FX)
             self.assertEqual([item['id'] for item in rows], ['allowed'])
             self.assertIn('LM', excluded[0]['reason'])
 
@@ -272,16 +272,16 @@ class LmBlacklistTests(unittest.TestCase):
         for index, script in enumerate(TFL):
             module = load_script(script)
             output = self.base / ('tfl-output-'+str(index))
-            payload = {'data':[{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id':'qwen3.8-flash','context_length':1_000_000},
-                               {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id':'mimo-v2.5','context_length':1_000_000}]}
-            router = {'data':[{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id':'xiaomi/mimo-v2.5','context_length':1_000_000,
+            payload = {'data':[{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id':'qwen3.8-flash','context_length':1_000_000},
+                               {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id':'mimo-v2.5','context_length':1_000_000}]}
+            router = {'data':[{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id':'xiaomi/mimo-v2.5','context_length':1_000_000,
                                'pricing':{'prompt':'0','completion':'0'}},
                               {'id':'~xiaomi/MIMO-V2.5:free'},
                               {'id':'~meta/muse-spark-1.2-contributor'},
-                              {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id':'~unbiased/pareto-latest','context_length':1_000_000,
+                              {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id':'~unbiased/pareto-latest','context_length':1_000_000,
                                'pricing':{'prompt':'0.0000001','completion':'0.0000001'}}]}
             general, metadata, pricing = general_fixture(module)
-            general['data'].append({'reasoning_capabilities': {'supported_efforts': ['high']}, 'id':'mimo-v2.5-free','context_length':1_000_000})
+            general['data'].append({'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id':'mimo-v2.5-free','context_length':1_000_000})
             with ExitStack() as stack:
                 for name, value in {
                     'parse_args':SimpleNamespace(policy_option=None,policy='auto',timeout=1,output_dir=output),
@@ -446,7 +446,7 @@ class LmBlacklistTests(unittest.TestCase):
         self.assertIn('lm',{item['name'] for item in plugins})
         for item in plugins:
             manifest = json.loads((ROOT/item['source']['path']/'.codex-plugin/plugin.json').read_text())
-            self.assertEqual(manifest['version'],'0.7.12')
+            self.assertEqual(manifest['version'],'0.7.16')
 
 
 if __name__ == '__main__':

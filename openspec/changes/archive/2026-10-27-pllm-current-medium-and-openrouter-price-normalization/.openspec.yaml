@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-27
+goal: Corriger les filtres PLLM mode1 et mode5, qualifier les deux cas de
+  régression et terminer la release 0.7.16.

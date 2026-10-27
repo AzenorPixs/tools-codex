@@ -31,11 +31,25 @@ class OpenRouterEurTests(unittest.TestCase):
 
     def test_tfl_and_pllm_preserve_native_decimal_boundary(self):
         fx = {**FX, 'rates': {'USD': '1'}}
+        for script in (*TFL, *PLLM):
+            module = load_script(script)
+            prices = {
+                'input_price': 0.049999999999999996,
+                'output_price': 0.25,
+                'base_pricing_usd_per_million_tokens': {
+                    'input': '0.05000000', 'output': '0.25000000'
+                },
+            }
+            self.assertEqual(module.performance.native_openrouter_prices(prices),
+                             ('0.05000000', '0.25000000'))
+            prices['input_price'] = 0.051
+            with self.assertRaisesRegex(RuntimeError, 'Prix OpenRouter natifs'):
+                module.performance.native_openrouter_prices(prices)
         for script in TFL:
             module = load_script(script)
             def raw(name, price):
                 return {'id': name, 'context_length': 1_000_000,
-                        'reasoning': {'supported_efforts': ['high']},
+                        'reasoning': {'supported_efforts': ['medium']},
                         'pricing': {'prompt': price, 'completion': price}}
             rows, excluded = module.build_openrouter_rows({'data': [
                 raw('boundary', '0.0000002'), raw('over', '0.00000020000000000000001')]}, exchange_rates=fx)

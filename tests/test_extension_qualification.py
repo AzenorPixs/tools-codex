@@ -33,7 +33,7 @@ def load_script(path):
 
 
 def candidate(name):
-    return {'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': name, 'available': True, 'api_endpoint': 'https://opencode.ai/zen/go/v1/responses',
+    return {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': name, 'available': True, 'api_endpoint': 'https://opencode.ai/zen/go/v1/responses',
             'api_protocol': 'responses', 'context_length': 1_000_000,
             'reference_pricing_usd_per_million_tokens': {'input_off_peak': 0.1, 'output_off_peak': 0.2}}
 
@@ -62,7 +62,7 @@ class ExtensionQualificationTests(unittest.TestCase):
         catalog.parent.mkdir(parents=True)
         catalog.write_text(json.dumps({'generated_at': 'fixture-date',
                                       'opencode_go': {'models': [candidate('first'), candidate('second')]},
-                                      'openrouter': {'models': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'router-fixture', 'context_length': 1_000_000,
+                                      'openrouter': {'models': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'router-fixture', 'context_length': 1_000_000,
                                                                  'input_price': 0.1, 'output_price': 0.2}]}}), encoding='utf-8')
         return module, catalog
 
@@ -91,7 +91,7 @@ class ExtensionQualificationTests(unittest.TestCase):
             stack.enter_context(patch.object(module, 'quota', side_effect=quota))
             stack.enter_context(patch.object(module, 'benchmark', side_effect=benchmark))
             stack.enter_context(patch.object(module, 'get', return_value={'data': [
-                {'id': 'router-fixture', 'reasoning': {'supported_efforts': ['high']}}]}))
+                {'id': 'router-fixture', 'reasoning': {'supported_efforts': ['medium']}}]}))
             stack.enter_context(patch.object(module, 'exchange_rates', return_value={'rates': {'USD': 1}}))
             stack.enter_context(patch.object(module.urllib.request, 'urlopen', side_effect=AssertionError('Réseau interdit pendant le test')))
             stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
@@ -193,7 +193,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 self.assertTrue(all(len(m['candidate_results']) == 1 for m in result['models'][:5]))
                 self.assertEqual(result['models'][5]['candidate_results'], [])
                 self.assertEqual(result['models'][5]['model'], 'Non évalué')
-                self.assertIn('HIGH/XHIGH', result['models'][5]['cause'])
+                self.assertIn('Medium', result['models'][5]['cause'])
 
     def test_last_tier_fallback_requires_its_own_measurements(self):
         for script in PLLM:
@@ -255,7 +255,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 self.assertEqual(output.getvalue(), '')
 
     def tfl_payload(self, module):
-        return {'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': name, 'context_length': 1_000_000,
+        return {'data': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': name, 'context_length': 1_000_000,
                           'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
                           'architecture': {'output_modalities': ['text']}}
                          for name in OPENROUTER_FIXTURE_IDS]}
@@ -313,7 +313,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                     stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     mock_general_collection(module, stack)
-                    stack.enter_context(patch.object(module, 'build_rows', return_value=([{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'nan-fixture', 'fixture': float('nan')}], [])))
+                    stack.enter_context(patch.object(module, 'build_rows', return_value=([{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'nan-fixture', 'fixture': float('nan')}], [])))
                     stack.enter_context(patch.object(module, 'fetch_openrouter_models', return_value=self.tfl_payload(module)))
                     stack.enter_context(patch.object(module, 'format_opencode_table', return_value='fixture'))
                     write = stack.enter_context(patch.object(module, 'atomic_write'))
@@ -340,7 +340,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                         policy_option=None, policy='auto', timeout=1, output_dir=output)))
                     stack.enter_context(patch.object(module, 'select_secret', return_value=('mode1', 'offline-fixture')))
                     stack.enter_context(patch.object(module, 'fetch_models', return_value={
-                        'data': [{'reasoning_capabilities': {'supported_efforts': ['high']}, 'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
+                        'data': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'qwen3.8-flash', 'context_length': 1_000_000}]}))
                     stack.enter_context(patch.object(module, 'fetch_go_metadata', return_value={}))
                     stack.enter_context(patch.object(module, 'fetch_go_pricing', return_value=self.tfl_go_pricing(module)))
                     mock_general_collection(module, stack)

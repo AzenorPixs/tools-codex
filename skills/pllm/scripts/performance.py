@@ -55,7 +55,9 @@ def native_openrouter_prices(row):
         values = (exact['input'], exact['output'])
         if any(isinstance(value, bool) for value in values) or any(
                 not Decimal(str(value)).is_finite() or Decimal(str(value)) < 0
-                or float(value) != float(price) for value, price in zip(values, prices)):
+                or not math.isfinite(float(value)) or not math.isfinite(float(price))
+                or not math.isclose(float(value), float(price), rel_tol=1e-12, abs_tol=0.0)
+                for value, price in zip(values, prices)):
             raise ValueError('prix contradictoires')
     except (KeyError, TypeError, ValueError, InvalidOperation, OverflowError) as error:
         raise RuntimeError('Prix OpenRouter natifs contradictoires ou invalides') from error
@@ -324,17 +326,12 @@ def choose_effort(model, metadata):
     if (efforts is not None and (not isinstance(efforts, list) or any(not isinstance(value, str) for value in efforts))
             or ('supports_max_tokens' in options and not isinstance(options['supports_max_tokens'], bool))):
         raise RuntimeError('Métadonnées de raisonnement invalides')
-    requested = model.get('reasoning', 'high')
-    if requested not in ('high', 'xhigh'):
-        raise RuntimeError('Raisonnement autorisé : HIGH ou XHIGH uniquement')
+    requested = model.get('reasoning', 'medium')
+    if requested != 'medium':
+        raise RuntimeError('Seul le raisonnement Medium est autorisé')
     if isinstance(efforts, list) and requested not in efforts:
-        if requested == 'high' and 'xhigh' in efforts:
-            requested = 'xhigh'
-        else:
-            raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées')
-    if requested == 'high':
-        requested = verified
-    model.update(requested_reasoning='high', reasoning=requested)
+        raise RuntimeError('Medium non pris en charge dans les métadonnées')
+    model.update(requested_reasoning='medium', reasoning=verified)
     return requested
 
 
@@ -344,20 +341,42 @@ def verified_effort(*records):
     if 'supports_max_tokens' in options and not isinstance(options['supports_max_tokens'], bool):
         raise RuntimeError('Métadonnées de raisonnement invalides')
     if 'supported_efforts' not in options:
-        raise RuntimeError('HIGH/XHIGH non vérifiable : métadonnées d’effort absentes')
+        raise RuntimeError('Medium non vérifiable : métadonnées d’effort absentes')
     efforts = options['supported_efforts']
     if efforts is None:
-        return 'high'
+        return 'medium'
     if not isinstance(efforts, list) or any(not isinstance(value, str) for value in efforts):
         raise RuntimeError('Métadonnées de raisonnement invalides')
-    if 'high' in efforts:
-        return 'high'
-    if 'xhigh' in efforts:
-        return 'xhigh'
-    raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées')
+    if 'medium' in efforts:
+        return 'medium'
+    raise RuntimeError('Medium non pris en charge dans les métadonnées')
 
 
-def effort_allowed(record):
+def _recorded_effort_is_medium(value):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in ('reasoning_capabilities', 'model_investigations', 'model_source',
+                       'user_override', 'performance_attempts'):
+                continue
+            if key in ('effort', 'reasoning_effort', 'requested_reasoning'):
+                if not isinstance(item, str) or item.lower() != 'medium':
+                    return False
+            elif key == 'reasoning' and isinstance(item, str) and item.lower() != 'medium':
+                return False
+            if not _recorded_effort_is_medium(item):
+                return False
+    elif isinstance(value, list):
+        return all(_recorded_effort_is_medium(item) for item in value)
+    return True
+
+
+def effort_allowed(record, *, require_recorded=False):
+    """Check support and, when requested, the effort actually recorded in a report."""
+    if not isinstance(record, dict) or not _recorded_effort_is_medium(record):
+        return False
+    if (require_recorded and (not isinstance(record.get('reasoning'), str)
+                              or record['reasoning'].lower() != 'medium')):
+        return False
     try:
         verified_effort(record)
     except RuntimeError:
@@ -393,13 +412,7 @@ def reasoning(model, budget, metadata):
     efforts = options.get('supported_efforts')
     if (isinstance(efforts, list) and effort in efforts) or ('supported_efforts' in options and efforts is None):
         return {'reasoning': {'effort': effort}}
-    raise RuntimeError('HIGH et XHIGH non pris en charge dans les métadonnées OpenRouter')
-
-
-def can_retry_xhigh(model, metadata, diagnostic):
-    return (model.get('reasoning') == 'high' and diagnostic.get('http_status') == 400
-            and diagnostic.get('parameter') in ('reasoning_effort', 'reasoning.effort', 'output_config.effort')
-            and 'xhigh' in (capabilities(metadata).get('supported_efforts') or []))
+    raise RuntimeError('Medium non pris en charge dans les métadonnées OpenRouter')
 
 def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, request, now, api_error, clock, alarm):
     m.update(ttft_seconds=None, tokens_per_second=None, throughput_metric=THROUGHPUT_METRIC,
@@ -410,7 +423,7 @@ def run_benchmark(m, key, budget, metadata, session_id=None, *, reasoning, reque
     result = {'status': 'running', 'prompt': PROMPT, 'max_tokens': budget, 'reasoning_request': options,
               'started_at': now(), 'ttft_target': 'content (hors raisonnement)', 'requests': 1,
               'api_protocol': protocol, 'api_endpoint': m.get('api_endpoint'),
-              'reasoning': m['reasoning'], 'requested_reasoning': 'high',
+              'reasoning': m['reasoning'], 'requested_reasoning': 'medium',
               'throughput_metric': THROUGHPUT_METRIC, 'throughput_window': THROUGHPUT_WINDOW,
               'measurement_protocol_version': MEASUREMENT_PROTOCOL_VERSION}
     if m['provider'] in ('opencodego', 'opencode'):

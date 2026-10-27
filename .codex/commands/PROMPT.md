@@ -3,7 +3,7 @@ description: Lister ou lancer un prompt du projet courant depuis le référentie
 argument-hint: LIST|CODE_EN_MAJUSCULE
 ---
 
-Utilise le skill `prompt` pour `/prompt $ARGUMENTS`. Résous les sources depuis
+Utilise le skill `prompt` pour `/PROMPT $ARGUMENTS` (alias `/prompt`). Résous les sources depuis
 le DEVOPS.md du projet courant, puis son index déclaré, sans repli global.
 LIST affiche l'index sans exécution. Un code valide charge le prompt et lance
 son processus jusqu'à sa condition terminale ou une condition imposant de

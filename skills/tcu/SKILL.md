@@ -21,7 +21,7 @@ invocation explicite autorise le rafraîchissement de la seule marketplace
 `tools-codex`, les sauvegardes et la mise à jour des copies déjà installées
 dans les racines identifiées. Seul le composant `prompt` absent est installé
 automatiquement : plugin via le CLI, skill et résolveur embarqués vérifiés,
-puis wrapper de commande issu de `.codex/commands/prompt.md`. Aucun autre
+puis wrapper de commande issu de `.codex/commands/PROMPT.md`. Aucun autre
 plugin absent ni doublon autonome de skill n'est créé. Le code du cache
 plugin reste géré par le CLI. Ne pas lancer PLLM/TFL pendant TCU.
 
@@ -30,10 +30,14 @@ une demande `/tcu check`. `--check` reste un alias compatible. Le script seul
 vérifie sans écriture par défaut ; appliquer exige `--apply`.
 Les racines par défaut sont CODEX_HOME/skills, ~/.agents/skills,
 CODEX_HOME/prompts et CODEX_HOME/commands (CODEX_HOME vaut ~/.codex par défaut).
-Le wrapper prompt est créé dans CODEX_HOME/prompts par défaut, ou dans le
+Le wrapper PROMPT.md est créé dans CODEX_HOME/prompts par défaut, ou dans le
 premier --commands-dir explicite ; les autres copies présentes sont mises à
 jour. Il délègue au skill sans copier les prompts métier : DEVOPS.md reste
 leur seule référence. Un lien ou checkout de développement reste inchangé.
+Les anciennes copies en minuscules sont actualisées sous leur nom actuel,
+avec leurs reçus et sauvegardes, sans doublon créé ni renommage. Si PROMPT.md
+et prompt.md existent, ils sont vérifiés dans le même plan et reçu de
+composant. Une ancienne source prompt.md reste lisible si PROMPT.md manque.
 Son conflit ne bloque pas les opérations indépendantes ; il reste signalé
 avec un code non nul, même après des mises à jour réussies. Aucun
 git pull ni redémarrage de service. Les fichiers retirés en amont restent
@@ -81,3 +85,6 @@ le quota Codex avant TFL puis avant PLLM : quota nul ou inconnu, aucun appel
 de l'étape. Un échec TFL empêche PLLM. La séquence ne modifie ni LM ni les
 seuils et n'exécute aucun achat, connexion ou reset de quota. TCU n'installe
 pas les composants absents et ne déclenche pas la séquence pendant son apply.
+
+La commande canonique est `/TCU` ; `/tcu` reste
+un alias compatible. L’identifiant technique du skill reste en minuscules.
