@@ -15,7 +15,7 @@ d'une incapacité.
    documentation officielle du fournisseur ou du créateur du modèle. Vérifier
    l'applicabilité au service et au protocole réellement utilisés.
 2. Pour l'effort, chercher la prise en charge officielle de Medium. Une preuve
-   historique HIGH/XHIGH seule ne valide pas Medium. Son équivalence à
+   historique qui ne couvre pas Medium ne valide pas cet effort. Son équivalence à
    l'activation du raisonnement est admissible si elle est documentée. Tracer
    ce sens ; ne pas prétendre une intensité distincte ni considérer un HTTP 200
    seul comme une preuve.
@@ -53,8 +53,9 @@ OpenCode sur preuve applicable. Il n'invente aucune route ni ne transpose une
 preuve vers un autre fournisseur. Un budget ou un booléen seul reste insuffisant.
 
 Le registre de référence livré dans `references/model-evidence.json` conserve
-une ancienne preuve HIGH/XHIGH pour MiMo. Elle est historique et déclenche
-une nouvelle recherche pour établir Medium ; elle ne permet pas l'admission.
+des preuves de capacité historiques. Elles déclenchent une nouvelle recherche
+pour établir Medium lorsqu'elles ne couvrent pas cet effort ; elles ne
+permettent pas seules l'admission.
 Le registre du
 répertoire de rapport peut le compléter ou réviser une entrée exacte.
 L'agent rédige les conclusions après recherche ; le contrôle SHA-256 prouve

@@ -256,14 +256,14 @@ palier d'un autre candidat n'est pas affiché. Les erreurs HTTP/SSE sont filtré
 et rendues dans État sans corps brut. active s'arrête silencieusement après
 le premier succès du premier mode valide ; les forçages gardent un seul candidat.
 
-Tous les benchmarks PLLM et les gratuits TFL demandent Medium, sans repli vers
-HIGH ou XHIGH. Chat Completions
+Tous les benchmarks PLLM et les gratuits TFL demandent exclusivement Medium,
+sans repli vers un autre effort. Chat Completions
 utilise reasoning_effort ; Responses reasoning.effort ; Messages thinking
 adaptive et output_config.effort ; DeepSeek thinking activé et reasoning_effort.
 OpenRouter exige une déclaration vérifiable de Medium ; un budget seul est
 exclu. Aucun autre niveau n'est utilisé. Le niveau effectif est tracé et
-participe à l'identité de mémoire ; une réussite High ou Low n'amorce pas un
-test Medium. Un refus 400 propre à l'effort arrête le candidat ; 401/403/429
+participe à l'identité de mémoire ; une réussite mesurée avec un autre effort
+n'amorce pas un test Medium. Un refus 400 propre à l'effort arrête le candidat ; 401/403/429
 conservent leur traitement propre.
 Les erreurs HTTP sont lues au plus sur 64 Kio, fermées et filtrées sans corps
 brut, compte ou secret. Le diagnostic est réutilisable sans relire le corps.
@@ -648,7 +648,7 @@ Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
 avant test, sélection et affichage. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
-ou un budget seul ne suffit pas. Aucun repli vers HIGH ou XHIGH n'est autorisé.
+ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
 Les niveaux publiés par models.dev dans `reasoning_options`, entrée
 `type=effort` et liste `values`, sont normalisés vers `supported_efforts`.
 Une liste vide, un budget, un interrupteur ou une déclaration ambiguë ne
@@ -656,7 +656,7 @@ prouve aucun niveau ; `values=null` ne signifie pas tous les efforts.
 Une acceptation officielle de Medium reste admissible même sans intensité
 distincte. Une équivalence documentée peut utiliser thinking.type=enabled
 sur Chat Completions OpenCode, avec protocole et sémantique tracés. Une preuve
-historique HIGH/XHIGH seule n'établit pas la prise en charge de Medium.
+historique qui ne couvre pas Medium seule n'établit pas sa prise en charge.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est

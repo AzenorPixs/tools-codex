@@ -200,7 +200,7 @@ class ModelEvidenceTests(unittest.TestCase):
     def test_invalid_or_ambiguous_registry_stays_blocking(self):
         module = load_script(TFL[0])
         invalid = [record(value={'supported_efforts': []}), record(sources=[]),
-                   record(value={'supported_efforts': ['low']}),
+                   record(value={'supported_efforts': [1]}),
                    record(value={'supported_efforts': ['medium'], 'effort_equivalence': 'invented'})]
         unsafe = record()
         unsafe['sources'][0]['url'] = 'https://user:private@official.example/docs'

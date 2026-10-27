@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Rendre effectif le contrat Medium dans les états PLLM anciens : invalider les requêtes et tentatives mesurées avec un autre effort même si la capacité du modèle inclut Medium, vider les résultats livrés devenus incompatibles et aligner les commandes, spécifications actives, documentation, distributions et release commune sur 0.7.15.
 - Basculer TFL et PLLM vers Medium : exiger une preuve explicite, envoyer Medium sur chaque transport et arrêter les candidats sans repli High/XHigh. Conserver les anciennes mesures comme historique et aligner la release commune sur 0.7.14.
 - Aligner VERSION, pyproject.toml, README et les six plugins sur 0.7.14.
 - Déclarer les six commandes CM, PLLM, TFL, TCU, LM et PROMPT en majuscules dans leurs fichiers sources, déclencheurs et libellés ; compléter les métadonnées CM/PROMPT et conserver les identifiants techniques ainsi que les anciens alias.

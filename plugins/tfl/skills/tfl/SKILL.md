@@ -201,7 +201,7 @@ candidat gratuit avec scripts/performance.py, moteur local embarqué identique
 utilise la réponse seule. Aucune mesure commerciale ou historique ne valide
 la collecte courante.
 
-Tous les tests demandent Medium, sans repli vers HIGH ou XHIGH. Chat Completions
+Tous les tests demandent exclusivement Medium, sans repli vers un autre effort. Chat Completions
 utilise reasoning_effort, Responses reasoning.effort, Messages thinking
 adaptive et output_config.effort. OpenRouter exige une déclaration vérifiable
 de Medium ; un budget seul est exclu. Un refus 400 propre à l'effort, comme
@@ -285,7 +285,7 @@ Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
 avant test, sélection et affichage. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
-ou un budget seul ne suffit pas. Aucun repli vers HIGH ou XHIGH n'est autorisé.
+ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
@@ -295,7 +295,7 @@ Les niveaux publiés dans `reasoning_options` (type=effort, values) sont des
 preuves. Medium officiellement accepté reste admissible même sans intensité
 distincte : tracer l'équivalence et envoyer les paramètres documentés du
 protocole utilisé, comme thinking.type=enabled pour une équivalence documentée.
-Une preuve historique HIGH/XHIGH seule ne prouve pas Medium.
+Une preuve historique qui ne couvre pas Medium ne permet pas l'admission.
 Une valeur absente, un budget ou un interrupteur seul n'invente pas cette preuve.
 
 ## Investigation obligatoire des efforts et contextes

@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.14`.
+Version de release : `0.7.15`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -44,7 +44,7 @@ succès aux tests actuels et ne pas tester les suivants du mode ; après un
 1 à 6 restent inchangées. En invocation normale, poursuivre les politiques ;
 active s'arrête à la première valide. Le contexte ≥1M est une capacité
 d'entrée vérifiée, sans envoi d'un million de tokens pendant le benchmark.
-Tous les benchmarks demandent Medium ; aucun repli vers HIGH ou XHIGH n'est
+Tous les benchmarks demandent exclusivement Medium ; aucun repli vers un autre effort n'est
 autorisé. Les tokens/s représentent désormais une moyenne sur la requête complète,
 attente et TTFT inclus, sans extrapolation entre fragments reçus. Le protocole
 8 conserve la portée de comptage Go ou OpenRouter/DeepSeek, trace la
@@ -150,7 +150,7 @@ Pour les deux catalogues, un effort ou un contexte inconnu impose une
 analyse et une recherche du LLM dans les sources officielles. Un contexte
 encore invérifiable après investigation exclut le modèle. Les valeurs
 Medium doit être explicitement déclaré ou couvert par un `null` explicite ;
-une ancienne preuve HIGH/XHIGH seule ne suffit plus. Les sources, dates et
+une ancienne preuve qui ne couvre pas Medium ne suffit pas. Les sources, dates et
 paramètres effectifs sont tracés.
 Le générateur marque les investigations en attente et son rapport provisoire.
 Le [guide des preuves](skills/tfl/references/model-evidence.md) décrit le registre

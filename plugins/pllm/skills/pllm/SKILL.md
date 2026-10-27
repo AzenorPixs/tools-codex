@@ -221,7 +221,7 @@ performance restent obligatoires partout.
 - Les crédits achetés et la consommation cumulée indisponibles ne remplacent
   jamais le contrôle du solde.
 
-Pour tous les modes, demander Medium et vérifier sa représentation API. Ne jamais remplacer silencieusement ce réglage par HIGH ou XHIGH. Si Medium est incompatible, déclarer `Invalide` avec la cause. Ne pas reprendre les anciens soldes, quotas ou statuts comme résultats actuels.
+Pour tous les modes, demander exclusivement Medium et vérifier sa représentation API. Si Medium est incompatible, déclarer `Invalide` avec la cause. Ne pas reprendre les anciens soldes, quotas ou statuts comme résultats actuels.
 
 ## Évaluation et restitution
 
@@ -409,8 +409,8 @@ La nouvelle mémoire est initialement vide : aucun ancien résultat n’est tran
 Pour OpenRouter, suivre les `supported_efforts` publiés et exiger Medium, ou
 un `null` explicite signifiant tous les efforts. `supports_max_tokens=true`
 seul ne prouve pas Medium. Ne jamais envoyer un effort différent ou appliquer
-un repli vers HIGH/XHIGH. Un refus HTTP 400 arrête le candidat. Le palier est
-recalculé selon l'identité Medium, sans réutiliser une mémoire HIGH/XHIGH.
+un repli vers un autre effort. Un refus HTTP 400 arrête le candidat. Le palier est
+recalculé selon l'identité Medium, sans réutiliser une mémoire d'un autre effort.
 Les paramètres demandés et le niveau effectif sont tracés, sans promettre
 une profondeur interne mesurée.
 Source : https://openrouter.ai/docs/guides/best-practices/reasoning-tokens .
@@ -508,7 +508,7 @@ Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
 avant test, sélection et affichage. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
-ou un budget seul ne suffit pas. Aucun repli vers HIGH ou XHIGH n'est autorisé.
+ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide ne
@@ -518,7 +518,7 @@ Les niveaux `reasoning_options` type=effort/values sont reconnus. Medium
 officiellement accepté reste admissible même sans intensité distincte ;
 conserver l'équivalence documentée, le protocole et les paramètres effectifs.
 PLLM conserve les preuves du catalogue et recontrôle leurs sources avant
-génération. Une preuve historique HIGH/XHIGH seule ne prouve pas Medium.
+génération. Une preuve historique qui ne couvre pas Medium ne prouve pas sa prise en charge.
 L'équivalence documentée vers thinking.type=enabled ne modifie
 aucun endpoint et ne constitue pas une preuve de performance.
 

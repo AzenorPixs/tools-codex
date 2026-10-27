@@ -314,9 +314,13 @@ gratuits compris.
 - **THEN** le candidat satisfait le filtre d'effort sous réserve des autres critères
 - **AND** une clé absente, une valeur invalide, un booléen reasoning ou supports_max_tokens seul reste exclu
 
-#### Scenario: XHIGH seul ou tous les efforts
-- **WHEN** seuls XHIGH ou tous les efforts via null explicite sont publiés
-- **THEN** une liste contenant seulement HIGH/XHIGH est exclue ; null explicite est admissible et le test est demandé en Medium
+#### Scenario: Medium absent
+- **WHEN** supported_efforts publie une liste qui ne contient pas medium
+- **THEN** le candidat est exclu avant le test
+
+#### Scenario: Tous les efforts explicitement pris en charge
+- **WHEN** supported_efforts publie explicitement null
+- **THEN** le candidat peut être testé en Medium sous réserve des autres critères
 
 #### Scenario: Budget seul
 - **WHEN** le modèle ne publie qu'un budget de raisonnement sans preuve d'effort Medium
@@ -349,7 +353,7 @@ autres sections. Les filtres et validations indispensables SHALL rester inchang�
 - **THEN** le rapport affiche Go puis OpenRouter, aucun tableau général, et le JSON conserve les deux sections
 
 #### Scenario: Aucune preuve d'effort dans une section
-- **WHEN** tous ses candidats sont exclus faute de preuve HIGH/XHIGH
+- **WHEN** tous ses candidats sont exclus faute de preuve Medium
 - **THEN** TFL publie la sélection vide et ses motifs sans réutiliser d'anciennes qualifications
 - **AND** les exclus restent absents des tableaux et des essais gratuits
 
@@ -408,7 +412,7 @@ signifie tous les efforts. Une équivalence documentée vers un interrupteur
 SHALL être tracée avec son protocole, ses paramètres et ses sources, sans
 inventer un endpoint ni une intensité distincte.
 
-#### Scenario: HIGH équivaut au raisonnement activé
+#### Scenario: Medium équivaut au raisonnement activé
 - **WHEN** les sources officielles du modèle établissent une équivalence Medium sur le protocole utilisé
 - **THEN** Medium est admissible et le paramètre équivalent documenté est envoyé
 - **AND** les autres critères et contrôles restent obligatoires
@@ -430,3 +434,26 @@ investigations et essais publiés SHALL concerner exclusivement Go/OpenRouter.
 - **WHEN** les trois collecteurs généraux sont configurés pour échouer s'ils sont appelés
 - **THEN** une collecte Go/OpenRouter valide réussit sans aucun appel général
 - **AND** le JSON, le Markdown et stdout ne contiennent aucun modèle général
+
+### Requirement: Effort courant exclusivement Medium
+
+TFL SHALL n'évaluer, classer et publier que des candidats admissibles en
+Medium. Chaque benchmark SHALL transmettre Medium selon le protocole déclaré
+et SHALL échouer explicitement si cet effort n'est pas pris en charge.
+Un refus SHALL NOT entraîner de nouvelle requête avec un effort différent.
+Les métadonnées fournisseur qui déclarent plusieurs capacités restent des
+preuves source ; elles SHALL NOT modifier l'effort demandé ni qualifier une
+mesure réalisée avec un autre effort.
+
+#### Scenario: Plusieurs capacités publiées
+
+- **WHEN** les métadonnées d'un candidat déclarent Medium et d'autres capacités
+- **THEN** TFL demande Medium et n'envoie aucune autre valeur d'effort
+- **AND** seul un benchmark réussi avec Medium peut entrer dans le catalogue
+
+#### Scenario: Medium indisponible ou refusé
+
+- **WHEN** Medium n'est pas vérifiable, n'est pas pris en charge ou est refusé
+  par le transport
+- **THEN** le candidat est exclu du catalogue avec sa cause
+- **AND** aucune requête de repli n'est effectuée

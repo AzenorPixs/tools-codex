@@ -446,7 +446,7 @@ class LmBlacklistTests(unittest.TestCase):
         self.assertIn('lm',{item['name'] for item in plugins})
         for item in plugins:
             manifest = json.loads((ROOT/item['source']['path']/'.codex-plugin/plugin.json').read_text())
-            self.assertEqual(manifest['version'],'0.7.14')
+            self.assertEqual(manifest['version'],'0.7.15')
 
 
 if __name__ == '__main__':

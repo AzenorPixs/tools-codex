@@ -467,7 +467,7 @@ def sanitize_reasoning_history(data):
         exclusions = model.setdefault('candidate_exclusions', [])
         retained = []
         for candidate in model.get('candidate_results', []):
-            if performance.effort_allowed(candidate):
+            if performance.effort_allowed(candidate, require_recorded=True):
                 retained.append(candidate)
             else:
                 exclusions.append({'model_id': candidate.get('model_id'),
@@ -475,7 +475,8 @@ def sanitize_reasoning_history(data):
         if 'candidate_results' in model:
             model['candidate_results'] = retained
         identifier = model.get('model_id', model.get('model'))
-        if identifier and identifier != 'Non évalué' and not performance.effort_allowed(model):
+        if (identifier and identifier != 'Non évalué'
+                and not performance.effort_allowed(model, require_recorded=True)):
             exclusions.append({'model_id': identifier, 'cause': 'Medium non vérifiable ou non pris en charge'})
             model.update(state='Invalide', selected=False, model='Non évalué', model_id='Non évalué',
                          cause='Aucun candidat avec Medium vérifiable',

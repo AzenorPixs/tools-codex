@@ -132,6 +132,12 @@ class ReasoningAdmissionTests(unittest.TestCase):
             eligible['reasoning_capabilities'] = {'supported_efforts': ['medium', 'high']}
             admitted = module.catalog_candidate(eligible, 'opencode_go', 1, 'date')
             self.assertEqual(admitted['reasoning'], 'medium')
+            stale = {**admitted, 'reasoning': 'high', 'requested_reasoning': 'high',
+                     'performance_test': {'reasoning_request': {'reasoning_effort': 'high'}}}
+            self.assertFalse(module.performance.effort_allowed(stale, require_recorded=True))
+            self.assertFalse(module.performance.effort_allowed(
+                {'reasoning_capabilities': {'supported_efforts': ['medium', 'high']}},
+                require_recorded=True))
             hidden = copy.deepcopy(eligible)
             hidden.update(id='hidden', reasoning_capabilities={'supported_efforts': ['high', 'xhigh']})
             with self.assertRaisesRegex(RuntimeError, 'Medium'):
@@ -142,10 +148,14 @@ class ReasoningAdmissionTests(unittest.TestCase):
                     module.candidates_for(model, 'paid', None, forced={'rank': 1})
                 self.assertEqual(module.candidates_for(model, 'paid', None)[0]['model_id'], 'eligible')
             historical = {**module.initial_model(1, 'opencodego'), 'model_id': 'hidden',
-                          'model': 'hidden', 'reasoning_capabilities': {'supported_efforts': ['high']},
+                          'model': 'hidden', 'reasoning': 'high', 'requested_reasoning': 'high',
+                          'reasoning_capabilities': {'supported_efforts': ['medium', 'high']},
                           'state': 'Valide', 'selected': True,
-                          'candidate_results': [{'model_id': 'hidden', 'reasoning_capabilities': {
-                              'supported_efforts': ['high']}, 'state': 'Valide'}]}
+                          'candidate_results': [{'model_id': 'hidden', 'reasoning': 'medium',
+                              'reasoning_capabilities': {'supported_efforts': ['medium', 'high']},
+                              'performance_test': {'attempts': [
+                                  {'reasoning_request': {'reasoning_effort': 'high'}}]},
+                              'state': 'Valide'}]}
             self.assertNotIn('hidden', module.policy_table([historical]))
             data = {'models': [historical]}
             module.sanitize_reasoning_history(data)

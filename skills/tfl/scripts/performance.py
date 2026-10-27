@@ -350,7 +350,30 @@ def verified_effort(*records):
     raise RuntimeError('Medium non pris en charge dans les métadonnées')
 
 
-def effort_allowed(record):
+def _recorded_effort_is_medium(value):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in ('reasoning_capabilities', 'model_investigations', 'model_source'):
+                continue
+            if key in ('effort', 'reasoning_effort', 'requested_reasoning'):
+                if not isinstance(item, str) or item.lower() != 'medium':
+                    return False
+            elif key == 'reasoning' and isinstance(item, str) and item.lower() != 'medium':
+                return False
+            if not _recorded_effort_is_medium(item):
+                return False
+    elif isinstance(value, list):
+        return all(_recorded_effort_is_medium(item) for item in value)
+    return True
+
+
+def effort_allowed(record, *, require_recorded=False):
+    """Check support and, when requested, the effort actually recorded in a report."""
+    if not isinstance(record, dict) or not _recorded_effort_is_medium(record):
+        return False
+    if (require_recorded and (not isinstance(record.get('reasoning'), str)
+                              or record['reasoning'].lower() != 'medium')):
+        return False
     try:
         verified_effort(record)
     except RuntimeError:

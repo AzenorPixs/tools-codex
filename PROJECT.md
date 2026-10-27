@@ -142,8 +142,8 @@ par TCU. LM constitue l'unique liste noire, sans exclusion permanente intégrée
 Une métadonnée d'effort ou de contexte inconnue impose une analyse et une
 recherche du LLM dans les sources officielles pour les deux catalogues.
 Seule une preuve de prise en charge de Medium permet l'admission ; les anciens
-succès HIGH/XHIGH restent historiques et ne prouvent pas Medium. Les preuves
-et paramètres effectifs sont tracés. Un contexte ou effort encore invérifiable
+succès mesurés avec un autre effort restent historiques et ne prouvent pas
+Medium. Les preuves et paramètres effectifs sont tracés. Un contexte ou effort encore invérifiable
 après investigation exclut le modèle.
 
 ## Rafraîchissement utilisateur planifié

@@ -124,7 +124,7 @@ Tous les modes SHALL exiger réponse complète, comptage fiable et mesures
 actuelles. Les candidats TFL SHALL avoir un contexte d'entrée ≥1M, sans
 envoi d'un million de tokens. Les gratuits 3/4 SHALL respecter TTFT <30 s
 et débit >20 tokens/s ; les payants 1/2/5/6, <90 s et >15 tokens/s. Les
-paliers, HIGH/XHIGH et le protocole actuels SHALL rester inchangés. Hors
+paliers, l'effort Medium et le protocole actuels SHALL rester inchangés. Hors
 forçage, le parcours SHALL s'arrêter au premier succès selon l'ordre du mode.
 
 #### Scenario: Limites strictes distinctes
@@ -260,7 +260,7 @@ l'invocation.
 
 #### Scenario: Repli d'effort après refus ciblé
 - **WHEN** Medium reçoit HTTP 400 sur son paramètre d'effort
-- **THEN** aucun repli vers HIGH ou XHIGH n'est autorisé
+- **THEN** aucun repli vers un autre effort n'est autorisé
 - **AND** HTTP 401/403/429, troncature ou seuil ne déclenchent aucun repli d'effort
 
 #### Scenario: Nouveau profil après un ancien succès
@@ -401,7 +401,7 @@ direct. Les modes 1/2/5 SHALL NOT basculer vers un candidat gratuit.
 ### Requirement: Gratuité vérifiable et retour au payant
 La gratuité des modes 3/4 SHALL exiger prix publiés d'entrée et de sortie
 nuls avec variantes compatibles, jamais un nom seul. Contexte ≥1M, filtres
-TFL, accès, transport et HIGH/XHIGH autorisé SHALL être préservés. Les
+TFL, accès, transport et effort Medium SHALL être préservés. Les
 catégories SHALL rester fixes pendant l'invocation. Les ressources des modes
 payants SHALL être relues à chaque nouvelle invocation, sans résultat hérité.
 
@@ -468,7 +468,7 @@ PLLM SHALL exiger Medium avant génération, sélection et affichage.
 invalide, booléen `reasoning`, budget seul ou liste sans `medium` SHALL exclure.
 Envoyer `medium` selon transport : `reasoning_effort` (Chat Completions/DeepSeek),
 `reasoning.effort` (Responses), `output_config.effort` (Messages). L'équivalence
-documentée SHALL garder le protocole. Un refus SHALL NOT retenter HIGH/XHIGH.
+documentée SHALL garder le protocole. Un refus SHALL NOT retenter avec un autre effort.
 
 #### Scenario: Gratuit OpenCode en Chat Completions
 - **WHEN** un candidat OpenCode utilise chat_completions sans équivalence documentée
@@ -479,8 +479,8 @@ documentée SHALL garder le protocole. Un refus SHALL NOT retenter HIGH/XHIGH.
 - **WHEN** Responses, Messages ou DeepSeek direct sont évalués
 - **THEN** leurs paramètres Medium propres au transport restent préservés
 
-#### Scenario: HIGH absent et XHIGH annoncé
-- **WHEN** les métadonnées annoncent HIGH/XHIGH sans Medium
+#### Scenario: Medium non publié
+- **WHEN** les métadonnées n'annoncent pas Medium
 - **THEN** le candidat est exclu et aucun niveau différent n'est demandé
 
 #### Scenario: Aucun niveau autorisé
@@ -618,14 +618,14 @@ la séquence planifiée sans modifier les six politiques ou leurs contrôles.
 - **AND** seule la séquence planifiée effectue le rafraîchissement préalable et les contrôles Codex
 
 ### Requirement: Effort vérifiable indépendant du catalogue et de l'historique
-PLLM SHALL exiger une capacité HIGH ou XHIGH vérifiable pour tout candidat,
-y compris DeepSeek direct. HIGH SHALL être préféré, XHIGH le seul repli.
-Un exclu SHALL NOT être généré, sélectionné ou affiché dans les tableaux ;
+PLLM SHALL exiger une capacité Medium vérifiable pour tout candidat, y compris
+DeepSeek direct. Seul Medium SHALL être demandé et admis. Un exclu SHALL NOT
+être généré, sélectionné ou affiché dans les tableaux ;
 son motif SHALL rester dans le JSON. Un forçage exclu SHALL échouer sans
 substitution. Les six politiques SHALL rester présentes dans l'état interne.
 
 #### Scenario: Preuve publiée et métadonnées invalides
-- **WHEN** supported_efforts publie une liste contenant high ou xhigh, ou null explicite signifiant tous les efforts
+- **WHEN** supported_efforts publie une liste contenant medium, ou null explicite signifiant tous les efforts
 - **THEN** le candidat satisfait le filtre d'effort sous réserve des autres critères
 - **AND** une clé absente, une valeur invalide, un booléen reasoning ou supports_max_tokens seul reste exclu
 
@@ -634,11 +634,11 @@ substitution. Les six politiques SHALL rester présentes dans l'état interne.
 - **THEN** il ne peut être sélectionné, généré ou affiché malgré son historique
 
 #### Scenario: Cible forcée sans effort vérifiable
-- **WHEN** un rang forcé désigne un modèle sans preuve HIGH/XHIGH
+- **WHEN** un rang forcé désigne un modèle sans preuve Medium
 - **THEN** il est refusé sans génération ni substitution
 
 #### Scenario: Candidat direct sans preuve
-- **WHEN** le modèle DeepSeek direct n'a pas de capacité HIGH/XHIGH vérifiable
+- **WHEN** le modèle DeepSeek direct n'a pas de capacité Medium vérifiable
 - **THEN** il est exclu avant génération et son identité n'apparaît pas dans les tableaux
 
 ### Requirement: Plafond EUR OpenRouter réappliqué
@@ -660,16 +660,42 @@ SHALL rester inchangés.
 
 ### Requirement: Consommation des preuves et équivalences documentées
 PLLM SHALL préserver les preuves TFL par fournisseur, modèle et protocole.
-Il SHALL accepter HIGH/XHIGH officiellement reconnus même sans intensité
-distincte et utiliser uniquement les paramètres équivalents documentés sur
-sa route publiée. Un effort ou contexte encore invérifiable SHALL déclencher
+Il SHALL admettre uniquement Medium après vérification et utiliser les
+paramètres documentés sur sa route publiée. Un effort ou contexte encore invérifiable SHALL déclencher
 le workflow d'investigation du LLM avant toute admission ; un contexte
 invérifiable après investigation SHALL rester exclu.
 
 #### Scenario: Équivalence de transport
-- **WHEN** une preuve vérifiée autorise HIGH via thinking.type=enabled sur Chat Completions
-- **THEN** PLLM utilise ce paramètre et trace HIGH et son équivalence sans modifier la route
+- **WHEN** une preuve vérifiée établit une équivalence Medium vers thinking.type=enabled sur Chat Completions
+- **THEN** PLLM utilise ce paramètre et trace son équivalence sans modifier la route
 
 #### Scenario: Preuve ou contexte absent
 - **WHEN** aucun résultat d'investigation ne permet l'admission
 - **THEN** le modèle n'atteint pas la génération et le motif reste auditable
+
+### Requirement: Effort demandé exclusivement Medium
+
+PLLM SHALL demander et publier des résultats dont l'effort effectif est
+`medium`, pour les six politiques, les forçages de rang et chaque transport.
+Un refus ou une absence de prise en charge SHALL invalider le candidat sans
+repli vers un autre effort.
+
+#### Scenario: Demande forcée ou transport non compatible
+
+- **WHEN** une cible forcée ou un transport ne peut pas effectuer une requête
+  en Medium
+- **THEN** le candidat est déclaré invalide sans génération à un autre effort
+
+### Requirement: Historique limité aux résultats Medium
+
+Une capacité fournisseur incluant Medium SHALL NOT valider un résultat
+historique dont l'effort demandé ou exécuté n'est pas explicitement établi
+comme Medium. PLLM SHALL invalider ces résultats avant affichage et sélection,
+conserver leur motif dans les exclusions et ne pas réutiliser leurs paliers.
+
+#### Scenario: Historique incompatible malgré une capacité Medium
+
+- **WHEN** le résultat ou une de ses tentatives historiques n'enregistre pas
+  explicitement Medium comme effort demandé
+- **THEN** PLLM l'invalide avant affichage et sélection
+- **AND** conserve le motif d'exclusion sans réutiliser son palier

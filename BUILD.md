@@ -160,7 +160,7 @@ L'invocation normale poursuit les politiques ; active s'arrête à la première
 politique valide. Les rangs forcés restent ciblés, sauf qu'un gratuit forcé en
 mode5 est incompatible avec sa nouvelle catégorie exclusivement payante.
 Les priorités entre politiques 1 à 6 restent inchangées. Tous les benchmarks
-demandent Medium ; aucun repli vers HIGH ou XHIGH n'est autorisé. Les restrictions
+demandent exclusivement Medium ; aucun repli vers un autre effort n'est autorisé. Les restrictions
 fournisseur restent applicables aux gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
 Les diagnostics HTTP 400/429 et le Retry-After disponible figurent dans les
 rapports PLLM sans corps d'erreur brut. Les refus HTTP 400/429 n'entraînent plus d'essais aux
@@ -380,7 +380,7 @@ Chaque paquet PLLM/TFL contient son scripts/performance.py ; les quatre copies
 sont identiques et ne dépendent pas d'un autre plugin installé. Conserver ce
 fichier lors de la distribution autonome ou d'un paquet isolé.
 TFL génère désormais des réponses pour ses seuls gratuits admissibles en
-Medium, sans repli vers HIGH ou XHIGH. Exiger
+Medium exclusivement, sans repli vers un autre effort. Exiger
 contexte ≥1M, prix nuls vérifiés, réponse complète, TTFT <30 s et débit >20.
 Les paliers sont 1024→2048→4096→8192 et 120 s par requête. Une invocation TFL
 peut donc durer plus longtemps et rencontrer les limites gratuites fournisseur.
@@ -393,7 +393,8 @@ publiée avec ses motifs sans bloquer les autres sections. La qualification est 
 et dépend du compte choisi par TFL, même si un autre compte pourrait réussir.
 Les payants TFL ne sont pas benchmarkés. Une nouvelle invocation PLLM reteste
 ses candidats retenus avec ses propres comptes et le raisonnement Medium.
-Les anciens résultats High/XHigh ne sont pas des réussites Medium. Cette livraison
+Les anciens résultats mesurés avec un autre effort ne sont pas des réussites
+Medium. Cette livraison
 locale est qualifiée hors ligne et n'exécute aucun benchmark fournisseur réel.
 
 
@@ -509,7 +510,7 @@ Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
 avant test, sélection et affichage. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
-ou un budget seul ne suffit pas. Aucun repli vers HIGH ou XHIGH n'est autorisé.
+ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
 filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
@@ -547,8 +548,8 @@ deux listes models Go/OpenRouter non vides pour lancer PLLM. Les tests de cette 
 Livrer model_evidence.py avec chacun des quatre moteurs TFL/PLLM, le guide
 references/model-evidence.md et le registre de référence TFL. Les niveaux
 reasoning_options de models.dev sont normalisés. Une preuve Medium suffit
-même sans intensité distincte. L'ancienne preuve MiMo HIGH/XHIGH reste
-historique et déclenche une nouvelle recherche ; elle ne prouve pas Medium.
+même sans intensité distincte. Une preuve historique qui ne couvre pas Medium
+reste historique et déclenche une nouvelle recherche ; elle ne prouve pas cet effort.
 Une métadonnée de contexte ou d'effort inconnue exige une recherche du LLM
 dans les sources officielles pour les deux catalogues. Le registre du
 répertoire de rapport, model-evidence.json, complète les preuves livrées.
