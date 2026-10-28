@@ -149,7 +149,7 @@ Les modes 1/2 épuisés deviennent rouges et invalides sans essai gratuit.
 Les modes gratuits 3/4/6 ne consultent aucun quota ou solde ; ils exigent
 contexte ≥1M, Medium, réponse complète, TTFT <30 s et débit >20 tokens/s.
 Le mode5 exige un crédit OpenRouter positif, contexte ≥1M et coût moyen
-≤0,10 EUR/M ; aucun benchmark ni effort Medium n'est requis. Le mode7 conserve
+≤0,10 EUR/M ; Medium, réponse complète, TTFT <90 s et débit >15 tokens/s sont requis. Le mode7 conserve
 le contrôle DeepSeek et les seuils payants. Les références de trousseau restent
 historiques, sans création ni migration de clé.
 Les historiques des schémas 1/2 sont adaptés au schéma 3 : l'ancien mode5 est réinitialisé, DeepSeek passe au mode7, le mode6 gratuit est neuf et aucune sélection courante n'est héritée. Les succès OpenRouter antérieurs ne sont pas
@@ -165,12 +165,12 @@ normalise sa mémoire avant publication pour garantir sa relecture.
 
 Aucun historique invalide n'est écrasé. Les payants Go 1/2 sont essayés par
 coût moyen croissant. Mode5 sélectionne le payant OpenRouter admissible le
-moins cher au taux BCE courant, sans génération. Les gratuits 3/4/6 sont
+moins cher au taux BCE courant, avec benchmark Medium concluant. Les gratuits 3/4/6 sont
 essayés dans l'ordre TFL de leur section et arrêtent au premier succès benchmarké.
 Après un échec, essayer le suivant admissible avec ses propres contrôles ;
 une erreur bloquante d'authentification ou de ressources arrête le mode.
 Le contexte ≥1M est une capacité d'entrée vérifiée, sans requête d'un million
-de tokens. Les seuils des benchmarks sont préservés ; Medium est exigé pour tous les modes mesurés, mais pas le mode5. L'invocation normale poursuit les sept politiques ; active s'arrête à la première valide. Les rangs forcés restent ciblés : les rangs 51–53 visent les payants OpenRouter, 61–63 les gratuits OpenRouter et 7 DeepSeek. Les priorités 1 à 7 sont fixes. Les restrictions
+de tokens. Les seuils des benchmarks sont préservés ; Medium est exigé pour tous les modes mesurés, y compris le mode5. L'invocation normale poursuit les sept politiques ; active s'arrête à la première valide. Les rangs forcés restent ciblés : les rangs 51–53 visent les payants OpenRouter, 61–63 les gratuits OpenRouter et 7 DeepSeek. Les priorités 1 à 7 sont fixes. Les restrictions
 fournisseur restent applicables aux gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
 Les diagnostics HTTP 400/429 et le Retry-After disponible figurent dans les
 rapports PLLM sans corps d'erreur brut. Les refus HTTP 400/429 n'entraînent plus d'essais aux
@@ -211,7 +211,7 @@ n'est pas une qualification de génération. Les tests de compatibilité avec
 PLLM ne lancent ni quotas ni benchmarks ; aucune dépendance SDK n'est installée.
 TFL ne collecte ni ne teste plus OpenCode général. Le JSON ne publie que
 opencode_go et openrouter et le rapport affiche leurs deux tableaux, huit
-colonnes chacun, puis les essais gratuits. Contexte ≥1M reste obligatoire ; Go ≤0,50 USD/M et OpenRouter ≤0,10 EUR/M au taux BCE vérifié. Medium est requis pour les candidats benchmarkés et gratuits, pas pour les payants OpenRouter du mode5.
+colonnes chacun, puis les essais gratuits. Contexte ≥1M reste obligatoire ; Go ≤0,50 USD/M et OpenRouter ≤0,10 EUR/M au taux BCE vérifié. Medium est requis pour tous les benchmarks PLLM, y compris mode5 ; TFL conserve les payants sans benchmark.
 PLLM ignore les anciennes sections opencode pour tous les modes 1 à 4,
 y compris leurs rangs forcés. Les erreurs de sources indispensables restent bloquantes.
 
@@ -524,7 +524,7 @@ ni exécution observée à une échéance. Ces preuves restent distinctes.
 
 ## Admission stricte Medium
 
-Tout candidat benchmarké doit publier une capacité Medium vérifiable avant test, sélection et affichage. Le mode5 payant OpenRouter n’exige pas Medium. Une liste supported_efforts contenant
+Tout candidat benchmarké doit publier une capacité Medium vérifiable avant test, sélection et affichage. Le mode5 payant OpenRouter exige aussi Medium pour son benchmark. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
 ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
@@ -584,3 +584,9 @@ Le plugin, le skill et la commande sont présentés sous le libellé **PROMPT**.
 Le bilan JSON TCU ajoute `libelle: PROMPT` à chacune de ces ressources ; la
 restitution utilise ce libellé. Les clés techniques `brique` et `composant`,
 les chemins historiques et l’invocation `$prompt` restent compatibles.
+
+## Livraison du benchmark mode5 — 0.7.25
+
+Distribuer evaluate.py et SKILL.md identiques dans les copies autonome et embarquée PLLM, avec le moteur commun existant. Les anciens résultats sans benchmark ne valident ni la politique ni un palier. Après installation distincte, une nouvelle invocation PLLM évalue le mode5 avec ses contrôles et mesures propres ; ne pas réécrire les rapports utilisateur pendant la livraison source.
+
+La qualification hors ligne inclut les seuils stricts, contrôles avant chaque requête, replis, rangs forcés, historique et mémoire. Elle ne prouve ni installation dans le profil utilisateur, ni accès fournisseur, ni performance réelle.

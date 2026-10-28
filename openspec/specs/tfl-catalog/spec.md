@@ -308,7 +308,7 @@ TFL SHALL tester Medium sur le transport publié pour les gratuits admissibles,
 même si leurs métadonnées sont absentes ou ne déclarent pas cet effort. Une
 réponse complète SHALL prouver l'acceptation du paramètre sans établir l'effort
 interne. Contexte, gratuité, réponse complète, TTFT et débit restent requis.
-Le mode5 payant OpenRouter n'exige ni Medium ni benchmark.
+TFL SHALL conserver les payants OpenRouter comme catalogue tarifaire sans benchmark ; PLLM mode5 SHALL vérifier Medium et ses performances lors de sa propre évaluation.
 
 #### Scenario: Modèle benchmarké sans preuve
 - **WHEN** un modèle gratuit n'a pas de métadonnée Medium avant test

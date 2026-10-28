@@ -418,7 +418,7 @@ def policy_table(models):
     ]
     for model in models:
         if (model.get('model_id', model.get('model')) != 'Non évalué'
-                and model['mode'] != 'mode5' and not performance.effort_allowed(model)):
+                and not performance.effort_allowed(model)):
             continue
         state = ('🟢 Valide' + (' — gratuit' if model['mode'] in FREE_MODES else '')
                  if model['state'] == 'Valide' else '🔴 Invalide — ' + (model.get('cause') or 'Non évalué'))
@@ -489,8 +489,15 @@ def sanitize_reasoning_history(data):
     for model in data['models']:
         exclusions = model.setdefault('candidate_exclusions', [])
         retained = []
+        def unbenchmarked_mode5(record):
+            return (model.get('mode') == 'mode5' and record.get('state') == 'Valide'
+                    and ((record.get('performance_test') or {}).get('status') != 'completed'
+                         or record.get('ttft_seconds') is None or record.get('tokens_per_second') is None))
         for candidate in model.get('candidate_results', []):
-            if model.get('mode') == 'mode5' or performance.effort_allowed(candidate, require_recorded=True):
+            if unbenchmarked_mode5(candidate):
+                exclusions.append({'model_id': candidate.get('model_id'),
+                                   'cause': 'Historique mode5 sans benchmark concluant'})
+            elif performance.effort_allowed(candidate, require_recorded=True):
                 retained.append(candidate)
             else:
                 finding = next((item for item in candidate.get('model_investigations', [])
@@ -508,7 +515,15 @@ def sanitize_reasoning_history(data):
         if 'candidate_results' in model:
             model['candidate_results'] = retained
         identifier = model.get('model_id', model.get('model'))
-        if (model.get('mode') != 'mode5' and identifier and identifier != 'Non évalué'
+        if identifier and identifier != 'Non évalué' and unbenchmarked_mode5(model):
+            reason = 'Historique mode5 sans benchmark concluant'
+            exclusions.append({'model_id': identifier, 'cause': reason})
+            model.update(state='Invalide', selected=False, model='Non évalué', model_id='Non évalué',
+                         cause=reason, ttft_seconds=None, tokens_per_second=None,
+                         last_successful_max_tokens=None,
+                         performance_test={'status': 'not_run', 'reason': reason})
+            continue
+        if (identifier and identifier != 'Non évalué'
                 and not performance.effort_allowed(model, require_recorded=True)):
             finding = next((item for item in model.get('model_investigations', [])
                             if item.get('field') == 'reasoning'
@@ -806,10 +821,9 @@ def performance_limits(model):
 
 def initial_model(priority, provider):
     mode = f'mode{priority}'
-    unbenchmarked = mode == 'mode5'
-    ttft, throughput = (None, None) if unbenchmarked else performance_limits({'mode': mode, 'is_free': mode in FREE_MODES})
+    ttft, throughput = performance_limits({'mode': mode, 'is_free': mode in FREE_MODES})
     if mode == 'mode5':
-        condition = 'candidat payant ET contexte >= 1M ET coût moyen <= 0,10 EUR/M ET solde > 0'
+        condition = f'TTFT < {ttft} s ET tokens/s > {throughput} ET candidat payant ET contexte >= 1M ET coût moyen <= 0,10 EUR/M ET solde > 0'
     elif mode in FREE_MODES:
         condition = f'TTFT < {ttft} s ET tokens/s > {throughput} ET gratuité vérifiée ET contexte >= 1M'
     elif mode == 'mode7':
@@ -817,15 +831,15 @@ def initial_model(priority, provider):
     else:
         condition = f'TTFT < {ttft} s ET tokens/s > {throughput} ET quotas valides'
     return {'mode': mode, 'priority': priority, 'provider': provider,
-            'model': 'Non évalué', 'reasoning': None if unbenchmarked else 'medium', 'state': 'Invalide',
+            'model': 'Non évalué', 'reasoning': 'medium', 'state': 'Invalide',
             'condition': condition,
-            'performance_criteria': None if unbenchmarked else {'ttft_lt_seconds': ttft, 'tokens_per_second_gt': throughput},
+            'performance_criteria': {'ttft_lt_seconds': ttft, 'tokens_per_second_gt': throughput},
             'throughput_metric': performance.THROUGHPUT_METRIC, 'throughput_window': performance.THROUGHPUT_WINDOW,
             'measurement_protocol_version': performance.MEASUREMENT_PROTOCOL_VERSION,
             'quota_status': 'not_applicable' if mode in FREE_MODES else 'not_evaluated',
             'selected': False, 'evaluated_this_run': False, 'evaluated_at': None,
             'ttft_seconds': None, 'tokens_per_second': None, 'quotas': None,
-            'cause': 'Non évalué', 'performance_test': {'status': 'not_required' if unbenchmarked else 'not_run'}}
+            'cause': 'Non évalué', 'performance_test': {'status': 'not_run'}}
 
 
 def load_current():
@@ -1003,7 +1017,7 @@ def candidates_for(model, category, catalog_path, forced=None, key=None):
                 candidate = catalog_candidate(row, section, rank, catalog.get('generated_at'),
                                               enforce_blacklist=not (forced and model['mode'] in FREE_MODES),
                                               exchange_rates=exchange_rates,
-                                              require_medium=model['mode'] != 'mode5')
+                                              require_medium=True)
             except (KeyError, TypeError, ValueError, RuntimeError) as error:
                 if forced and requested is not None:
                     raise RuntimeError('Candidat forcé non admissible : ' + error_message(error)) from error
@@ -1055,7 +1069,7 @@ def candidates_for(model, category, catalog_path, forced=None, key=None):
                                  average_price_eur_per_million_tokens=eur['average_eur'],
                                  base_pricing_usd_per_million_tokens=normalized['base_pricing_usd_per_million_tokens'],
                                  cost_exchange_rates=copy.deepcopy(exchange_rates),
-                                 reasoning=None, reasoning_capabilities=performance.capabilities(current),
+                                 reasoning='medium', reasoning_capabilities=performance.capabilities(current),
                                  model_source={**candidate['model_source'],
                                                'pricing_source': 'https://openrouter.ai/api/v1/models',
                                                'live_price_checked': True,
@@ -1164,18 +1178,6 @@ def evaluate_candidate(model, key, category, memory, session_id):
     return model
 
 
-def evaluate_openrouter_paid_catalog_candidate(model):
-    """Validate mode 5 from current catalog metadata without generation."""
-    model.update(reasoning=None, ttft_seconds=None, tokens_per_second=None,
-                 last_successful_max_tokens=None,
-                 performance_criteria=None,
-                 condition='candidat payant ET contexte >= 1M ET coût moyen <= 0,10 EUR/M ET solde > 0',
-                 performance_test={'status': 'not_required',
-                                   'reason': 'Mode 5 : aucune génération ni mesure de performance requise'},
-                 state='Valide', cause='Contexte, plafond de coût et solde vérifiés')
-    return model
-
-
 def main(active=False, forced=None, tfl_catalog=None):
     configured = blacklist.load_models()
     signal.signal(signal.SIGALRM, expire)
@@ -1199,7 +1201,7 @@ def main(active=False, forced=None, tfl_catalog=None):
             continue
         model.update(evaluated_this_run=True, state='Invalide', cause='', selected=False,
                      provider=provider, model='Non évalué', model_id='Non évalué',
-                     reasoning=None if model['mode'] == 'mode5' else 'medium',
+                     reasoning='medium',
                      ttft_seconds=None, tokens_per_second=None, quotas=None, evaluated_at=now(),
                      last_successful_max_tokens=None, selection_category=None,
                      throughput_metric=performance.THROUGHPUT_METRIC, throughput_window=performance.THROUGHPUT_WINDOW,
@@ -1238,10 +1240,7 @@ def main(active=False, forced=None, tfl_catalog=None):
                                        evaluated_at=now(), ttft_seconds=None, tokens_per_second=None,
                                        performance_test={'status': 'not_run', 'reason': 'Test non exécuté'})
                         try:
-                            if model['mode'] == 'mode5':
-                                evaluate_openrouter_paid_catalog_candidate(current)
-                            else:
-                                evaluate_candidate(current, key, category, memory, session_id)
+                            evaluate_candidate(current, key, category, memory, session_id)
                         except (CategoryChanged, AuthenticationFailure, ResourceFailure):
                             records = model['candidate_results']
                             records.append(copy.deepcopy(current))

@@ -44,7 +44,7 @@ class PllmSixModesTests(unittest.TestCase):
                         self.assertEqual(module.MEMORY_PATH.exists(), expected == 'Valide')
             module, path, _ = self.workspace(script)
             data, _, _ = self.run_evaluation(module, path)
-            for model in (data['models'][i] for i in (0, 1, 6)):
+            for model in (data['models'][i] for i in (0, 1, 4, 6)):
                 self.assertEqual(model['performance_criteria'],
                                  {'ttft_lt_seconds': 90, 'tokens_per_second_gt': 15})
 
@@ -67,7 +67,7 @@ class PllmSixModesTests(unittest.TestCase):
                     module.quota({'mode': mode}, 'offline-fixture')
                 get.assert_not_called()
 
-    def test_mode5_selects_paid_router_without_medium_or_performance(self):
+    def test_mode5_benchmarks_paid_router_with_medium_despite_missing_catalog_metadata(self):
         for script in PLLM:
             module, path, catalog = self.workspace(script)
             paid = row('paid-router-no-medium', 'openrouter')
@@ -78,11 +78,11 @@ class PllmSixModesTests(unittest.TestCase):
             model = data['models'][4]
             self.assertEqual((model['state'], model['model_id'], model['provider']),
                              ('Valide', 'paid-router-no-medium', 'openrouter'))
-            self.assertIsNone(model['reasoning'])
-            self.assertIsNone(model['ttft_seconds'])
-            self.assertIsNone(model['tokens_per_second'])
-            self.assertEqual(model['performance_test']['status'], 'not_required')
-            self.assertFalse(any(event[0] == 'benchmark' and event[1] == 'mode5' for event in events))
+            self.assertEqual(model['reasoning'], 'medium')
+            self.assertEqual(model['ttft_seconds'], 5)
+            self.assertEqual(model['tokens_per_second'], 25)
+            self.assertEqual(model['performance_test']['status'], 'completed')
+            self.assertEqual([e[2] for e in events if e[0] == 'benchmark'], ['paid-router-no-medium'])
 
     def test_mode6_openrouter_free_is_medium_benchmarked_without_quota(self):
         for script in PLLM:
@@ -279,7 +279,7 @@ class PllmSixModesTests(unittest.TestCase):
                 self.assertEqual(selected['mode'], forced['mode'])
                 self.assertEqual(selected['model_id'], expected)
                 self.assertEqual(sum(event[0] == 'benchmark' for event in events),
-                                 0 if forced['mode'] == 'mode5' else 1)
+                                 1)
             for command in ('33', '43', '51', '63'):
                 data, events, _ = self.run_evaluation(module, path, forced=module.FORCED_COMMANDS[command])
                 self.assertIsNone(data['selected_mode'])

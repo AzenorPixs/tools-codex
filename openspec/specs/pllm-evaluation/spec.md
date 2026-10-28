@@ -122,11 +122,10 @@ devises. Un statut inconnu SHALL NOT prouver un épuisement.
 - **THEN** aucun candidat payant ou gratuit correspondant n'est testé
 
 ### Requirement: Mesures concluantes du modèle sélectionné
-Tous les modes sauf 5 SHALL exiger réponse complète, comptage fiable et
+Tous les modes SHALL exiger réponse complète, comptage fiable et
 mesures actuelles. Contexte d'entrée ≥1M SHALL être vérifié sans benchmark
 d'un million de tokens. Les gratuits 3/4/6 exigent TTFT <30 s et débit >20 ;
-les payants benchmarkés 1/2/7 exigent TTFT <90 s et débit >15. Mode5 vérifie
-seulement paid, contexte, coût ≤0,10 EUR/M et solde positif. Le protocole reste
+les payants benchmarkés 1/2/5/7 exigent TTFT <90 s et débit >15. Mode5 exige aussi candidat payant, contexte, coût ≤0,10 EUR/M et solde positif. Le protocole reste
 inchangé pour les modes mesurés ; le parcours s'arrête au premier succès.
 
 #### Scenario: Limites strictes distinctes
@@ -155,7 +154,7 @@ inchangé pour les modes mesurés ; le parcours s'arrête au premier succès.
 - **THEN** ses seuils sont satisfaits sans contrôle de quota
 
 #### Scenario: Limites des autres modes
-- **WHEN** un candidat payant de mode 1/2/7 mesure TTFT ≥90 s ou débit ≤15 tokens/s
+- **WHEN** un candidat payant de mode 1/2/5/7 mesure TTFT ≥90 s ou débit ≤15 tokens/s
 - **THEN** son candidat reste invalide
 
 #### Scenario: Limites strictes
@@ -168,7 +167,7 @@ inchangé pour les modes mesurés ; le parcours s'arrête au premier succès.
 - **AND** l'épuisement du dernier palier ne transforme pas le repli en réussite
 
 #### Scenario: TTFT sous la nouvelle limite
-- **WHEN** un candidat payant benchmarké de mode1/2/7 mesure 70,4 s et satisfait les autres critères
+- **WHEN** un candidat payant benchmarké de mode1/2/5/7 mesure 70,4 s et satisfait les autres critères
 - **THEN** son seuil TTFT est satisfait ; ce même TTFT échoue pour un candidat gratuit
 
 #### Scenario: Limite stricte de TTFT atteinte
@@ -365,7 +364,7 @@ Les modes 1/2 SHALL examiner exclusivement les payants Go. Les modes 3/4
 SHALL examiner exclusivement les gratuits Go, et le mode6 SHALL examiner
 exclusivement les gratuits OpenRouter, indépendamment des ressources. Mode5
 SHALL examiner exclusivement les payants OpenRouter avec crédit positif,
-contexte ≥1M et coût moyen ≤0,10 EUR/M, sans benchmark ni exigence Medium.
+contexte ≥1M et coût moyen ≤0,10 EUR/M, avec benchmark Medium payant.
 Mode7 SHALL conserver DeepSeek direct. Les modes 1/2/5/7 SHALL NOT basculer
 vers un candidat gratuit.
 
@@ -407,7 +406,7 @@ vers un candidat gratuit.
 La gratuité des modes 3/4/6 SHALL exiger prix publiés d'entrée et de sortie
 nuls avec variantes compatibles, jamais un nom seul. Contexte ≥1M, filtres
 TFL, accès et transport SHALL être préservés ; Medium SHALL être exigé par
-les modes benchmarkés mais pas par le mode5. Les
+tous les modes benchmarkés, y compris le mode5. Les
 catégories SHALL rester fixes pendant l'invocation. Les ressources des modes
 payants SHALL être relues à chaque nouvelle invocation, sans résultat hérité.
 
@@ -573,7 +572,7 @@ ses propres mesures et les seuils stricts <30 s et >20 tokens/s.
 ### Requirement: Invariants du classement tarifaire
 Les priorités 1 à 7 SHALL respecter les seuils benchmarkés gratuits/payants,
 les quotas, le raisonnement, les forçages et le protocole 8. Le mode5 SHALL
-refuser les candidats gratuits, sans benchmark, selon sa catégorie payante.
+refuser les candidats gratuits et benchmarker les payants selon les seuils payants.
 Le JSON SHALL tracer les candidats visités et leurs contrôles ;
 active SHALL s'arrêter au premier mode valide. Le rapport SHALL conserver
 ses huit colonnes.
@@ -627,8 +626,7 @@ la séquence planifiée sans modifier les sept politiques ou leurs contrôles.
 
 ### Requirement: Effort vérifiable indépendant du catalogue et de l'historique
 PLLM SHALL demander le paramètre `medium` pour tout candidat benchmarké,
-y compris DeepSeek direct au mode7. Le mode5 est exempté de cette exigence et
-de toute génération. L'acceptation courante de l'API SHALL suffire même si le
+y compris OpenRouter payant au mode5 et DeepSeek direct au mode7. L'acceptation courante de l'API SHALL suffire même si le
 fournisseur convertit ou ignore l'effort ; elle ne mesure pas l'effort interne.
 Un refus SHALL invalider le candidat sans autre niveau. Les exclus SHALL rester
 non sélectionnés et conserver leur motif et leurs preuves JSON ; les sept
@@ -657,13 +655,13 @@ politiques SHALL rester présentes.
 #### Scenario: Ancien catalogue ou résultat historique
 - **WHEN** un candidat benchmarké précédemment retenu n'a pas de preuve d'effort admissible
 - **THEN** il ne peut être sélectionné, généré ou affiché malgré son historique
-- **AND** cette exigence ne s'applique pas au mode5, qui ne benchmarke pas
+- **AND** le mode5 sans benchmark antérieur reste invalide jusqu'à une nouvelle mesure concluante
 
 #### Scenario: Cible forcée sans effort vérifiable
 - **WHEN** un rang forcé désigne un modèle sans preuve Medium
 - **THEN** seule la candidate forcée est testée avec le paramètre medium, sans substitution
 - **AND** elle reste invalide si l'API refuse ce paramètre
-- **AND** un rang du mode5 reste soumis seulement au plafond de coût et au contexte
+- **AND** un rang du mode5 exige aussi solde positif, Medium et benchmark payant concluant
 
 #### Scenario: Candidat direct sans preuve
 - **WHEN** le modèle DeepSeek direct n'a pas de capacité Medium vérifiable
@@ -706,8 +704,7 @@ SHALL rester inchangés.
 ### Requirement: Consommation des preuves et équivalences documentées
 PLLM SHALL préserver les preuves TFL par fournisseur, modèle et protocole.
 Les modes benchmarkés SHALL admettre uniquement Medium après vérification et
-utiliser les paramètres documentés sur leur route publiée. Le mode5 n'exige
-aucun effort et n'effectue aucune génération. Un contexte encore invérifiable SHALL déclencher
+utiliser les paramètres documentés sur leur route publiée, y compris le mode5 payant OpenRouter. Un contexte encore invérifiable SHALL déclencher
 le workflow d'investigation du LLM avant toute admission ; un contexte
 invérifiable après investigation SHALL rester exclu.
 
@@ -721,8 +718,7 @@ invérifiable après investigation SHALL rester exclu.
 
 ### Requirement: Effort demandé exclusivement Medium
 PLLM SHALL demander exclusivement le paramètre `medium` pour les politiques
-benchmarkées, les forçages de rang et chaque transport. Le mode5 ne demande
-pas d'effort et n'exécute aucune génération. Une réponse API complète SHALL
+benchmarkées, y compris le mode5, les forçages de rang et chaque transport. Une réponse API complète SHALL
 établir l'acceptation du paramètre même si l'effort interne est converti,
 ignoré ou non appliqué. Un refus de Medium SHALL invalider le candidat sans
 repli vers un autre effort.
@@ -736,8 +732,7 @@ PLLM SHALL NOT valider un résultat historique benchmarké dont le paramètre
 `medium` demandé ou son acceptation API n'est pas explicitement établi. PLLM SHALL
 invalider ces résultats avant affichage et sélection, conserver leur motif
 dans les exclusions et ne pas réutiliser leurs paliers. Une mesure historique
-ne prouve pas l'acceptation API courante. Cette règle ne s'applique pas au
-mode5 non benchmarké.
+ne prouve pas l'acceptation API courante. Cette règle s'applique aussi aux anciens résultats non benchmarkés du mode5.
 
 #### Scenario: Historique incompatible malgré une capacité Medium
 - **WHEN** le résultat ou une de ses tentatives historiques n'enregistre pas explicitement la demande medium et son acceptation API
@@ -813,3 +808,36 @@ Les contrôles payants SHALL tracer leur phase, endpoint public, date et statut,
 - **WHEN** le contrôle Go mode2 reçoit HTTP 401
 - **THEN** mode2 est invalide sans génération et le diagnostic identifie le contrôle des quotas et son endpoint
 - **AND** mode4 continue indépendamment sans quota avec sa propre évaluation gratuite
+
+### Requirement: Benchmark payant du mode5 et parcours des candidats
+Le mode5 SHALL exiger réponse complète, comptage fiable, TTFT <90 s et débit réponse seule >15 tokens/s au protocole 8 avec Medium. Hors forçage, il SHALL parcourir les payants par coût courant croissant et ordre TFL à prix égal. Le premier succès SHALL arrêter le parcours ; les tentatives et mesures SHALL rester auditables sans secret.
+
+#### Scenario: Premier payant conforme
+- **WHEN** le premier payant admissible réussit le benchmark Medium avec solde positif
+- **THEN** il est retenu avec ses mesures et son palier et aucun candidat suivant n'est testé
+
+#### Scenario: Échec puis succès
+- **WHEN** le moins cher échoue aux quatre paliers ou reçoit un refus non bloquant et le suivant réussit
+- **THEN** le suivant est retenu avec ses propres contrôles et mesures et les tentatives du premier restent auditées
+
+#### Scenario: Rang forcé en échec
+- **WHEN** le candidat payant explicitement forcé échoue au benchmark
+- **THEN** le mode reste invalide sans substituer un autre rang
+
+### Requirement: Paliers et contrôles du benchmark mode5
+Le mode5 SHALL contrôler le solde avant chaque requête et utiliser les paliers 1024, 2048, 4096, 8192 avec 120 s maximum par requête. Il SHALL commencer au dernier succès de même identité ou à 1024. Une erreur d'authentification ou de ressources SHALL arrêter le mode. Un HTTP 400 ou 429 SHALL arrêter le candidat sans autre effort ni attente programmée.
+
+#### Scenario: Authentification ou ressources bloquantes
+- **WHEN** le contrôle du solde échoue ou l'authentification est refusée avant ou pendant les essais
+- **THEN** le mode reste invalide sans génération supplémentaire ni substitution gratuite
+
+#### Scenario: Reprise du palier mémorisé
+- **WHEN** une nouvelle invocation retrouve une réussite de même identité Medium au protocole 8
+- **THEN** son premier essai reprend ce palier après un nouveau contrôle du solde
+
+### Requirement: Invalidation du mode5 non benchmarké
+PLLM SHALL invalider les anciens résultats mode5 sans benchmark Medium concluant avant affichage ou sélection. Ils SHALL NOT amorcer un palier ni remplacer les mesures courantes. Le chargement SHALL préserver les fichiers historiques jusqu'à la publication normale.
+
+#### Scenario: Ancienne validation sans benchmark
+- **WHEN** un historique mode5 valide uniquement prix, contexte et solde
+- **THEN** il ne peut ni représenter un succès benchmarké ni amorcer un palier et reste invalide jusqu'à une nouvelle évaluation conforme

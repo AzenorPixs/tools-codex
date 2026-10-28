@@ -182,7 +182,8 @@ class ExtensionQualificationTests(unittest.TestCase):
                 module, catalog = self.workspace(script)
                 result, calls = self.run_evaluation(module, catalog, forced={'mode': 'mode5'})
                 self.assertEqual(result['selected_mode'], 'mode5')
-            self.assertEqual(calls, [('quota', 'Non évalué')])
+            self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'router-fixture'),
+                                     ('benchmark', 'router-fixture', 1024)])
 
     def test_all_modes_can_start_without_a_current_file(self):
         for script in PLLM:
@@ -247,7 +248,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                         raise rate_limit()
 
                     result, calls = self.run_evaluation(module, catalog, limited, forced=forced, active=True)
-                    self.assertEqual(result['selected_mode'], 'mode5' if forced is None else None)
+                    self.assertIsNone(result['selected_mode'])
                     self.assertFalse(module.MEMORY_PATH.exists())
                     if forced:
                         self.assertEqual(calls[0], ('quota', 'Non évalué'))

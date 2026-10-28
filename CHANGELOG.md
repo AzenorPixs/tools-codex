@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Rétablir le benchmark payant Medium du mode5 OpenRouter : réponse complète,
+  TTFT <90 s, débit réponse seule >15 tokens/s au protocole 8 et contrôle du
+  solde avant chaque essai. Parcourir les payants par prix croissant jusqu’au
+  premier succès ; conserver paliers, forçages, LM et plafond 0,10 EUR/M.
+  Invalider les anciennes validations sans benchmark. TFL reste un catalogue
+  tarifaire pour les payants. Aligner la release et les six plugins sur 0.7.25.
+
 - Installer systématiquement les plugins du catalogue officiel, les skills
   autonomes et les commandes sources absents lors de TCU ; conserver les mises
   à jour, racines explicites, noms historiques, reçus, sauvegardes et conflits.

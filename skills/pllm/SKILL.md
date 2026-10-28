@@ -16,15 +16,14 @@ et ne consultent jamais de quota ou de solde. Les modes 1/2/5/7 contrôlent
 leurs ressources propres.
 
 Les modes gratuits 3/4/6 exigent contexte ≥1M, Medium vérifiable, réponse
-complète, TTFT <30 s et débit >20 tokens/s. Les payants benchmarkés 1/2/7
-exigent TTFT <90 s et débit >15 tokens/s. Le mode5 est payant, exige un solde
-positif, contexte ≥1M et coût moyen de base ≤0,10 EUR/M ; il n'exige ni Medium
-ni test de performance et n'envoie aucune requête de génération. Ses TTFT,
-tokens/s et dernier palier restent indisponibles (`-`).
+complète, TTFT <30 s et débit >20 tokens/s. Les payants benchmarkés 1/2/5/7
+exigent Medium, réponse complète, TTFT <90 s et débit >15 tokens/s. Le mode5
+exige aussi un solde positif, contexte ≥1M et coût moyen de base ≤0,10 EUR/M.
+Ses mesures et son dernier palier réussi sont publiés après le benchmark.
 
 Hors forçage, les payants Go 1/2 sont essayés par coût moyen croissant. Le
 mode5 sélectionne le candidat payant OpenRouter admissible le moins cher au
-taux BCE courant, sans benchmark. Les gratuits 3/4/6 sont essayés dans l'ordre
+taux BCE courant après un benchmark Medium concluant ; après échec non bloquant, essayer le suivant avec ses propres contrôles. Les gratuits 3/4/6 sont essayés dans l'ordre
 TFL propre à leur catalogue et arrêtent au premier succès PLLM. Les filtres de
 contexte, modalités, liste noire, provenance tarifaire et règles de secret
 restent applicables.
@@ -155,7 +154,7 @@ sans remplacement automatique ni évaluation d'une autre politique.
 
 Un rang absent ou incompatible échoue sans substitution. Les contrôles de
 ressources s'appliquent aux modes 1/2/5/7 et sont absents en 3/4/6. Le mode5
-ne teste ni performance ni Medium ; les autres benchmarks restent obligatoires.
+exécute aussi le benchmark payant Medium ; un forçage ne remplace jamais son candidat.
 
 ## Modes 2 à 7
 
@@ -184,21 +183,21 @@ ne teste ni performance ni Medium ; les autres benchmarks restent obligatoires.
 - Utiliser exactement la référence de secret du mode 2 ; aucun nouveau secret.
 - Aucun appel de quota ou de solde, même avant un palier supplémentaire.
 
-### Mode 5 — priorité 5 — payants OpenRouter sans benchmark
+### Mode 5 — priorité 5 — payants OpenRouter benchmarkés
 
 - Parcourir les modèles payants TFL `openrouter` de coût moyen ≤0,10 EUR/M et
   contexte ≥1M par coût courant croissant, ordre TFL à prix égal.
-- Aucun test de performance, génération ou preuve Medium n'est requis.
+- Benchmark commun exclusivement Medium, réponse complète, TTFT <90 s et débit réponse seule >15 tokens/s sur la requête complète.
 - Référence inchangée : `service=pllm`, `policy=mode3`, `provider=openrouter`,
   `account=az.openrouter@pixs.fr`. Le numéro de politique du trousseau reste historique.
 - Contrôle avant chaque requête : `GET https://openrouter.ai/api/v1/credits`,
   solde = `data.total_credits - data.total_usage`. Garder la devise de l'API.
 - Validité : solde >0, contexte ≥1M et coût moyen de base ≤0,10 EUR/M,
-  recalculé depuis les prix natifs et le dernier taux BCE. Afficher `-` pour
+  recalculé depuis les prix natifs et le dernier taux BCE, avec benchmark Medium concluant. Publier
   TTFT, tokens/s et dernier palier réussi. Le crédit épuisé invalide le mode,
   sans repli gratuit ; une invocation ultérieure relit le crédit.
 - Utiliser les prix et contextes du catalogue OpenRouter actuel. Les métadonnées
-  Medium ne conditionnent pas ce mode.
+  absentes ne prouvent pas un refus : une réponse complète à la requête Medium établit son acceptation. Aucun autre effort n’est essayé.
 
 ### Mode 6 — priorité 6 — gratuits OpenRouter
 
@@ -225,11 +224,11 @@ ne teste ni performance ni Medium ; les autres benchmarks restent obligatoires.
 - Les crédits achetés et la consommation cumulée indisponibles ne remplacent
   jamais le contrôle du solde.
 
-Pour tous les modes benchmarkés sauf le mode5, demander exclusivement Medium et vérifier sa représentation API. Si Medium est incompatible, déclarer `Invalide` avec la cause. Le mode5 n’exécute aucune génération et ne demande aucun effort. Ne pas reprendre les anciens soldes, quotas ou statuts comme résultats actuels.
+Pour tous les modes benchmarkés, y compris le mode5, demander exclusivement Medium et vérifier sa représentation API. Si Medium est incompatible, déclarer `Invalide` avec la cause. Le mode5 utilise le même benchmark payant Medium que les autres modes payants. Ne pas reprendre les anciens soldes, quotas ou statuts comme résultats actuels.
 
 ## Évaluation et restitution
 
-Les modes benchmarkés évaluent le modèle, sa TTFT et son débit en tokens/s avec un test réel effectué auprès du fournisseur. Le mode5 n’exécute aucun benchmark ni génération. Ne pas utiliser de valeurs commerciales ou de mesures d’un autre fournisseur comme résultats du test. La clé doit être injectée dans le processus de test depuis la base de secrets de l’hôte sans être transmise au modèle ni affichée. Si cet accès sécurisé n’est pas disponible, signaler que le test ne peut pas être exécuté.
+Les modes benchmarkés évaluent le modèle, sa TTFT et son débit en tokens/s avec un test réel effectué auprès du fournisseur. Le mode5 exécute aussi le benchmark payant Medium. Ne pas utiliser de valeurs commerciales ou de mesures d’un autre fournisseur comme résultats du test. La clé doit être injectée dans le processus de test depuis la base de secrets de l’hôte sans être transmise au modèle ni affichée. Si cet accès sécurisé n’est pas disponible, signaler que le test ne peut pas être exécuté.
 
 Pour les modes OpenCode Go, conserver un user-agent propre au testeur,
 ajouter `x-opencode-session` et sélectionner le corps de requête selon
@@ -426,9 +425,9 @@ ne permettent jamais de déclarer valide un modèle sans mesures concluantes.
 
 ## Protocole de performance reproductible — version 8
 
-À chaque invocation, exécuter `python3 scripts/evaluate.py`, chemin relatif au dossier de ce skill. Le script contrôle les ressources applicables avant chaque test (jamais en 3/4/6), n’envoie aucune génération en mode5, mesure les autres réponses en streaming et publie le JSON et le Markdown. Il parcourt les candidats jusqu'au premier succès de chaque mode ; une invocation forcée ne remplace jamais son candidat.
+À chaque invocation, exécuter `python3 scripts/evaluate.py`, chemin relatif au dossier de ce skill. Le script contrôle les ressources applicables avant chaque test (jamais en 3/4/6), mesure les réponses des sept modes en streaming et publie le JSON et le Markdown. Il parcourt les candidats jusqu'au premier succès de chaque mode ; une invocation forcée ne remplace jamais son candidat.
 
-Les modes benchmarkés utilisent le même prompt de tri fusion Python et trois assertions ; le mode5 n’envoie aucune requête de génération. Les paliers autorisés sont exactement **1 024 → 2 048 → 4 096 → 8 192 tokens**, raisonnement et réponse compris. Sans réussite mémorisée pour cette configuration, commencer à 1 024. Après une troncature ou un seuil mesuré non satisfait, passer au palier suivant après les contrôles applicables, sans quota en 3/4/6. Un HTTP 400 ou 429 arrête ce candidat sans augmenter son budget ni changer d'effort ; les règles 401/403 restent applicables. Si un contrôle indispensable échoue, arrêter sans lancer ce test ; un épuisement interdit 1/2/5/7 sans repli gratuit. Arrêter le mode au premier succès du candidat ; après son échec à 8 192 ou un refus compatible avec la poursuite, essayer le candidat suivant autorisé. Aucun palier à 8 912 ni tentative supplémentaire. Chaque requête est limitée à 120 secondes ; le TTFT requis reste <30 s pour les gratuits et <90 s pour les payants.
+Les sept modes utilisent le même prompt de tri fusion Python et trois assertions. Les paliers autorisés sont exactement **1 024 → 2 048 → 4 096 → 8 192 tokens**, raisonnement et réponse compris. Sans réussite mémorisée pour cette configuration, commencer à 1 024. Après une troncature ou un seuil mesuré non satisfait, passer au palier suivant après les contrôles applicables, sans quota en 3/4/6. Un HTTP 400 ou 429 arrête ce candidat sans augmenter son budget ni changer d'effort ; les règles 401/403 restent applicables. Si un contrôle indispensable échoue, arrêter sans lancer ce test ; un épuisement interdit 1/2/5/7 sans repli gratuit. Arrêter le mode au premier succès du candidat ; après son échec à 8 192 ou un refus compatible avec la poursuite, essayer le candidat suivant autorisé. Aucun palier à 8 912 ni tentative supplémentaire. Chaque requête est limitée à 120 secondes ; le TTFT requis reste <30 s pour les gratuits et <90 s pour les payants.
 
 Le parseur streaming et les seuils sont fournis par scripts/performance.py,
 embarqué et identique dans PLLM et TFL. Les imports n'effectuent aucun appel réseau.
@@ -436,6 +435,7 @@ embarqué et identique dans PLLM et TFL. Les imports n'effectuent aucun appel r�
 Mémoriser par politique dans `data/pllm-performance-memory.json` le dernier palier ayant satisfait **tous** les critères de performance après les contrôles applicables, avec date et identité modèle/fournisseur/raisonnement/type et profil de débit. Lors de l’invocation suivante, commencer à ce palier puis augmenter en cas d’échec. Ne pas remplacer la dernière réussite par un échec. Si le modèle ou sa configuration change sans réussite correspondante mémorisée, repartir à 1 024 ; ne pas réutiliser un palier appris pour une autre configuration. Cette mémoire ne remplace jamais les nouveaux contrôles en temps réel. Afficher `last_successful_max_tokens` dans le catalogue et le tableau. Enregistrer atomiquement chaque réussite dès qu’elle est obtenue.
 
 La nouvelle mémoire est initialement vide : aucun ancien résultat n’est transformé artificiellement en apprentissage du nouveau protocole.
+Les anciens résultats mode5 sans benchmark ne valident ni la politique ni un palier ; une nouvelle évaluation concluante est obligatoire. Le chargement les préserve jusqu’à la publication normale.
 
 Pour les gratuits OpenRouter du mode6, suivre les `supported_efforts` publiés et exiger Medium, ou
 un `null` explicite signifiant tous les efforts. `supports_max_tokens=true`
@@ -536,7 +536,7 @@ Maintenir ce module identique dans les six distributions LM/TFL/PLLM.
 ## Admission stricte Medium
 
 Tout candidat benchmarké gratuit ou payant doit publier une capacité Medium vérifiable
-avant test, sélection et affichage. Le mode5 ne vérifie ni ne demande Medium. Une liste supported_efforts contenant
+avant test, sélection et affichage. Le mode5 exige aussi Medium et son acceptation courante. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
 ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
@@ -574,7 +574,7 @@ exacte du script lorsqu'elle est demandée, sans ajouter de commentaire.
 
 ## Coût OpenRouter admissible
 
-Le mode5 applique le plafond de moyenne entrée/sortie de base <= 0,10 EUR/M et le contexte >=1M sans Medium ni performance.
+Le mode5 applique le plafond de moyenne entrée/sortie de base <= 0,10 EUR/M et le contexte >=1M avec benchmark payant Medium concluant.
 Collecter le dernier taux BCE USD par EUR publié et recalculer depuis les prix
 USD du catalogue, y compris ancien ou forcé. Les moyennes EUR historiques ne
 font pas preuve. Source, date et récupération du taux sont conservées. Une
@@ -582,7 +582,7 @@ conversion non vérifiable empêche l’admission ; les règles Go, catégories,
 contrôles de ressources et seuils de performance benchmarkés restent inchangés. Le retrait
 du catalogue général TFL supprime la section JSON opencode ; les modes 1/2
 restent exclusivement payants Go, 3/4 exclusivement gratuits Go, 5 payant
-OpenRouter sans benchmark, 6 gratuit OpenRouter benchmarké et 7 DeepSeek direct,
+OpenRouter benchmarké en Medium, 6 gratuit OpenRouter benchmarké et 7 DeepSeek direct,
 même avec un ancien catalogue contenant opencode.
 
 La commande canonique est `/PLLM` ; `/pllm` reste

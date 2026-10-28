@@ -47,8 +47,8 @@ class PllmPricePriorityTests(unittest.TestCase):
                     self.assertTrue(all(c['state'] == 'Valide' for c in model['candidate_results']))
                     self.assertEqual([c['model_id'] for c in model['candidate_results']], ['cheap'])
                     self.assertEqual(model['model_source']['selector'], 'tfl_price_first_success')
-                self.assertEqual(data['models'][4]['performance_test']['status'], 'not_required')
-                self.assertIsNone(data['models'][4]['ttft_seconds'])
+                self.assertEqual(data['models'][4]['performance_test']['status'], 'completed')
+                self.assertEqual(data['models'][4]['ttft_seconds'], 13)
                 self.assertEqual(data['selected_mode'], 'mode1')
 
     def test_cheapest_failing_performance_cannot_win(self):
@@ -69,16 +69,15 @@ class PllmPricePriorityTests(unittest.TestCase):
                 return True
 
             data, _, _ = self.run_evaluation(module, path, benchmark_behavior=behavior)
-            for model in (data['models'][0], data['models'][1]):
+            for model in (data['models'][0], data['models'][1], data['models'][4]):
                 self.assertEqual(model['model_id'], 'expensive')
                 cheap = next(c for c in model['candidate_results'] if c['model_id'] == 'cheap')
                 self.assertEqual([c['model_id'] for c in model['candidate_results']], ['cheap', 'expensive'])
                 self.assertEqual(cheap['state'], 'Invalide')
                 self.assertEqual([a['max_tokens'] for a in cheap['performance_test']['attempts']],
                                  [1024, 2048, 4096, 8192])
-            self.assertEqual(data['models'][4]['model_id'], 'cheap')
-            self.assertEqual(data['models'][4]['performance_test']['status'], 'not_required')
-            self.assertEqual(data['models'][4]['performance_test']['status'], 'not_required')
+            self.assertEqual(data['models'][4]['model_id'], 'expensive')
+            self.assertEqual(data['models'][4]['performance_test']['status'], 'completed')
 
     def test_equal_prices_keep_catalog_order_without_binary_addition_bias(self):
         for script in PLLM:
@@ -150,8 +149,8 @@ class PllmPricePriorityTests(unittest.TestCase):
             router = data['models'][4]
             self.assertEqual(router['model_id'], 'expensive')
             self.assertEqual(router['state'], 'Valide')
-            self.assertIsNone(router['ttft_seconds'])
-            self.assertFalse(any(e[0] == 'benchmark' and e[1] == 'mode5' for e in events))
+            self.assertEqual(router['ttft_seconds'], 5)
+            self.assertEqual([e[2] for e in events if e[0] == 'benchmark' and e[1] == 'mode5'], ['expensive'])
 
     def test_paid_go_without_medium_metadata_is_tested_in_price_order(self):
         for script in PLLM:

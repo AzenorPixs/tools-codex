@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.24`.
+Version de release : `0.7.25`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -39,13 +39,13 @@ Les sept politiques sont évaluées par priorité :
 |---|---|---|
 | 1/2 | Payants Go des comptes actuels | Quotas disponibles ; épuisement → rouge et invalide, sans gratuit |
 | 3/4 | Gratuits vérifiés Go exclusivement, comptes de 1/2 | Aucun contrôle de quota ; contexte ≥1M, Medium, TTFT <30 s et débit >20 tokens/s |
-| 5 | Payants OpenRouter | Solde positif, contexte ≥1M et coût moyen ≤0,10 €/M ; aucun benchmark ni exigence Medium |
+| 5 | Payants OpenRouter | Solde positif, contexte ≥1M et coût moyen ≤0,10 €/M ; benchmark Medium, TTFT <90 s et débit >15 tokens/s |
 | 6 | Gratuits OpenRouter | Aucun contrôle de solde ; contexte ≥1M, Medium, TTFT <30 s et débit >20 tokens/s |
 | 7 | Ancien mode 4 DeepSeek direct | Solde utilisable positif et benchmark payant Medium |
 
-Les payants benchmarkés 1/2/7 gardent TTFT <90 s et débit >15 tokens/s ; les gratuits
+Les payants benchmarkés 1/2/5/7 gardent TTFT <90 s et débit >15 tokens/s ; les gratuits
 3/4/6 exigent <30 s et >20 tokens/s. Le mode5 s'appuie sur les prix vérifiés,
-le contexte et le crédit sans génération. Les filtres TFL, transports et
+le contexte et le crédit avec benchmark Medium concluant. Les filtres TFL, transports et
 diagnostics s'appliquent selon le mode. Essayer les payants Go 1/2 par coût
 moyen croissant ; essayer les gratuits 3/4/6 dans l'ordre TFL et retenir le
 premier succès. Les priorités 1 à 7 sont fixes. En invocation normale, poursuivre les politiques ;
@@ -80,7 +80,7 @@ officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,
 la date et les variantes tarifaires. Une collecte indispensable en échec
 préserve les rapports précédents sans reprendre silencieusement leurs prix.
 La sélection OpenRouter examine tout le catalogue API sans liste prédéfinie :
-contexte ≥ 1M, coût moyen de base ≤0,10 EUR/M au taux BCE vérifié, sorties admissibles et blacklist. Medium est requis pour les gratuits OpenRouter benchmarkés, pas pour les payants du mode5.
+contexte ≥ 1M, coût moyen de base ≤0,10 EUR/M au taux BCE vérifié, sorties admissibles et blacklist. TFL conserve les payants sans benchmark ; PLLM mode5 vérifie Medium et ses performances.
 Les gratuits vérifiés doivent aussi réussir les tests Medium : réponse
 complète, TTFT <30 s et débit >20 tokens/s. Les échecs sont retirés de models
 et leurs preuves sont conservées dans les exclusions JSON. Un nouveau modèle admissible apparaît sans modification du code.
@@ -93,7 +93,7 @@ gratuits TFL sont désormais testés, les payants restent un catalogue tarifaire
 Le rapport comprend deux tableaux fournisseurs : OpenCode Go puis OpenRouter,
 suivis du tableau détaillé des tests gratuits admissibles à Medium.
 OpenCode général n'est plus collecté, testé ou publié. Le JSON contient
-seulement opencode_go et openrouter. Les deux catalogues exigent contexte ≥1M ; Medium est requis pour les candidats benchmarkés et gratuits, pas pour les payants OpenRouter du mode5. Go conserve ≤0,50 USD/M et OpenRouter ≤0,10 EUR/M au dernier taux BCE publié. Les modes PLLM 1/2 utilisent exclusivement les payants Go, 3/4 les gratuits Go, 5 les payants OpenRouter sans benchmark, 6 les gratuits OpenRouter benchmarkés et 7 DeepSeek direct.
+seulement opencode_go et openrouter. Les deux catalogues exigent contexte ≥1M ; Medium est requis pour tous les benchmarks PLLM, y compris mode5 ; TFL conserve les payants sans benchmark. Go conserve ≤0,50 USD/M et OpenRouter ≤0,10 EUR/M au dernier taux BCE publié. Les modes PLLM 1/2 utilisent exclusivement les payants Go, 3/4 les gratuits Go, 5 les payants OpenRouter benchmarkés, 6 les gratuits OpenRouter benchmarkés et 7 DeepSeek direct.
 TFL ne consulte aucun quota pour ses tests gratuits. Une sélection vide après
 filtrage ou qualification ne bloque pas les autres catalogues : les deux
 tableaux sont publiés, avec « Aucun modèle admissible » et une synthèse des
@@ -189,3 +189,5 @@ Quota nul/inconnu, Codex fermé ou échec TFL : PLLM ne démarre pas. Aucun
 rattrapage ni changement des seuils ou exclusions LM n'est ajouté.
 TFL et PLLM doivent déjà être installés ; leur absence ne les installe pas.
 Voir [installation et contrôle](BUILD.md#planning-utilisateur-tfl-puis-pllm).
+
+Les anciennes validations du mode5 sans benchmark ne prouvent plus sa validité ni un palier de performance ; une nouvelle évaluation Medium concluante est requise. La livraison source 0.7.25 ne modifie pas les profils installés et ne qualifie pas les performances réelles.
