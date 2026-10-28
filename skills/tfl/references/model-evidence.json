@@ -3,31 +3,176 @@
   "records": [
     {
       "provider": "opencode_go",
+      "model_id": "qwen3.8-flash",
+      "field": "reasoning",
+      "protocol": "messages",
+      "status": "verified",
+      "value": {
+        "supported_efforts": ["low", "medium", "xhigh"]
+      },
+      "conclusion": "QwenCloud documente Qwen3.8 Flash et output_config.effort=medium dans son API Anthropic Messages. OpenCode Go publie Qwen3.8 Flash sur Messages.",
+      "investigated_at": "2026-10-28T01:15:59+01:00",
+      "sources": [
+        {
+          "url": "https://docs.qwencloud.com/api-reference/chat/anthropic",
+          "authority": "official",
+          "fingerprint_method": "html_visible_text_v1",
+          "sha256": "e67e1c8db747feac040be338f77c00633c57716f85948a807eb7d4bd6d7f031a",
+          "retrieved_at": "2026-10-28T01:15:59+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
       "model_id": "mimo-v2.6-flash",
       "field": "reasoning",
       "protocol": "chat_completions",
       "status": "verified",
       "value": {
-        "supported_efforts": [
-          "high",
-          "xhigh"
-        ],
+        "supported_efforts": ["medium"],
         "effort_equivalence": "thinking_enabled"
       },
-      "conclusion": "Xiaomi accepte HIGH/XHIGH sur Responses et les définit comme raisonnement activé sans intensité distincte. Chat Completions exprime ce même état par thinking.type=enabled. Équivalence admise explicitement par le développeur le 26 octobre 2026 ; route Go conservée, génération non testée.",
-      "investigated_at": "2026-10-26T14:26:13+01:00",
+      "conclusion": "Xiaomi documente medium comme effort accepté sur Responses et précise que tout niveau non-none active le même raisonnement sans intensité distincte. Son API OpenAI-compatible Chat Completions expose le basculeur thinking.type=enabled ; PLLM utilise cette équivalence documentée sur le transport Go publié.",
+      "investigated_at": "2026-10-28T01:16:06+01:00",
       "sources": [
         {
-          "url": "https://mimo.mi.com/static/docs/api/chat/responses.md",
+          "url": "https://mimo.mi.com/docs/en-US/api/chat/responses",
           "authority": "official",
-          "sha256": "483f91a304f24cf201ae4a29aa1a16925e02a688993b3202b1793e5a7d5f6a17",
-          "retrieved_at": "2026-10-26T14:26:13+01:00"
+          "fingerprint_method": "html_visible_text_v1",
+          "sha256": "6d807dcb8c9addab1d0f5fefa57b489be0c953b67b2682572be4963721a27781",
+          "retrieved_at": "2026-10-28T01:15:59+01:00"
         },
         {
-          "url": "https://mimo.mi.com/static/docs/api/chat/openai-api.md",
+          "url": "https://mimo.mi.com/docs/api/text-generation/openai-api",
           "authority": "official",
-          "sha256": "5aa307fb7ab2f67c2cce954fff6bb36f5a59ce999a104649ace1e44aaf2ded1a",
-          "retrieved_at": "2026-10-26T14:26:13+01:00"
+          "fingerprint_method": "raw_bytes_v1",
+          "sha256": "37e2cf89457a25c86689962cd4acd092005523351b020e95c952f404c887428b",
+          "retrieved_at": "2026-10-28T01:16:06+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
+      "model_id": "glm-5.1",
+      "field": "context",
+      "status": "verified",
+      "value": 202752,
+      "conclusion": "La configuration officielle zai-org/GLM-5.1 fixe max_position_embeddings à 202752 tokens, inférieur au seuil TFL de 1M.",
+      "investigated_at": "2026-10-28T01:16:06+01:00",
+      "sources": [
+        {
+          "url": "https://huggingface.co/zai-org/GLM-5.1/raw/f5ed80e/config.json",
+          "authority": "official",
+          "fingerprint_method": "raw_bytes_v1",
+          "sha256": "726e45e28d1be1636a5834048a4101a2cfe384819ad2ebe08d41f6fe04656526",
+          "retrieved_at": "2026-10-28T01:16:06+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
+      "model_id": "grok-4.6",
+      "field": "context",
+      "status": "verified",
+      "value": 500000,
+      "conclusion": "La fiche officielle xAI indique une fenêtre de contexte de 500000 tokens, inférieure au seuil TFL de 1M.",
+      "investigated_at": "2026-10-28T01:16:06+01:00",
+      "sources": [
+        {
+          "url": "https://docs.x.ai/developers/models/grok-4.6",
+          "authority": "official",
+          "fingerprint_method": "raw_bytes_v1",
+          "sha256": "c4a10724ef97c04dbb5d3602280f93c619c3493bcdb8c1840318d3bfd4b6901c",
+          "retrieved_at": "2026-10-28T01:16:06+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
+      "model_id": "kimi-k2.6",
+      "field": "context",
+      "status": "verified",
+      "value": 262144,
+      "conclusion": "Le centre d'aide officiel Kimi indique que Kimi K2.6 prend en charge jusqu'à 256K tokens, inférieur au seuil TFL de 1M.",
+      "investigated_at": "2026-10-28T01:16:07+01:00",
+      "sources": [
+        {
+          "url": "https://platform.kimi.ai/docs/models",
+          "authority": "official",
+          "fingerprint_method": "html_visible_text_v1",
+          "sha256": "9a97067ea8d5944c40e000e7ce6e8783d8c8b5f8e08c87f779f6e82806f30aba",
+          "retrieved_at": "2026-10-28T01:16:07+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
+      "model_id": "minimax-m2.5",
+      "field": "context",
+      "status": "verified",
+      "value": 196608,
+      "conclusion": "La configuration officielle MiniMaxAI/MiniMax-M2.5 fixe max_position_embeddings à 196608 tokens, inférieur au seuil TFL de 1M.",
+      "investigated_at": "2026-10-28T01:16:07+01:00",
+      "sources": [
+        {
+          "url": "https://huggingface.co/MiniMaxAI/MiniMax-M2.5/raw/main/config.json",
+          "authority": "official",
+          "fingerprint_method": "raw_bytes_v1",
+          "sha256": "3372a31ecbdba614b309cfa5b3dfec33ceea3c580cb9612ff35345d92ced8618",
+          "retrieved_at": "2026-10-28T01:16:07+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
+      "model_id": "omen-alpha",
+      "field": "context",
+      "status": "unverifiable",
+      "conclusion": "La fiche OpenCode Data officielle laisse le contexte d'omen-alpha inconnu. Aucune capacité de 1M n'est vérifiable ; le modèle reste exclu.",
+      "investigated_at": "2026-10-28T01:16:09+01:00",
+      "sources": [
+        {
+          "url": "https://opencode.ai/data/unknown/omen-alpha",
+          "authority": "official",
+          "fingerprint_method": "raw_bytes_v1",
+          "sha256": "4581ebfe2d64b98272b23a86f266ea040b4340d15ac4e3816f13cb1e98733559",
+          "retrieved_at": "2026-10-28T01:16:09+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
+      "model_id": "qwen3.6-plus",
+      "field": "context",
+      "status": "verified",
+      "value": 1000000,
+      "conclusion": "Alibaba Cloud Model Studio confirme que Qwen3.6-Plus possède une fenêtre de contexte de 1M tokens.",
+      "investigated_at": "2026-10-28T01:16:11+01:00",
+      "sources": [
+        {
+          "url": "https://help.aliyun.com/en/model-studio/openclaw",
+          "authority": "official",
+          "fingerprint_method": "html_visible_text_v1",
+          "sha256": "53597e249d9be2458920549719ef8837b63eacad6a782b8ebdfe335c28cf9f91",
+          "retrieved_at": "2026-10-28T01:16:11+01:00"
+        }
+      ]
+    },
+    {
+      "provider": "opencode_go",
+      "model_id": "qwen3.7-max",
+      "field": "context",
+      "status": "verified",
+      "value": 1000000,
+      "conclusion": "Alibaba Cloud Model Studio confirme que Qwen3.7-Max possède une fenêtre de contexte de 1M tokens.",
+      "investigated_at": "2026-10-28T01:16:14+01:00",
+      "sources": [
+        {
+          "url": "https://help.aliyun.com/en/model-studio/openclaw",
+          "authority": "official",
+          "fingerprint_method": "html_visible_text_v1",
+          "sha256": "53597e249d9be2458920549719ef8837b63eacad6a782b8ebdfe335c28cf9f91",
+          "retrieved_at": "2026-10-28T01:16:14+01:00"
         }
       ]
     }

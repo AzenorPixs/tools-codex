@@ -18,47 +18,48 @@ SHALL produire un diagnostic explicite sans sélection inventée.
 - **AND** aucune recherche dans les configurations privées n'est nécessaire
 
 ### Requirement: Initialisation sans historique
-PLLM SHALL initialiser six modes de priorités 1 à 6 si le fichier courant
-manque, sans quota, mesure ni sélection historique. Un historique valide à
-quatre modes SHALL être adapté au schéma 2 : anciens 1/2 conservés, ancien 3
-vers 5, ancien 4 vers 6, nouveaux 3/4 initialisés. La conversion SHALL effacer
-la sélection et marquer toutes les lignes non évaluées dans cette invocation.
+PLLM SHALL initialiser sept priorités et utiliser le schéma 3. Sans état, les
+politiques commencent sans mesures ni sélection. Les historiques des schémas
+1/2 SHALL être adaptés en mémoire : anciens modes Go conservés, ancien
+OpenRouter 5 réinitialisé, DeepSeek mode 4/6 déplacé en mode7 et mode6 gratuit
+OpenRouter neuf. La sélection SHALL être effacée ; les états invalides SHALL
+rester préservés.
 Un historique invalide SHALL produire un diagnostic et SHALL NOT être écrasé.
 
 #### Scenario: Première évaluation
 - **WHEN** aucun fichier courant n'existe
-- **THEN** six politiques sans résultats inventés sont initialisées
+- **THEN** sept politiques sans résultats inventés sont initialisées
 
 #### Scenario: Historique de quatre modes
-- **WHEN** un historique valide de schéma 1 est chargé
-- **THEN** OpenRouter et DeepSeek sont déplacés vers 5 et 6 sans sélection courante
-- **AND** les nouveaux modes 3/4 n'héritent pas de mesures valides
+- **WHEN** un historique valide de schéma 1 ou 2 est chargé
+- **THEN** DeepSeek devient mode 7, l'ancien OpenRouter mesuré est réinitialisé et le mode 6 gratuit est neuf
+- **AND** aucune sélection courante n'est héritée
 
 #### Scenario: Historique illisible
 - **WHEN** les politiques, le schéma ou le JSON sont invalides
 - **THEN** le fichier reste préservé et la publication est arrêtée
 
 ### Requirement: Politiques et sélection explicites
-PLLM SHALL garder six priorités : payants Go 1/2, gratuits Go 3/4,
-payants OpenRouter 5 et DeepSeek 6. Les comptes et références historiques
-SHALL être conservés. Les modèles 1 à 5 SHALL provenir de TFL avec route,
-fournisseur et date. Medium SHALL être l'effort demandé par défaut. La première
-politique valide après sélection ordonnée de son candidat SHALL être
-sélectionnée.
+PLLM SHALL garder sept priorités : payants Go 1/2, gratuits Go 3/4,
+OpenRouter payé 5, OpenRouter gratuit 6 et DeepSeek direct 7. Les comptes et
+références historiques SHALL être conservés. Les modes 1 à 6 SHALL provenir du
+catalogue TFL avec route, fournisseur et date. Medium SHALL être demandé
+partout où un benchmark est exécuté. La première politique valide par priorité
+SHALL être sélectionnée.
 
 #### Scenario: Sélection selon la priorité
 - **WHEN** plusieurs politiques sont valides
-- **THEN** la première par priorité 1 à 6 est retenue indépendamment du débit des autres
+- **THEN** la première par priorité 1 à 7 est retenue indépendamment du débit des autres
 
 #### Scenario: Authentification des modes renumérotés
 - **WHEN** les modes sont évalués
 - **THEN** les références existantes sont utilisées sans création ou déplacement de secret
-- **AND** policy=mode1 sert à 1/3, policy=mode2 à 2/4, ancien policy=mode3 à 5 et ancien policy=mode4 à 6
+- **AND** policy=mode1 sert à 1/3, policy=mode2 à 2/4, ancien policy=mode3 à 5/6 et ancien policy=mode4 à 7
 
 ### Requirement: Quotas avant performance
-Les modes 1/2/5/6 SHALL consulter leurs quotas ou soldes avant chaque
-requête de performance. Une donnée absente, refusée ou incohérente SHALL
-arrêter leur évaluation avant cette requête. Les modes 3/4 SHALL NOT consulter
+Les modes 1/2/5/7 SHALL consulter leurs quotas ou soldes avant toute
+évaluation nécessitant un accès fournisseur. Une donnée absente, refusée ou
+incohérente SHALL arrêter leur évaluation. Les modes 3/4/6 SHALL NOT consulter
 quota ou solde ; ils SHALL publier ce contrôle comme non applicable.
 L'authentification et les limitations fournisseur SHALL rester applicables.
 
@@ -68,25 +69,26 @@ L'authentification et les limitations fournisseur SHALL rester applicables.
 - **AND** les ressources du compte associé ne conditionnent pas sa validité
 
 #### Scenario: Contrôle indispensable indisponible ou épuisé
-- **WHEN** un contrôle des modes 1/2/5/6 est refusé, indisponible ou épuisé
+- **WHEN** un contrôle des modes 1/2/5/7 est refusé, indisponible ou épuisé
 - **THEN** la politique reste invalide sans génération correspondante ni repli gratuit
 
 #### Scenario: Quota indispensable indisponible
-- **WHEN** un contrôle des modes 1/2/5/6 échoue
+- **WHEN** un contrôle des modes 1/2/5/7 échoue
 - **THEN** la politique reste invalide sans test de performance correspondant
 
 #### Scenario: Quota épuisé ou non disponible
-- **WHEN** un contrôle de quota des modes 1/2/5/6 est indisponible ou refusé
+- **WHEN** un contrôle de quota des modes 1/2/5/7 est indisponible ou refusé
 - **THEN** la politique reste invalide sans performance ni repli gratuit
 
 #### Scenario: Épuisement confirmé
 - **WHEN** les ressources payantes sont confirmées épuisées
-- **THEN** 1/2/5/6 restent invalides sans génération ni repli gratuit
+- **THEN** 1/2/5/7 restent invalides sans génération ni repli gratuit
 
 ### Requirement: Conditions de quota propres aux fournisseurs
 Go payant (modes 1/2) SHALL exiger trois périodes disponibles, statut ok
 et usage <100 %. Mode5 SHALL exiger un solde OpenRouter strictement positif
-et SHALL NOT utiliser de candidat gratuit. DeepSeek (mode6) SHALL exiger
+et SHALL NOT utiliser de candidat gratuit. Le mode6 gratuit SHALL NOT consulter
+de solde. DeepSeek (mode7) SHALL exiger
 is_available=true et au moins un solde utilisable >0, sans addition de
 devises. Un statut inconnu SHALL NOT prouver un épuisement.
 
@@ -112,7 +114,7 @@ devises. Un statut inconnu SHALL NOT prouver un épuisement.
 - **AND** la réussite reste datée de ses contrôles réels sans garantie de disponibilité permanente
 
 #### Scenario: OpenRouter et DeepSeek renumérotés
-- **WHEN** modes 5 et 6 sont évalués
+- **WHEN** modes 5, 6 et 7 sont évalués
 - **THEN** les contrôles propres à leurs fournisseurs restent applicables
 
 #### Scenario: Limite de quota atteinte
@@ -120,12 +122,12 @@ devises. Un statut inconnu SHALL NOT prouver un épuisement.
 - **THEN** aucun candidat payant ou gratuit correspondant n'est testé
 
 ### Requirement: Mesures concluantes du modèle sélectionné
-Tous les modes SHALL exiger réponse complète, comptage fiable et mesures
-actuelles. Les candidats TFL SHALL avoir un contexte d'entrée ≥1M, sans
-envoi d'un million de tokens. Les gratuits 3/4 SHALL respecter TTFT <30 s
-et débit >20 tokens/s ; les payants 1/2/5/6, <90 s et >15 tokens/s. Les
-paliers, l'effort Medium et le protocole actuels SHALL rester inchangés. Hors
-forçage, le parcours SHALL s'arrêter au premier succès selon l'ordre du mode.
+Tous les modes sauf 5 SHALL exiger réponse complète, comptage fiable et
+mesures actuelles. Contexte d'entrée ≥1M SHALL être vérifié sans benchmark
+d'un million de tokens. Les gratuits 3/4/6 exigent TTFT <30 s et débit >20 ;
+les payants benchmarkés 1/2/7 exigent TTFT <90 s et débit >15. Mode5 vérifie
+seulement paid, contexte, coût ≤0,10 EUR/M et solde positif. Le protocole reste
+inchangé pour les modes mesurés ; le parcours s'arrête au premier succès.
 
 #### Scenario: Limites strictes distinctes
 - **WHEN** un gratuit atteint TTFT 30 s ou débit 20 tokens/s, ou un payant atteint TTFT 90 s ou débit 15 tokens/s
@@ -145,7 +147,7 @@ forçage, le parcours SHALL s'arrêter au premier succès selon l'ordre du mode.
 - **AND** ce remplaçant exige ses propres contrôles et mesures
 
 #### Scenario: Limites strictes gratuites
-- **WHEN** un mode 3/4 mesure TTFT ≥30 s ou débit ≤20 tokens/s
+- **WHEN** un mode 3/4/6 mesure TTFT ≥30 s ou débit ≤20 tokens/s
 - **THEN** ce candidat reste invalide même si le quota du compte est disponible
 
 #### Scenario: Gratuit valide
@@ -153,7 +155,7 @@ forçage, le parcours SHALL s'arrêter au premier succès selon l'ordre du mode.
 - **THEN** ses seuils sont satisfaits sans contrôle de quota
 
 #### Scenario: Limites des autres modes
-- **WHEN** un candidat payant de mode 1/2/5/6 mesure TTFT ≥90 s ou débit ≤15 tokens/s
+- **WHEN** un candidat payant de mode 1/2/7 mesure TTFT ≥90 s ou débit ≤15 tokens/s
 - **THEN** son candidat reste invalide
 
 #### Scenario: Limites strictes
@@ -166,11 +168,11 @@ forçage, le parcours SHALL s'arrêter au premier succès selon l'ordre du mode.
 - **AND** l'épuisement du dernier palier ne transforme pas le repli en réussite
 
 #### Scenario: TTFT sous la nouvelle limite
-- **WHEN** un candidat payant de mode1/2/5/6 mesure 70,4 s et satisfait les autres critères
+- **WHEN** un candidat payant benchmarké de mode1/2/7 mesure 70,4 s et satisfait les autres critères
 - **THEN** son seuil TTFT est satisfait ; ce même TTFT échoue pour un candidat gratuit
 
 #### Scenario: Limite stricte de TTFT atteinte
-- **WHEN** le TTFT atteint 30 s pour un candidat gratuit ou 90 s pour les candidats payants
+- **WHEN** le TTFT atteint 30 s pour un candidat gratuit ou 90 s pour les candidats payants benchmarkés
 - **THEN** le candidat reste invalide même avec un débit suffisant
 
 ### Requirement: Protocole des mesures traçable
@@ -208,7 +210,7 @@ une mesure indisponible. Le JSON SHALL tracer profil, formule et durées.
 
 ### Requirement: Paliers et mémoire de performance bornés
 PLLM SHALL garder les paliers 1024, 2048, 4096, 8192 et 120 s par requête.
-Les contrôles applicables SHALL précéder chaque requête, sans quota en 3/4.
+Les contrôles applicables SHALL précéder chaque requête, sans quota en 3/4/6.
 Un HTTP 400/429 SHALL arrêter le candidat sans repli vers un autre niveau
 d'effort. La mémoire SHALL distinguer modèle, raisonnement et profil de débit,
 garder les succès historiques sans les réutiliser pour un autre profil. Une
@@ -216,9 +218,9 @@ mémoire invalide SHALL NOT être écrasée ; un ancien succès SHALL NOT valide
 l'invocation.
 
 #### Scenario: Nouvelle politique gratuite
-- **WHEN** mode3 ou mode4 est évalué pour la première fois après migration
+- **WHEN** un mode gratuit 3/4/6 est évalué pour la première fois après migration
 - **THEN** son premier palier est 1024, sans réutiliser l'ancien OpenRouter ou DeepSeek
-- **AND** la mémoire des anciens 3/4 est déplacée vers 5/6 lors du passage du schéma 1 au schéma 2
+- **AND** les apprentissages OpenRouter/DeepSeek incompatibles avec le nouveau schéma ne valident pas les modes 5/6/7
 
 #### Scenario: Reprise de configuration connue
 - **WHEN** une configuration possède un succès Medium mémorisé
@@ -284,8 +286,8 @@ Les anciens débits SHALL NOT être présentés comme comparables ou actuels.
 - **THEN** les deux fichiers décrivent la même évaluation sans valeur secrète
 
 ### Requirement: Invocation normale et mode active silencieux
-L'invocation normale SHALL évaluer les six modes et restituer un tableau
-à six lignes et leurs ressources ou mention non applicable. Chaque mode
+L'invocation normale SHALL évaluer les sept modes et restituer un tableau
+à sept lignes et leurs ressources ou mention non applicable. Chaque mode
 SHALL arrêter son parcours au premier candidat valide. active SHALL s'arrêter
 à la première politique valide et publier sans sortie console ou
 conversationnelle. Les modes non visités SHALL garder evaluated_this_run=false
@@ -296,8 +298,8 @@ et SHALL NOT être sélectionnés depuis l'historique.
 - **THEN** les candidats suivants de ce mode ne sont pas testés et la politique suivante est évaluée
 
 #### Scenario: active s'arrête sur le premier gratuit valide
-- **WHEN** modes 1/2 sont invalides et le premier gratuit conforme de mode3 réussit
-- **THEN** les modes 4/5/6 ne sont pas évalués et la publication reste silencieuse
+- **WHEN** les modes 1/2 sont invalides et le premier gratuit conforme de mode3 réussit
+- **THEN** les modes 4/5/6/7 ne sont pas évalués et la publication reste silencieuse
 
 #### Scenario: Politiques non visitées
 - **WHEN** active retient une politique
@@ -311,10 +313,11 @@ et SHALL NOT être sélectionnés depuis l'historique.
 
 ### Requirement: Invocation forcée sans repli automatique
 Un forçage SHALL limiter l'évaluation au mode et au candidat demandés.
-Les commandes 1 à 6 SHALL cibler le premier candidat admissible de ce mode.
+Les commandes 1 à 7 SHALL cibler le premier candidat admissible de ce mode.
 11–13 et 21–23 SHALL garder les rangs bruts Go ; 31–33 et 41–43 SHALL cibler
 les rangs de la liste gratuite admissible Go ; 51–53 SHALL
-reprendre les rangs bruts OpenRouter. 6 SHALL garder DeepSeek direct. Un
+reprendre les rangs bruts OpenRouter. 61–63 SHALL viser les rangs gratuits
+OpenRouter admissibles. 7 SHALL garder DeepSeek direct. Un
 rang indisponible ou incompatible SHALL échouer sans substitution.
 
 #### Scenario: Ancien forçage OpenRouter
@@ -359,10 +362,12 @@ réconcilier la session et ses autorisations avant de poursuivre.
 
 ### Requirement: Catégories payante et gratuite exclusives
 Les modes 1/2 SHALL examiner exclusivement les payants Go. Les modes 3/4
-SHALL examiner exclusivement les gratuits Go, quelle que
-soit la disponibilité du compte associé. Mode5 SHALL examiner exclusivement
-les payants OpenRouter avec crédit positif. Mode6 SHALL conserver DeepSeek
-direct. Les modes 1/2/5 SHALL NOT basculer vers un candidat gratuit.
+SHALL examiner exclusivement les gratuits Go, et le mode6 SHALL examiner
+exclusivement les gratuits OpenRouter, indépendamment des ressources. Mode5
+SHALL examiner exclusivement les payants OpenRouter avec crédit positif,
+contexte ≥1M et coût moyen ≤0,10 EUR/M, sans benchmark ni exigence Medium.
+Mode7 SHALL conserver DeepSeek direct. Les modes 1/2/5/7 SHALL NOT basculer
+vers un candidat gratuit.
 
 #### Scenario: Compte Go disponible ou épuisé
 - **WHEN** les gratuits 3/4 sont évalués
@@ -372,8 +377,8 @@ direct. Les modes 1/2/5 SHALL NOT basculer vers un candidat gratuit.
 - **WHEN** le nom contient free mais les prix vérifiés ne sont pas tous nuls
 - **THEN** ce candidat n'est pas admissible en 3/4
 
-#### Scenario: Gratuit OpenRouter forcé
-- **WHEN** le rang explicitement demandé en mode5 désigne un gratuit
+#### Scenario: Gratuit OpenRouter forcé en mode payant
+- **WHEN** un rang OpenRouter explicitement demandé en mode5 désigne un gratuit
 - **THEN** il échoue comme catégorie incompatible sans substitution ni génération
 
 #### Scenario: Candidat payant au nom free
@@ -399,19 +404,20 @@ direct. Les modes 1/2/5 SHALL NOT basculer vers un candidat gratuit.
 - **AND** l'échec ou l'absence des gratuits Go ne déclenche aucun repli général
 
 ### Requirement: Gratuité vérifiable et retour au payant
-La gratuité des modes 3/4 SHALL exiger prix publiés d'entrée et de sortie
+La gratuité des modes 3/4/6 SHALL exiger prix publiés d'entrée et de sortie
 nuls avec variantes compatibles, jamais un nom seul. Contexte ≥1M, filtres
-TFL, accès, transport et effort Medium SHALL être préservés. Les
+TFL, accès et transport SHALL être préservés ; Medium SHALL être exigé par
+les modes benchmarkés mais pas par le mode5. Les
 catégories SHALL rester fixes pendant l'invocation. Les ressources des modes
 payants SHALL être relues à chaque nouvelle invocation, sans résultat hérité.
 
 #### Scenario: Ressources rétablies
-- **WHEN** les quotas Go ou le crédit OpenRouter redeviennent disponibles à une nouvelle invocation
-- **THEN** 1/2/5 peuvent redevenir valides après leurs propres contrôles et mesures payantes
-- **AND** 3/4 restent gratuits avec leurs seuils propres
+- **WHEN** les quotas Go, le crédit OpenRouter ou les soldes DeepSeek évoluent à une nouvelle invocation
+- **THEN** les modes payants consultent à nouveau leurs contrôles applicables
+- **AND** les modes gratuits 3/4/6 restent sans contrôle de ressources
 
 #### Scenario: Ancien résultat gratuit OpenRouter
-- **WHEN** un historique valide contient un ancien gagnant gratuit en mode5
+- **WHEN** un historique valide contient un ancien gagnant OpenRouter gratuit en mode5
 - **THEN** il reste lisible mais ne valide pas l'évaluation actuelle et aucun test gratuit n'est lancé
 
 #### Scenario: Crédit OpenRouter rétabli pendant le repli
@@ -424,14 +430,14 @@ payants SHALL être relues à chaque nouvelle invocation, sans résultat hérit�
 
 ### Requirement: Diagnostic visible et sûr
 Le rapport SHALL garder huit colonnes et les diagnostics dans État, sans
-secret ni compte. Les modes 1/2/5 épuisés SHALL afficher rouge et Invalide
-avec leur cause. Les réussites 3/4 SHALL afficher Valide et gratuit, avec
-ressources non applicables. Le JSON SHALL conserver causes, candidats
-évalués, exclusions, tentatives et quotas réels sans mesure fabriquée pour
-un candidat non visité.
+secret ni compte. Les modes payants épuisés SHALL être rouges et invalides.
+Mode5 SHALL afficher `-` pour les mesures et indiquer l'absence de benchmark.
+Les gratuits valides SHALL porter la mention gratuit et ressources non
+applicables. Le JSON conserve causes, candidats, exclusions, tentatives et
+quotas sans inventer de mesure pour un candidat non visité.
 
 #### Scenario: Ressources gratuites
-- **WHEN** le rapport des modes 3/4 est publié
+- **WHEN** le rapport des modes 3/4/6 est publié
 - **THEN** leurs ressources indiquent Non applicable et leurs quotas JSON sont null
 
 #### Scenario: Authentification refusée
@@ -447,11 +453,11 @@ un candidat non visité.
 - **THEN** candidate_results contient uniquement les candidats effectivement visités
 
 #### Scenario: Authentification ou limitation gratuite
-- **WHEN** mode3 ou mode4 reçoit HTTP 401, 403 ou 429
+- **WHEN** un mode gratuit reçoit HTTP 401, 403 ou 429
 - **THEN** le diagnostic reste visible sans quota inventé ni attente indéfinie
 
 #### Scenario: Ressources non applicables
-- **WHEN** le rapport des modes 3/4 est publié
+- **WHEN** le rapport des modes 3/4/6 est publié
 - **THEN** leur ligne indique quota non applicable et leurs quotas restent null
 
 #### Scenario: Corps d'erreur sensible
@@ -463,12 +469,12 @@ un candidat non visité.
 - **THEN** il affiche Valide et gratuit avec ressources non applicables ; un crédit OpenRouter épuisé laisse mode5 invalide
 
 ### Requirement: Contrat Medium propre au transport
-PLLM SHALL exiger Medium avant génération, sélection et affichage.
-`supported_efforts` avec `medium` ou `null` explicite suffit ; donnée absente,
-invalide, booléen `reasoning`, budget seul ou liste sans `medium` SHALL exclure.
-Envoyer `medium` selon transport : `reasoning_effort` (Chat Completions/DeepSeek),
-`reasoning.effort` (Responses), `output_config.effort` (Messages). L'équivalence
-documentée SHALL garder le protocole. Un refus SHALL NOT retenter avec un autre effort.
+PLLM SHALL envoyer exclusivement `medium` sur le paramètre propre au transport
+publié : `reasoning_effort` pour Chat Completions/DeepSeek, `reasoning.effort`
+pour Responses et `output_config.effort` pour Messages. Une réponse API
+complète SHALL établir l'acceptation, même si le fournisseur mappe ou ignore
+ce niveau ; le rapport SHALL NOT en déduire l'effort interne. Un refus SHALL
+invalider le candidat sans repli vers un autre effort.
 
 #### Scenario: Gratuit OpenCode en Chat Completions
 - **WHEN** un candidat OpenCode utilise chat_completions sans équivalence documentée
@@ -481,11 +487,12 @@ documentée SHALL garder le protocole. Un refus SHALL NOT retenter avec un autre
 
 #### Scenario: Medium non publié
 - **WHEN** les métadonnées n'annoncent pas Medium
-- **THEN** le candidat est exclu et aucun niveau différent n'est demandé
+- **THEN** le candidat est essayé avec le paramètre Medium sur sa route publiée
+- **AND** l'absence de métadonnées seule ne prouve pas un refus
 
 #### Scenario: Aucun niveau autorisé
-- **WHEN** Medium n'est pas pris en charge
-- **THEN** le candidat est invalide sans requête de performance ni repli vers un autre effort
+- **WHEN** l'API refuse explicitement le paramètre Medium
+- **THEN** le candidat est invalide sans repli vers un autre effort
 
 ### Requirement: Retry-After filtré et sans attente indéfinie
 PLLM SHALL lire au plus 64 Kio d'erreur HTTP et conserver uniquement des
@@ -533,7 +540,7 @@ Le coût SHALL être la moyenne des prix d'entrée/sortie TFL : hors pointe
 pour Go et prix de base pour OpenRouter. Les égalités tarifaires SHALL
 résister aux erreurs d'addition binaire et conserver l'ordre TFL. Les prix
 non vérifiables SHALL rester exclus. Le JSON SHALL tracer prix et provenance
-sans héritage périmé. Mode6 SHALL garder son candidat unique sans tarif inventé.
+sans héritage périmé. Mode7 SHALL garder son candidat unique sans tarif inventé.
 
 #### Scenario: Moyennes égales calculées différemment
 - **WHEN** les prix 0,1/0,2 et 0,15/0,15 sont publiés pour deux candidats
@@ -544,40 +551,41 @@ sans héritage périmé. Mode6 SHALL garder son candidat unique sans tarif inven
 - **THEN** il est exclu avec sa cause avant génération
 
 ### Requirement: Classement des gratuits par performances
-Les modes 3/4 SHALL parcourir les gratuits admissibles dans l'ordre TFL,
-Go exclusivement, et SHALL retenir le premier succès aux tests
+Les modes 3/4 SHALL parcourir les gratuits admissibles Go exclusivement et
+le mode6 SHALL parcourir les gratuits OpenRouter ; chaque mode SHALL garder
+l'ordre TFL et retenir le premier succès aux tests
 gratuits actuels. Ils SHALL NOT tester les candidats suivants pour chercher
 un débit supérieur. Après échec d'un gratuit, le suivant SHALL conserver
 ses propres mesures et les seuils stricts <30 s et >20 tokens/s.
 
 #### Scenario: Premier gratuit valide
-- **WHEN** le premier gratuit Go satisfait tous les critères
-- **THEN** il est retenu et aucun autre gratuit Go n'est testé
+- **WHEN** le premier candidat gratuit du fournisseur de ce mode satisfait les critères
+- **THEN** il est retenu et aucun autre candidat du mode n'est testé
 
 #### Scenario: Repli vers le gratuit suivant
-- **WHEN** un gratuit Go échoue sans blocage d'authentification et le gratuit Go suivant réussit
-- **THEN** le premier gratuit Go conforme est retenu sans contrôle de quota ni de solde
+- **WHEN** un gratuit Go ou OpenRouter échoue sans blocage d'authentification et le suivant réussit
+- **THEN** le premier gratuit conforme est retenu sans contrôle de quota ni de solde
 
 #### Scenario: Gratuit plus performant
 - **WHEN** un gratuit conforme précède un autre candidat potentiellement plus performant
 - **THEN** le premier succès est retenu et le suivant n'est pas testé
 
 ### Requirement: Invariants du classement tarifaire
-Les priorités 1 à 6, seuils payants et gratuits, quotas, raisonnement,
-forçages de rang et protocole 8 SHALL rester inchangés. Le mode5 SHALL
-refuser les rangs gratuits conformément à sa catégorie exclusivement
-payante. Le JSON SHALL tracer les candidats visités et leurs tentatives ;
+Les priorités 1 à 7 SHALL respecter les seuils benchmarkés gratuits/payants,
+les quotas, le raisonnement, les forçages et le protocole 8. Le mode5 SHALL
+refuser les candidats gratuits, sans benchmark, selon sa catégorie payante.
+Le JSON SHALL tracer les candidats visités et leurs contrôles ;
 active SHALL s'arrêter au premier mode valide. Le rapport SHALL conserver
 ses huit colonnes.
 
 #### Scenario: Publication et priorités préservées
 - **WHEN** plusieurs politiques valides ont été évaluées selon leurs règles
-- **THEN** la première par priorité 1 à 6 est sélectionnée avec huit colonnes inchangées
+- **THEN** la première par priorité 1 à 7 est sélectionnée avec huit colonnes inchangées
 - **AND** son prix courant et les preuves des candidats visités restent auditables
 
 ### Requirement: Exclusion LM indépendante des catalogues et historiques
 PLLM SHALL charger LM avant tout appel fournisseur et exclure les modèles
-interdits de tout test et sélection : candidats TFL, rangs, replis, mode6
+interdits de tout test et sélection : candidats TFL, rangs, replis, mode7
 et frontière de génération, même avec un ancien catalogue ou une mémoire.
 Une cible forcée interdite SHALL être refusée sans substitution.
 
@@ -604,46 +612,83 @@ le fichier mémoire historique SHALL rester préservé.
 
 #### Scenario: Candidat direct interdit
 - **WHEN** LM contient deepseek-v4-flash
-- **THEN** le mode6 ne génère aucune requête et ne sélectionne pas ce candidat
+- **THEN** le mode7 ne génère aucune requête et ne sélectionne pas ce candidat
 
 ### Requirement: Rafraîchissement planifié préalable distinct
 Le planning utilisateur SHALL exécuter TFL avant PLLM normal et fournir son
 catalogue frais explicitement. PLLM manuel SHALL continuer à lire son catalogue
 sans lancer implicitement TFL. L'activité et le quota Codex SHALL conditionner
-la séquence planifiée sans modifier les six politiques ou leurs contrôles.
+la séquence planifiée sans modifier les sept politiques ou leurs contrôles.
 
 #### Scenario: Commande manuelle ou séquence planifiée
 - **WHEN** PLLM est invoqué manuellement ou après le TFL planifié réussi
-- **THEN** il conserve ses six politiques et contrôles existants
+- **THEN** il conserve ses sept politiques et contrôles existants
 - **AND** seule la séquence planifiée effectue le rafraîchissement préalable et les contrôles Codex
 
 ### Requirement: Effort vérifiable indépendant du catalogue et de l'historique
-PLLM SHALL exiger une capacité Medium vérifiable pour tout candidat, y compris
-DeepSeek direct. Seul Medium SHALL être demandé et admis. Un exclu SHALL NOT
-être généré, sélectionné ou affiché dans les tableaux ;
-son motif SHALL rester dans le JSON. Un forçage exclu SHALL échouer sans
-substitution. Les six politiques SHALL rester présentes dans l'état interne.
+PLLM SHALL demander le paramètre `medium` pour tout candidat benchmarké,
+y compris DeepSeek direct au mode7. Le mode5 est exempté de cette exigence et
+de toute génération. L'acceptation courante de l'API SHALL suffire même si le
+fournisseur convertit ou ignore l'effort ; elle ne mesure pas l'effort interne.
+Un refus SHALL invalider le candidat sans autre niveau. Les exclus SHALL rester
+non sélectionnés et conserver leur motif et leurs preuves JSON ; les sept
+politiques SHALL rester présentes.
+
+#### Scenario: Mapping Medium vers High
+- **WHEN** une source officielle prouve que l'API accepte Medium comme alias de High
+- **THEN** le candidat satisfait l'exigence d'acceptation du paramètre, sous réserve des ressources, du contexte, de la réponse et des seuils de performance
+- **AND** le rapport conserve le mapping sans prétendre que l'effort interne est Medium
+
+#### Scenario: Paramètre Medium refusé par l'API
+- **WHEN** un appel réel avec le paramètre Medium reçoit un refus de compatibilité reconnu
+- **THEN** le candidat reste invalide sans reprise avec un autre effort
+- **AND** le diagnostic précis et les preuves filtrées restent dans les exclusions JSON
+
+#### Scenario: Nettoyage d'une exclusion historique
+- **WHEN** le nettoyage de publication retire un candidat qui n'a aucune preuve d'acceptation du paramètre
+- **THEN** le rapport conserve le motif dans la cause de la politique et dans les exclusions JSON
+- **AND** l'identifiant du candidat reste absent des colonnes utilisateur
 
 #### Scenario: Preuve publiée et métadonnées invalides
-- **WHEN** supported_efforts publie une liste contenant medium, ou null explicite signifiant tous les efforts
-- **THEN** le candidat satisfait le filtre d'effort sous réserve des autres critères
-- **AND** une clé absente, une valeur invalide, un booléen reasoning ou supports_max_tokens seul reste exclu
+- **WHEN** supported_efforts publie medium, null explicite, ou une requête courante avec medium est acceptée par l'API
+- **THEN** le candidat satisfait le critère d'acceptation du paramètre sous réserve des autres critères
+- **AND** une métadonnée absente ou invalide seule ne prouve pas l'acceptation, mais ne bloque pas un test réel
 
 #### Scenario: Ancien catalogue ou résultat historique
-- **WHEN** un modèle précédemment retenu n'a pas de preuve d'effort admissible
+- **WHEN** un candidat benchmarké précédemment retenu n'a pas de preuve d'effort admissible
 - **THEN** il ne peut être sélectionné, généré ou affiché malgré son historique
+- **AND** cette exigence ne s'applique pas au mode5, qui ne benchmarke pas
 
 #### Scenario: Cible forcée sans effort vérifiable
 - **WHEN** un rang forcé désigne un modèle sans preuve Medium
-- **THEN** il est refusé sans génération ni substitution
+- **THEN** seule la candidate forcée est testée avec le paramètre medium, sans substitution
+- **AND** elle reste invalide si l'API refuse ce paramètre
+- **AND** un rang du mode5 reste soumis seulement au plafond de coût et au contexte
 
 #### Scenario: Candidat direct sans preuve
 - **WHEN** le modèle DeepSeek direct n'a pas de capacité Medium vérifiable
-- **THEN** il est exclu avant génération et son identité n'apparaît pas dans les tableaux
+- **THEN** PLLM envoie medium sur la route directe publiée et vérifie la réponse réelle
+- **AND** une réponse API complète établit l'acceptation, même si le fournisseur mappe ou ignore medium
+
+#### Scenario: Preuve publiée liée au transport
+- **WHEN** un candidat TFL publie une preuve d'acceptation Medium pour son identifiant et son protocole courants
+- **THEN** PLLM recontrôle cette source avant génération et conserve le résultat dans l'audit
+- **AND** l'absence ou l'inaccessibilité de cette preuve déclenche un essai API avec medium, sans conclure à un refus
+
+### Requirement: Empreintes de preuves documentaires reproductibles
+TFL et PLLM SHALL calculer la même empreinte SHA-256 pour chaque source :
+texte visible HTML normalisé en UTF-8 NFC avec espaces réduits, ou octets reçus
+pour les sources non HTML. Chaque entrée SHALL tracer `fingerprint_method`.
+Les changements de balisage sans différence visible SHALL préserver la preuve.
+
+#### Scenario: Sources dynamiques sans changement visible
+- **WHEN** le balisage ou les scripts HTML changent sans modifier le texte visible
+- **THEN** l'empreinte reste identique et la preuve reste vérifiable
+- **AND** une modification visible déclenche une nouvelle investigation
 
 ### Requirement: Plafond EUR OpenRouter réappliqué
 PLLM SHALL vérifier le coût moyen de base OpenRouter au plafond inclusif de
-0,20 EUR/M avec le dernier taux BCE publié vérifié. Il SHALL recalculer depuis
+0,10 EUR/M avec le dernier taux BCE publié vérifié. Il SHALL recalculer depuis
 les prix USD natifs sans faire confiance à une moyenne EUR historique et
 SHALL conserver la provenance. Une conversion invérifiable SHALL empêcher
 l'admission de ces candidats, y compris les rangs forcés et anciens catalogues.
@@ -651,7 +696,7 @@ Les priorités, catégories, contrôles de ressources et seuils de performance
 SHALL rester inchangés.
 
 #### Scenario: Ancien catalogue dépassant le nouveau plafond
-- **WHEN** un candidat OpenRouter dépasse 0,20 EUR/M au taux courant
+- **WHEN** un candidat OpenRouter dépasse 0,10 EUR/M au taux courant
 - **THEN** il est exclu avant génération même si son ancien catalogue le retenait
 
 #### Scenario: Gratuit général après retrait du tableau
@@ -660,8 +705,9 @@ SHALL rester inchangés.
 
 ### Requirement: Consommation des preuves et équivalences documentées
 PLLM SHALL préserver les preuves TFL par fournisseur, modèle et protocole.
-Il SHALL admettre uniquement Medium après vérification et utiliser les
-paramètres documentés sur sa route publiée. Un effort ou contexte encore invérifiable SHALL déclencher
+Les modes benchmarkés SHALL admettre uniquement Medium après vérification et
+utiliser les paramètres documentés sur leur route publiée. Le mode5 n'exige
+aucun effort et n'effectue aucune génération. Un contexte encore invérifiable SHALL déclencher
 le workflow d'investigation du LLM avant toute admission ; un contexte
 invérifiable après investigation SHALL rester exclu.
 
@@ -674,39 +720,41 @@ invérifiable après investigation SHALL rester exclu.
 - **THEN** le modèle n'atteint pas la génération et le motif reste auditable
 
 ### Requirement: Effort demandé exclusivement Medium
-
-PLLM SHALL demander et publier des résultats dont l'effort effectif est
-`medium`, pour les six politiques, les forçages de rang et chaque transport.
-Un refus ou une absence de prise en charge SHALL invalider le candidat sans
+PLLM SHALL demander exclusivement le paramètre `medium` pour les politiques
+benchmarkées, les forçages de rang et chaque transport. Le mode5 ne demande
+pas d'effort et n'exécute aucune génération. Une réponse API complète SHALL
+établir l'acceptation du paramètre même si l'effort interne est converti,
+ignoré ou non appliqué. Un refus de Medium SHALL invalider le candidat sans
 repli vers un autre effort.
 
 #### Scenario: Demande forcée ou transport non compatible
-
-- **WHEN** une cible forcée ou un transport ne peut pas effectuer une requête
-  en Medium
+- **WHEN** une cible forcée ou un transport refuse le paramètre medium
 - **THEN** le candidat est déclaré invalide sans génération à un autre effort
 
 ### Requirement: Historique limité aux résultats Medium
-
-Une capacité fournisseur incluant Medium SHALL NOT valider un résultat
-historique dont l'effort demandé ou exécuté n'est pas explicitement établi
-comme Medium. PLLM SHALL invalider ces résultats avant affichage et sélection,
-conserver leur motif dans les exclusions et ne pas réutiliser leurs paliers.
+PLLM SHALL NOT valider un résultat historique benchmarké dont le paramètre
+`medium` demandé ou son acceptation API n'est pas explicitement établi. PLLM SHALL
+invalider ces résultats avant affichage et sélection, conserver leur motif
+dans les exclusions et ne pas réutiliser leurs paliers. Une mesure historique
+ne prouve pas l'acceptation API courante. Cette règle ne s'applique pas au
+mode5 non benchmarké.
 
 #### Scenario: Historique incompatible malgré une capacité Medium
-
-- **WHEN** le résultat ou une de ses tentatives historiques n'enregistre pas
-  explicitement Medium comme effort demandé
+- **WHEN** le résultat ou une de ses tentatives historiques n'enregistre pas explicitement la demande medium et son acceptation API
 - **THEN** PLLM l'invalide avant affichage et sélection
 - **AND** conserve le motif d'exclusion sans réutiliser son palier
 
 ### Requirement: Effort courant séparé des traces historiques
-PLLM SHALL valider l'effort demandé et mesuré dans l'évaluation courante sans traiter les métadonnées d'override ou d'anciennes tentatives comme son effort effectif. Les tentatives de performance courantes SHALL toujours établir Medium.
+PLLM SHALL valider la demande courante du paramètre Medium et son acceptation
+API sans traiter les métadonnées d'override ou d'anciennes tentatives comme
+preuve actuelle. Une réponse complète établit l'acceptation du paramètre ;
+elle ne mesure pas l'effort interne appliqué. Des métadonnées ou une source
+officielle actuelle et propre au transport peuvent aussi établir l'acceptation.
 
 #### Scenario: Candidat Medium avec anciennes traces XHigh
-- **WHEN** les capacités et les champs de requête et de mesure courants établissent Medium, mais que `user_override` ou `performance_attempts` historiques contiennent XHigh
+- **WHEN** la requête courante demande et l'API accepte medium, mais que `user_override` ou `performance_attempts` historiques contiennent XHigh
 - **THEN** PLLM conserve et évalue le candidat courant sans reprendre ces anciennes traces comme mesure ou palier valide
 
 #### Scenario: Tentative courante non Medium
-- **WHEN** la requête ou une tentative de performance de l'évaluation courante enregistre un effort autre que Medium
-- **THEN** PLLM exclut le résultat courant malgré une capacité fournisseur qui inclut Medium
+- **WHEN** la requête courante ne demande pas medium ou l'API ne l'accepte pas
+- **THEN** PLLM exclut le résultat courant malgré une capacité fournisseur historique qui inclut Medium

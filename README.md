@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.16`.
+Version de release : `0.7.20`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -24,24 +24,22 @@ chargés simultanément peuvent produire deux entrées. Leur disponibilité dans
 les sources ne démontre pas une installation dans un profil Codex.
 
 PLLM accepte `--tfl-catalog CHEMIN` pour des plugins installés séparément.
-Les six politiques sont évaluées par priorité :
+Les sept politiques sont évaluées par priorité :
 
 | Modes | Candidats | Conditions spécifiques |
 |---|---|---|
 | 1/2 | Payants Go des comptes actuels | Quotas disponibles ; épuisement → rouge et invalide, sans gratuit |
-| 3/4 | Gratuits vérifiés Go exclusivement, comptes de 1/2 | Aucun contrôle de quota ; contexte ≥1M, réponse complète, TTFT <30 s et débit >20 tokens/s |
-| 5 | Payants OpenRouter uniquement | Crédit positif ; épuisement → invalide, sans gratuit |
-| 6 | Ancien mode 4 DeepSeek direct | Solde utilisable positif |
+| 3/4 | Gratuits vérifiés Go exclusivement, comptes de 1/2 | Aucun contrôle de quota ; contexte ≥1M, Medium, TTFT <30 s et débit >20 tokens/s |
+| 5 | Payants OpenRouter | Solde positif, contexte ≥1M et coût moyen ≤0,10 €/M ; aucun benchmark ni exigence Medium |
+| 6 | Gratuits OpenRouter | Aucun contrôle de solde ; contexte ≥1M, Medium, TTFT <30 s et débit >20 tokens/s |
+| 7 | Ancien mode 4 DeepSeek direct | Solde utilisable positif et benchmark payant Medium |
 
-Les payants gardent TTFT <90 s et débit >15 tokens/s ; tous les gratuits,
-y compris le repli OpenRouter de 5, exigent <30 s et >20 tokens/s. Les filtres TFL,
-Medium, transports et diagnostics s'appliquent partout. Un gratuit reste soumis
-aux limitations fournisseur. Essayer les payants 1/2/5 par coût moyen TFL
-croissant (hors pointe Go, base OpenRouter), avec ordre TFL à prix égal.
-Essayer les gratuits 3/4 dans l'ordre TFL Go exclusivement. Retenir le premier
-succès aux tests actuels et ne pas tester les suivants du mode ; après un
-échec, essayer le suivant sous réserve des contrôles bloquants. Les priorités
-1 à 6 restent inchangées. En invocation normale, poursuivre les politiques ;
+Les payants benchmarkés 1/2/7 gardent TTFT <90 s et débit >15 tokens/s ; les gratuits
+3/4/6 exigent <30 s et >20 tokens/s. Le mode5 s'appuie sur les prix vérifiés,
+le contexte et le crédit sans génération. Les filtres TFL, transports et
+diagnostics s'appliquent selon le mode. Essayer les payants Go 1/2 par coût
+moyen croissant ; essayer les gratuits 3/4/6 dans l'ordre TFL et retenir le
+premier succès. Les priorités 1 à 7 sont fixes. En invocation normale, poursuivre les politiques ;
 active s'arrête à la première valide. Le contexte ≥1M est une capacité
 d'entrée vérifiée, sans envoi d'un million de tokens pendant le benchmark.
 Tous les benchmarks demandent exclusivement Medium ; aucun repli vers un autre effort n'est
@@ -51,24 +49,21 @@ attente et TTFT inclus, sans extrapolation entre fragments reçus. Le protocole
 durée non arrondie et sépare les anciens succès en mémoire. Une réponse
 complète en un bloc reste mesurable. Les anciens débits ne sont pas directement
 comparables ; les seuils numériques conservés peuvent modifier le classement
-et la qualification. Les références de secrets restent inchangées. Les historiques à quatre modes
-sont adaptés au schéma 2 sans sélection actuelle héritée ; les nouveaux 3/4
-commencent sans mesure ni apprentissage. Un fichier corrompu est préservé.
-Le schéma 2 nécessite une copie des anciennes données pour revenir à l'ancien
-évaluateur. Les forçages OpenRouter 31–33 deviennent 51–53 ; 31–33 et 41–43
-ciblent désormais la liste gratuite admissible des nouveaux modes 3/4.
+et la qualification. Les références de secrets restent inchangées. Les historiques des schémas 1/2 sont adaptés au schéma 3 sans sélection actuelle héritée ; l'ancien mode5 est réinitialisé, DeepSeek est déplacé au mode7 et le mode6 OpenRouter gratuit commence sans mesure ni apprentissage. Un fichier corrompu est préservé. Le schéma3 nécessite une copie des anciennes données pour revenir à l'ancien évaluateur. Les forçages OpenRouter payants restent 51–53 et les gratuits utilisent 61–63.
 Pour Chat Completions OpenCode, Medium est envoyé sans le paramètre thinking
 spécifique à d'autres contrats. Un refus HTTP 400 ou une limitation 429
 arrêtent les paliers du candidat ; le diagnostic filtré et le Retry-After
 disponible restent visibles, sans répétition aux budgets supérieurs ni
 promesse de disponibilité après l'échéance indiquée.
+Medium désigne l'effort effectivement appliqué ; un alias fournisseur mappé à
+High ne valide pas un benchmark Medium.
 TFL exclut les prix non finis et publie un catalogue JSON strict.
 À chaque génération, TFL récupère les tarifs OpenCode Go dans sa documentation
 officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,
 la date et les variantes tarifaires. Une collecte indispensable en échec
 préserve les rapports précédents sans reprendre silencieusement leurs prix.
 La sélection OpenRouter examine tout le catalogue API sans liste prédéfinie :
-contexte ≥ 1M, coût moyen de base ≤0,20 EUR/M au taux BCE vérifié, Medium vérifiable, sorties admissibles et blacklist.
+contexte ≥ 1M, coût moyen de base ≤0,10 EUR/M au taux BCE vérifié, sorties admissibles et blacklist. Medium est requis pour les gratuits OpenRouter benchmarkés, pas pour les payants du mode5.
 Les gratuits vérifiés doivent aussi réussir les tests Medium : réponse
 complète, TTFT <30 s et débit >20 tokens/s. Les échecs sont retirés de models
 et leurs preuves sont conservées dans les exclusions JSON. Un nouveau modèle admissible apparaît sans modification du code.
@@ -81,10 +76,7 @@ gratuits TFL sont désormais testés, les payants restent un catalogue tarifaire
 Le rapport comprend deux tableaux fournisseurs : OpenCode Go puis OpenRouter,
 suivis du tableau détaillé des tests gratuits admissibles à Medium.
 OpenCode général n'est plus collecté, testé ou publié. Le JSON contient
-seulement opencode_go et openrouter. Les deux catalogues exigent contexte ≥1M
-et Medium vérifiable ; Go conserve ≤0,50 USD/M et OpenRouter ≤0,20 EUR/M
-au dernier taux BCE publié. Les modes PLLM 1/2 utilisent exclusivement les
-payants Go et 3/4 les gratuits Go, anciens catalogues et rangs forcés compris.
+seulement opencode_go et openrouter. Les deux catalogues exigent contexte ≥1M ; Medium est requis pour les candidats benchmarkés et gratuits, pas pour les payants OpenRouter du mode5. Go conserve ≤0,50 USD/M et OpenRouter ≤0,10 EUR/M au dernier taux BCE publié. Les modes PLLM 1/2 utilisent exclusivement les payants Go, 3/4 les gratuits Go, 5 les payants OpenRouter sans benchmark, 6 les gratuits OpenRouter benchmarkés et 7 DeepSeek direct.
 TFL ne consulte aucun quota pour ses tests gratuits. Une sélection vide après
 filtrage ou qualification ne bloque pas les autres catalogues : les deux
 tableaux sont publiés, avec « Aucun modèle admissible » et une synthèse des

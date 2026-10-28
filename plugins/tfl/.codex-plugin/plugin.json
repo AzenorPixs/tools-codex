@@ -1,6 +1,6 @@
 {
   "name": "tfl",
-  "version": "0.7.16",
+  "version": "0.7.20",
   "description": "Compare les catalogues et qualifie les modèles gratuits en Medium.",
   "author": {
     "name": "AzenorPixs"
@@ -11,11 +11,11 @@
   "interface": {
     "displayName": "TFL",
     "shortDescription": "Compare Go puis OpenRouter, Medium vérifiable.",
-    "longDescription": "TFL exige Medium pour gratuits et payants, affiche Go puis OpenRouter à 0,20 EUR/M maximum ; collecte seulement Go et OpenRouter.",
+    "longDescription": "TFL exige Medium pour les gratuits et affiche Go puis OpenRouter à 0,10 EUR/M maximum pour les payants ; collecte seulement Go et OpenRouter.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Utilise le plugin TFL pour générer les tableaux Go puis OpenRouter avec Medium vérifiable et OpenRouter à 0,20 EUR/M maximum, toujours hors sandbox."
+    "defaultPrompt": "Utilise le plugin TFL pour générer les tableaux Go puis OpenRouter avec Medium vérifiable pour les gratuits et un plafond de 0,10 EUR/M pour les payants, toujours hors sandbox."
   },
   "hooks": "./hooks/hooks.json"
 }

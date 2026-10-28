@@ -86,11 +86,19 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 complete = benchmark_behavior(model, budget)
             else:
                 model.update(ttft_seconds=5, tokens_per_second=40 if model['model_id'] in ('paid-b', 'free-general') else 25)
+            acceptance = {'status': 'accepted', 'parameter': 'medium',
+                          'verified_by': 'completed_api_response'}
+            model['reasoning_acceptance'] = acceptance
+            model['performance_test']['reasoning_acceptance'] = acceptance
             model['performance_test']['status'] = 'completed' if complete else 'truncated'
             return complete
 
-        metadata = [{'id': item['id'], 'reasoning': {'supported_efforts': ['medium']}}
-                    for item in json.loads(path.read_text())['openrouter']['models']]
+        metadata = []
+        for item in json.loads(path.read_text())['openrouter']['models']:
+            metadata.append({'id': item['id'], 'context_length': item.get('context_length', 1_000_000),
+                             'pricing': {'prompt': str(item['input_price'] / 1_000_000),
+                                         'completion': str(item['output_price'] / 1_000_000)},
+                             'reasoning': {'supported_efforts': ['medium']}})
         with ExitStack() as stack:
             stack.enter_context(patch.object(module.performance, "fetch_eur_rates", return_value=FX))
             stack.enter_context(patch.object(module.subprocess, 'run', side_effect=secret_lookup, return_value=SimpleNamespace(
@@ -136,7 +144,7 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertIn('🟢 Valide — gratuit', output)
             self.assertIn('🔴 Invalide — Quota épuisé', output)
 
-    def test_openrouter_exhausted_never_generates_and_next_run_can_recover(self):
+    def test_openrouter_paid_catalog_mode_checks_credit_without_generation(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
             first, events, _ = self.run_evaluation(module, path, exhausted=True, forced={'mode': 'mode5'})
@@ -145,7 +153,8 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], [])
             second, events, _ = self.run_evaluation(module, path, forced={'mode': 'mode5'})
             self.assertEqual(second['models'][4]['model_id'], 'paid-router')
-            self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['paid-router'])
+            self.assertEqual(second['models'][4]['performance_test']['status'], 'not_required')
+            self.assertFalse(any(event[0] == 'benchmark' and event[1] == 'mode5' for event in events))
 
     def test_free_winner_history_keeps_its_category_when_go_recovers(self):
         for script in PLLM:
@@ -286,23 +295,19 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertEqual(second['models'][0]['model_id'], 'paid-a')
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark'], ['paid-a'])
 
-    def test_openrouter_oscillating_resources_are_bounded(self):
+    def test_openrouter_catalog_mode_checks_resources_once_without_generation(self):
         for script in PLLM:
             module, path, _ = self.workspace(script)
 
             def oscillating(model, events):
                 return len([event for event in events if event[0] == 'quota']) % 2 == 1
 
-            def fail(model, budget):
-                model.update(ttft_seconds=90, tokens_per_second=15)
-                return True
-
-            data, events, _ = self.run_evaluation(module, path, quota_behavior=oscillating,
-                                                  benchmark_behavior=fail)
+            data, events, _ = self.run_evaluation(module, path, quota_behavior=oscillating)
             router = data['models'][4]
-            self.assertEqual(router['state'], 'Invalide')
+            self.assertEqual(router['state'], 'Valide')
+            self.assertEqual(router['performance_test']['status'], 'not_required')
             router_calls = [event for event in events if event[1] == 'mode5']
-            self.assertLessEqual(len(router_calls), 4)
+            self.assertEqual([event[0] for event in router_calls], ['quota'])
 
     def test_forced_rank_cannot_substitute_free_or_paid(self):
         for script in PLLM:
@@ -326,8 +331,8 @@ class PllmFreeFallbackTests(unittest.TestCase):
             data, events, _ = self.run_evaluation(module, path, exhausted=True,
                                                   benchmark_behavior=behavior, active=True)
             calls = [event for event in events if event[0] == 'benchmark']
-            self.assertEqual([event[-1] for event in calls], ['opencodego'] * 8)
-            self.assertIsNone(data['selected_mode'])
+            self.assertEqual([event[-1] for event in calls], ['opencodego'] * 8 + ['openrouter'])
+            self.assertEqual(data['selected_mode'], 'mode6')
             self.assertTrue(all(model['state'] == 'Invalide' for model in data['models'][2:4]))
 
     def test_eligibility_checks_prices_context_protocol_and_endpoint(self):
@@ -484,13 +489,17 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark' and event[1] == 'mode1'], ['paid-a'])
             self.assertEqual(data['selected_mode'], 'mode3')
 
-    def test_medium_incompatible_metadata_prevents_generation(self):
+    def test_medium_is_requested_even_when_metadata_lists_only_another_effort(self):
         for script in PLLM:
             module, _, _ = self.workspace(script)
-            model = {'mode': 'mode5', 'provider': 'openrouter', 'model_id': 'fixture'}
-            with patch.object(module, 'request') as request, self.assertRaisesRegex(RuntimeError, 'Medium non pris en charge'):
-                module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['low']}})
-            request.assert_not_called()
+            model = {'mode': 'mode3', 'provider': 'opencodego', 'model_id': 'fixture',
+                     'is_free': True, 'api_protocol': 'chat_completions',
+                     'api_endpoint': 'https://opencode.ai/zen/go/v1/chat/completions'}
+            with patch.object(module, 'request', side_effect=http_error(400)) as request, \
+                 self.assertRaises(HTTPError):
+                module.benchmark(model, 'offline-fixture', 1024,
+                                 {'reasoning': {'supported_efforts': ['low']}})
+            self.assertEqual(request.call_args.args[2]['reasoning_effort'], 'medium')
 
 
 if __name__ == '__main__':

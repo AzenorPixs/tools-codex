@@ -124,7 +124,7 @@ n'ajoute ni procédure de packaging ni publication d'un paquet Python.
 Installez `tfl` avec `pllm` : PLLM lit le catalogue produit par TFL. Les deux
 plugins écrivent des rapports dans leur répertoire `data/`. TFL accepte
 `--output-dir` ; PLLM exige son propre répertoire inscriptible et un catalogue
-TFL accessible. Si le fichier courant PLLM manque, les six politiques sont
+TFL accessible. Si le fichier courant PLLM manque, les sept politiques sont
 initialisées automatiquement, sans reprendre de résultats historiques.
 Pour des plugins séparés, lancer depuis le skill PLLM :
 
@@ -134,37 +134,32 @@ python3 scripts/evaluate.py --tfl-catalog /chemin/vers/le/catalogue/tfl.json
 
 Cette option accepte le fichier produit par TFL, y compris avec `--output-dir`.
 Sans option, PLLM conserve le chemin voisin `../tfl/data/tfl.json`.
-Ce catalogue fournit les payants Go pour 1/2, les gratuits Go pour 3/4, et OpenRouter pour 5 ; 6 conserve DeepSeek direct.
+Ce catalogue fournit les payants Go pour 1/2, les gratuits Go pour 3/4, les payants OpenRouter pour 5, les gratuits OpenRouter pour 6 et DeepSeek direct pour 7.
 Les modes 1/2 épuisés deviennent rouges et invalides sans essai gratuit.
-Les modes 3/4 utilisent les comptes de 1/2 respectivement sans consulter de
-quota ou solde. Ils exigent prix nuls vérifiés, contexte ≥1M, réponse complète,
-TTFT <30 s et débit >20 tokens/s. Tous les gratuits PLLM 3/4 utilisent ces seuils.
-Les payants gardent leurs seuils <90 s et >15 tokens/s et leurs contrôles de
-ressources. Mode5 est exclusivement payant : crédit épuisé, invalide sans repli gratuit. Les références de trousseau
-restent celles des anciens comptes, sans nouveau secret ni migration de clé.
-Les historiques à quatre modes sont adaptés au schéma 2 (ancien 3→5, ancien
-4→6, nouveaux 3/4 initialisés), sans résultat courant ni sélection hérités.
-La mémoire suit ce déplacement sans apprentissage pour les nouveaux 3/4.
-Un ancien évaluateur ne lit pas le schéma 2 : sauvegarder ses données avant
-un retour de version. Aucun historique invalide n'est écrasé.
-Les payants 1/2/5 sont essayés par coût moyen TFL croissant (hors pointe Go,
-prix de base OpenRouter), avec ordre TFL stable à prix égal. Les gratuits 3/4
-sont essayés dans l'ordre TFL Go exclusivement. Retenir le premier
-succès aux tests actuels et ne pas tester les candidats suivants du mode.
+Les modes gratuits 3/4/6 ne consultent aucun quota ou solde ; ils exigent
+contexte ≥1M, Medium, réponse complète, TTFT <30 s et débit >20 tokens/s.
+Le mode5 exige un crédit OpenRouter positif, contexte ≥1M et coût moyen
+≤0,10 EUR/M ; aucun benchmark ni effort Medium n'est requis. Le mode7 conserve
+le contrôle DeepSeek et les seuils payants. Les références de trousseau restent
+historiques, sans création ni migration de clé.
+Les historiques des schémas 1/2 sont adaptés au schéma 3 : l'ancien mode5 est réinitialisé, DeepSeek passe au mode7, le mode6 gratuit est neuf et aucune sélection courante n'est héritée. Les succès OpenRouter antérieurs ne sont pas
+transférés au mode5 ; la mémoire DeepSeek est déplacée au mode7. Un ancien
+évaluateur ne lit pas le schéma3 : sauvegarder ses données avant retour.
+Aucun historique invalide n'est écrasé. Les payants Go 1/2 sont essayés par
+coût moyen croissant. Mode5 sélectionne le payant OpenRouter admissible le
+moins cher au taux BCE courant, sans génération. Les gratuits 3/4/6 sont
+essayés dans l'ordre TFL de leur section et arrêtent au premier succès benchmarké.
 Après un échec, essayer le suivant admissible avec ses propres contrôles ;
 une erreur bloquante d'authentification ou de ressources arrête le mode.
 Le contexte ≥1M est une capacité d'entrée vérifiée, sans requête d'un million
-de tokens. Les paliers et seuils actuels sont préservés ; Medium devient
-l'effort demandé et vérifié.
-L'invocation normale poursuit les politiques ; active s'arrête à la première
-politique valide. Les rangs forcés restent ciblés, sauf qu'un gratuit forcé en
-mode5 est incompatible avec sa nouvelle catégorie exclusivement payante.
-Les priorités entre politiques 1 à 6 restent inchangées. Tous les benchmarks
-demandent exclusivement Medium ; aucun repli vers un autre effort n'est autorisé. Les restrictions
+de tokens. Les seuils des benchmarks sont préservés ; Medium est exigé pour tous les modes mesurés, mais pas le mode5. L'invocation normale poursuit les sept politiques ; active s'arrête à la première valide. Les rangs forcés restent ciblés : les rangs 51–53 visent les payants OpenRouter, 61–63 les gratuits OpenRouter et 7 DeepSeek. Les priorités 1 à 7 sont fixes. Les restrictions
 fournisseur restent applicables aux gratuits ; les tests hors ligne ne prouvent pas l'accès réel.
 Les diagnostics HTTP 400/429 et le Retry-After disponible figurent dans les
 rapports PLLM sans corps d'erreur brut. Les refus HTTP 400/429 n'entraînent plus d'essais aux
 budgets supérieurs ; une limitation conserve ses contraintes fournisseur.
+Un alias Medium mappé par le fournisseur vers High reste invalide ; le
+diagnostic exact et la preuve d'exclusion restent dans le JSON. Le mode7
+recontrôle son registre DeepSeek avant toute génération.
 Les champs JSON de diagnostic restent conservés ; l'adaptation des historiques
 PLLM est automatique et ne nécessite aucun nouveau secret.
 Les tests hors ligne couvrent des emplacements isolés ; un test réel
@@ -198,8 +193,7 @@ n'est pas une qualification de génération. Les tests de compatibilité avec
 PLLM ne lancent ni quotas ni benchmarks ; aucune dépendance SDK n'est installée.
 TFL ne collecte ni ne teste plus OpenCode général. Le JSON ne publie que
 opencode_go et openrouter et le rapport affiche leurs deux tableaux, huit
-colonnes chacun, puis les essais gratuits. Contexte ≥1M et Medium restent
-obligatoires ; Go ≤0,50 USD/M, OpenRouter ≤0,20 EUR/M au taux BCE vérifié.
+colonnes chacun, puis les essais gratuits. Contexte ≥1M reste obligatoire ; Go ≤0,50 USD/M et OpenRouter ≤0,10 EUR/M au taux BCE vérifié. Medium est requis pour les candidats benchmarkés et gratuits, pas pour les payants OpenRouter du mode5.
 PLLM ignore les anciennes sections opencode pour tous les modes 1 à 4,
 y compris leurs rangs forcés. Les erreurs de sources indispensables restent bloquantes.
 
@@ -477,7 +471,7 @@ sans rattrapage. Codex doit être ouvert pour ce même utilisateur. Une lecture
 fraîche des quotas Codex précède chaque étape ; un restant nul ou un quota
 inconnu empêche son démarrage. Aucun quota Spark ou historique n'est utilisé
 comme remplacement. Si TFL échoue ou ne publie pas de catalogue frais, PLLM
-ne démarre pas. PLLM est exécuté sans `active`, avec les six modes habituels
+ne démarre pas. PLLM est exécuté sans `active`, avec les sept modes habituels
 et le catalogue TFL explicite. Les invocations manuelles restent inchangées.
 
 Contrôler l'activation réelle avec :
@@ -506,8 +500,7 @@ ni exécution observée à une échéance. Ces preuves restent distinctes.
 
 ## Admission stricte Medium
 
-Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
-avant test, sélection et affichage. Une liste supported_efforts contenant
+Tout candidat benchmarké doit publier une capacité Medium vérifiable avant test, sélection et affichage. Le mode5 payant OpenRouter n’exige pas Medium. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
 ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
@@ -527,7 +520,7 @@ puis les essais gratuits ayant une preuve Medium. Aucun modèle exclu
 pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
 Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
 https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
-le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
+le plafond OpenRouter est 0,10 EUR/M inclus avant arrondi. Le JSON conserve
 prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
 publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
 et à la frontière de génération, y compris pour les anciens catalogues et

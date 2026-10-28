@@ -9,12 +9,29 @@ from test_pllm_free_fallback import row
 
 
 class OpenRouterEurTests(unittest.TestCase):
+    def test_paid_and_free_without_medium_are_retained_for_their_distinct_policies(self):
+        for script in TFL:
+            module = load_script(script)
+            payload = {'data': [
+                {'id': 'paid-no-medium', 'name': 'Paid without Medium', 'context_length': 1_000_000,
+                 'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
+                 'architecture': {'output_modalities': ['text']}},
+                {'id': 'free-no-medium', 'name': 'Free without Medium', 'context_length': 1_000_000,
+                 'pricing': {'prompt': '0', 'completion': '0'},
+                 'architecture': {'output_modalities': ['text']}},
+            ]}
+            rows, excluded = module.build_openrouter_rows(payload, (), exchange_rates=FX)
+            self.assertEqual([row['id'] for row in rows], ['free-no-medium', 'paid-no-medium'])
+            self.assertEqual([row['reasoning'] for row in rows], ['medium', None])
+            self.assertTrue(all(row['reasoning_capabilities'] == {} for row in rows))
+            self.assertEqual(excluded, [])
+
     def test_non_unit_rate_and_exact_boundary_without_rounding(self):
         for script in (*TFL, *PLLM):
             engine = load_script(script).performance
-            self.assertEqual(engine.openrouter_eur_prices('0.5', '0.5', FX)['average_eur'], .2)
-            with self.assertRaisesRegex(RuntimeError, '0.20 €/M'):
-                engine.openrouter_eur_prices('0.5', '0.50000000000000001', FX)
+            self.assertEqual(engine.openrouter_eur_prices('0.25', '0.25', FX)['average_eur'], .1)
+            with self.assertRaisesRegex(RuntimeError, '0.10 €/M'):
+                engine.openrouter_eur_prices('0.25', '0.25000000000000001', FX)
             below = engine.openrouter_eur_prices('0.1', '0.2', FX)
             self.assertEqual(below['average_eur'], .06)
 
@@ -52,7 +69,7 @@ class OpenRouterEurTests(unittest.TestCase):
                         'reasoning': {'supported_efforts': ['medium']},
                         'pricing': {'prompt': price, 'completion': price}}
             rows, excluded = module.build_openrouter_rows({'data': [
-                raw('boundary', '0.0000002'), raw('over', '0.00000020000000000000001')]}, exchange_rates=fx)
+                    raw('boundary', '0.0000001'), raw('over', '0.00000010000000000000001')]}, exchange_rates=fx)
             self.assertEqual([r['id'] for r in rows], ['boundary'])
             self.assertEqual(excluded[0]['id'], 'over')
         for script in PLLM:
@@ -60,7 +77,7 @@ class OpenRouterEurTests(unittest.TestCase):
             candidate = row('over', 'openrouter')
             candidate.update(input_price=.2, output_price=.2,
                              base_pricing_usd_per_million_tokens={'input': '0.20000000000000001', 'output': '0.20000000000000001'})
-            with self.assertRaisesRegex(RuntimeError, '0.20 €/M'):
+            with self.assertRaisesRegex(RuntimeError, '0.10 €/M'):
                 module.catalog_candidate(candidate, 'openrouter', 1, 'date', exchange_rates=fx)
 
     def test_fetch_bce_requires_unambiguous_usd_and_dates(self):
@@ -82,12 +99,15 @@ class OpenRouterEurTests(unittest.TestCase):
             candidate = row('paid', 'openrouter')
             candidate.update(input_price=.2, output_price=.2, average_eur=0)
             fx = {**FX, 'rates': {'USD': '0.5'}}
-            with self.assertRaisesRegex(RuntimeError, '0.20 €/M'):
+            with self.assertRaisesRegex(RuntimeError, '0.10 €/M'):
                 module.catalog_candidate(candidate, 'openrouter', 1, 'old', exchange_rates=fx)
             with patch.object(module, 'load_tfl_catalog', return_value={'openrouter': {'models': [candidate]}}), \
                     patch.object(module.performance, 'fetch_eur_rates', return_value=fx), \
+                    patch.object(module, 'get', return_value={'data': [{'id': 'over', 'context_length': 1_000_000,
+                        'pricing': {'prompt': '0.0000002', 'completion': '0.0000002'}}]}), \
                     self.assertRaisesRegex(RuntimeError, 'forcé non admissible'):
-                module.candidates_for({'mode': 'mode5', 'candidate_exclusions': []}, 'paid', None, {'rank': 1})
+                module.candidates_for({'mode': 'mode5', 'candidate_exclusions': []}, 'paid', None,
+                                      {'rank': 1}, key='offline')
 
     def test_tfl_rate_failure_preserves_reports(self):
         import test_tfl_opencode_catalog as fixtures

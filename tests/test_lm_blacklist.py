@@ -48,9 +48,17 @@ class LmBlacklistTests(unittest.TestCase):
                                             row('mimo-v2.5-free', free=True), row('allowed-free', free=True)]},
                 'opencode': {'models': [row('vendor/mimo-v2.5:free', 'opencode', True),
                                         row('general-free', 'opencode', True)]},
-                'openrouter': {'models': [row('xiaomi/mimo-v2.5', 'openrouter'), row('router-allowed', 'openrouter')]}}
+                'openrouter': {'models': [row('xiaomi/mimo-v2.5', 'openrouter'),
+                                          row('router-allowed', 'openrouter'),
+                                          row('router-free', 'openrouter', True)]}}
         path.write_text(json.dumps(data), encoding='utf-8')
         return path
+
+    def openrouter_live(self, rows):
+        return {'data': [{'id': item['id'], 'name': item['id'], 'context_length': 1_000_000,
+                          'pricing': {'prompt': str(item['input_price'] / 1_000_000),
+                                      'completion': str(item['output_price'] / 1_000_000)}}
+                         for item in rows]}
 
     def test_missing_policy_applies_default_without_writing(self):
         for helper in HELPERS:
@@ -334,10 +342,16 @@ class LmBlacklistTests(unittest.TestCase):
         path = self.catalog()
         for script in PLLM:
             module = load_script(script)
-            for priority in range(1, 6):
+            for priority in range(1, 7):
                 model = module.initial_model(priority, module.POLICY_PROVIDERS[priority-1])
                 model['candidate_exclusions'] = []
-                candidates = module.candidates_for(model, 'free' if priority in (3,4) else 'paid', path)
+                category = 'free' if priority in (3, 4, 6) else 'paid'
+                with patch.object(module.performance, 'fetch_eur_rates', return_value=FX):
+                    if priority == 5:
+                        with patch.object(module, 'get', return_value=self.openrouter_live(json.loads(path.read_text())['openrouter']['models'])):
+                            candidates = module.candidates_for(model, category, path, key='offline')
+                    else:
+                        candidates = module.candidates_for(model, category, path)
                 self.assertTrue(candidates)
                 self.assertTrue(all(not self.m.is_blocked(item['model_id']) for item in candidates))
                 self.assertTrue(model['candidate_exclusions'])
@@ -346,28 +360,34 @@ class LmBlacklistTests(unittest.TestCase):
         path = self.catalog()
         for script in PLLM:
             module = load_script(script)
-            for priority in range(1, 6):
+            for priority in range(1, 7):
                 model = module.initial_model(priority, module.POLICY_PROVIDERS[priority-1])
                 model['candidate_exclusions'] = []
-                with self.assertRaises(RuntimeError):
-                    module.candidates_for(model, 'free' if priority in (3,4) else 'paid', path,
-                                          forced={'mode':model['mode'],'rank':1})
+                category = 'free' if priority in (3, 4, 6) else 'paid'
+                with patch.object(module.performance, 'fetch_eur_rates', return_value=FX):
+                    if priority == 5:
+                        with patch.object(module, 'get', return_value=self.openrouter_live(json.loads(path.read_text())['openrouter']['models'])):
+                            with self.assertRaises(RuntimeError):
+                                module.candidates_for(model, category, path, forced={'mode':model['mode'],'rank':1}, key='offline')
+                    elif priority != 6:
+                        with self.assertRaises(RuntimeError):
+                            module.candidates_for(model, category, path, forced={'mode':model['mode'],'rank':1})
             self.assertEqual(module.tfl_opencode_model_at(2,path)[0]['id'], 'allowed')
             with self.assertRaises(RuntimeError):
                 module.tfl_opencode_model_at(1,path)
             self.assertEqual(module.next_tfl_opencode_model('allowed',path)['id'], 'allowed-free')
 
-    def test_mode6_and_generation_guards_cannot_use_blacklisted_memory(self):
+    def test_mode7_and_generation_guards_cannot_use_blacklisted_memory(self):
         self.m.update_models('ADD', 'deepseek-v4-flash')
         for script in PLLM:
             module = load_script(script)
-            model = module.initial_model(6,'deepseek')
+            model = module.initial_model(7,'deepseek')
             with self.assertRaises(RuntimeError):
                 module.candidates_for(model,'paid',None)
             model.update(model_id='mimo-v2.5')
             with patch.object(module,'benchmark') as benchmark, patch.object(module,'quota') as quota:
                 with self.assertRaises(RuntimeError):
-                    module.evaluate_candidate(model,'offline','paid',{'policies':{'mode6':{'last_successful_max_tokens':8192}}},None)
+                    module.evaluate_candidate(model,'offline','paid',{'policies':{'mode7':{'last_successful_max_tokens':8192}}},None)
             benchmark.assert_not_called()
             quota.assert_not_called()
             with patch.object(module.performance,'run_benchmark') as raw:
@@ -388,7 +408,9 @@ class LmBlacklistTests(unittest.TestCase):
             module = load_script(script)
             model = module.initial_model(5, 'openrouter')
             model['candidate_exclusions'] = []
-            candidates = module.candidates_for(model, 'paid', path)
+            with patch.object(module.performance, 'fetch_eur_rates', return_value=FX), \
+                    patch.object(module, 'get', return_value=self.openrouter_live(content['openrouter']['models'])):
+                candidates = module.candidates_for(model, 'paid', path, key='offline')
             self.assertEqual([item['model_id'] for item in candidates], ['~unbiased/pareto-latest'])
             self.assertEqual(len(model['candidate_exclusions']), 3)
             for identifier in blocked:
@@ -446,7 +468,7 @@ class LmBlacklistTests(unittest.TestCase):
         self.assertIn('lm',{item['name'] for item in plugins})
         for item in plugins:
             manifest = json.loads((ROOT/item['source']['path']/'.codex-plugin/plugin.json').read_text())
-            self.assertEqual(manifest['version'],'0.7.16')
+            self.assertEqual(manifest['version'],'0.7.20')
 
 
 if __name__ == '__main__':

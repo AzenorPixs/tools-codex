@@ -289,17 +289,19 @@ class GeneralOpenCodeTests(unittest.TestCase):
                             for section, fetch_name in fetches.items():
                                 getattr(module, fetch_name).assert_called_once()
                                 current = catalog[section]
+                                section_empty = section in empty_sections and cause == 'empty_api'
                                 self.assertEqual(current['selection_status'],
-                                                 'empty' if section in empty_sections else 'available')
-                                self.assertEqual(bool(current['models']), section not in empty_sections)
-                                expected_excluded = int(section in empty_sections and cause == 'missing_effort')
+                                                 'empty' if section_empty else 'available')
+                                self.assertEqual(bool(current['models']), not section_empty)
+                                expected_excluded = 0
                                 self.assertEqual(current['excluded_model_count'], expected_excluded)
                                 self.assertEqual(sum(current['exclusion_summary'].values()), expected_excluded)
                                 if expected_excluded:
                                     self.assertEqual(current['excluded_models'][0]['exclusion_type'], 'reasoning_effort')
                                     self.assertNotIn(current['excluded_models'][0]['id'], markdown)
                             self.assertEqual(markdown.count('Aucun modèle admissible.'),
-                                             sum(section != 'opencode' for section in empty_sections))
+                                             sum(section != 'opencode' for section in empty_sections)
+                                             if cause == 'empty_api' else 0)
                             self.assertEqual(len([line for line in markdown.splitlines() if line.startswith('| Rang |')]), 2)
                             self.assertLess(markdown.index('OpenCode Go'), markdown.index('OpenRouter'))
                             self.assertNotIn('## Rapport des LMM du catalogue général', markdown)
@@ -331,13 +333,21 @@ class GeneralOpenCodeTests(unittest.TestCase):
                         catalog = consumer.load_tfl_catalog(catalog_path)
                         for section in empty_sections:
                             self.assertEqual(catalog[section]['models'], [])
-                        for mode in ('mode1', 'mode2', 'mode3', 'mode4', 'mode5'):
-                            free = mode in ('mode3', 'mode4')
-                            section = 'openrouter' if mode == 'mode5' else 'opencode_go'
+                        openrouter_rows = catalog['openrouter']['models']
+                        live_openrouter = {'data': [
+                            {'id': row['id'], 'name': row['name'], 'context_length': row['context_length'],
+                             'pricing': {'prompt': str(row['input_price'] / 1_000_000),
+                                         'completion': str(row['output_price'] / 1_000_000)}}
+                            for row in openrouter_rows]}
+                        for mode in ('mode1', 'mode2', 'mode3', 'mode4', 'mode5', 'mode6'):
+                            free = mode in ('mode3', 'mode4', 'mode6')
+                            section = 'openrouter' if mode in ('mode5', 'mode6') else 'opencode_go'
                             with patch.object(consumer.performance, 'fetch_eur_rates',
-                                              return_value=catalog['openrouter']['cost_exchange_rates']):
+                                              return_value=catalog['openrouter']['cost_exchange_rates']), \
+                                    patch.object(consumer, 'get', return_value=live_openrouter):
                                 selected = consumer.candidates_for({'mode': mode, 'candidate_exclusions': []},
-                                                                   'free' if free else 'paid', catalog_path)
+                                                                   'free' if free else 'paid', catalog_path,
+                                                                   key='offline' if mode == 'mode5' else None)
                             expected = [] if free or section in empty_sections else [
                                 'router-only' if section == 'openrouter' else 'go-only']
                             self.assertEqual([model['model_id'] for model in selected], expected)

@@ -33,8 +33,12 @@ class FreePerformanceTests(unittest.TestCase):
 
     def successful_benchmark(self, model, key, budget, metadata, session_id=None):
         self.assertEqual(model['reasoning'], 'medium')
+        acceptance = {'status': 'accepted', 'parameter': 'medium',
+                      'verified_by': 'completed_api_response'}
         model.update(ttft_seconds=1, tokens_per_second=40,
-                     performance_test={'status': 'completed', 'max_tokens': budget})
+                     reasoning_acceptance=acceptance,
+                     performance_test={'status': 'completed', 'max_tokens': budget,
+                                        'reasoning_acceptance': acceptance})
         return True
 
     def test_four_embedded_engines_are_identical(self):
@@ -96,18 +100,25 @@ class FreePerformanceTests(unittest.TestCase):
             self.assertEqual(len(retained),1)
             self.assertEqual(excluded,[])
 
-    def test_absent_key_or_high_only_support_excludes_without_generation(self):
+    def test_absent_key_blocks_but_high_only_metadata_can_be_proved_by_medium_response(self):
         for script in TFL:
             module=load_script(script)
-            for key,efforts in (('', ['medium']),('offline-key',['high', 'xhigh'])):
-                row=candidate('free','openrouter')
-                row['reasoning_capabilities']={'supported_efforts':efforts}
-                excluded=[]
-                with patch.object(module.performance,'benchmark') as benchmark:
-                    retained=module.qualify_free_models([row],excluded,'openrouter',key,[])
-                self.assertEqual(retained,[])
-                benchmark.assert_not_called()
-                self.assertTrue(excluded[0]['reason'])
+            row=candidate('free','openrouter')
+            excluded=[]
+            with patch.object(module.performance,'benchmark') as benchmark:
+                retained=module.qualify_free_models([row],excluded,'openrouter','',[])
+            self.assertEqual(retained,[])
+            benchmark.assert_not_called()
+            self.assertTrue(excluded[0]['reason'])
+
+            row=candidate('free','openrouter')
+            row['reasoning_capabilities']={'supported_efforts':['high','xhigh']}
+            excluded=[]; audit=[]
+            with patch.object(module.performance,'benchmark',side_effect=self.successful_benchmark) as benchmark:
+                retained=module.qualify_free_models([row],excluded,'openrouter','offline-key',audit)
+            self.assertEqual([item['id'] for item in retained],['free'])
+            benchmark.assert_called_once()
+            self.assertEqual(audit[0]['reasoning_acceptance']['status'],'accepted')
 
     def test_medium_metadata_and_transport_contracts(self):
         for script in (*PLLM,*TFL):
@@ -119,15 +130,17 @@ class FreePerformanceTests(unittest.TestCase):
                 options=engine.reasoning(model,1024,{'reasoning':{'supported_efforts':['medium']}})
                 self.assertEqual(model['reasoning'],'medium')
                 self.assertEqual(options[field],'medium' if field=='reasoning_effort' else {'effort':'medium'})
-            with self.assertRaisesRegex(RuntimeError, 'Medium'):
-                engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supports_max_tokens':True}})
+            self.assertEqual(engine.reasoning({'provider':'openrouter'},1024,
+                                              {'reasoning':{'supports_max_tokens':True}}),
+                             {'reasoning': {'effort': 'medium'}})
             self.assertEqual(engine.reasoning({'provider':'deepseek'},1024,{'reasoning': {'supported_efforts': ['medium']}}),
                              {'reasoning_effort':'medium','thinking':{'type':'enabled'}})
             for unsupported in (['low'], ['high'], ['xhigh'], ['high', 'xhigh']):
-                with self.assertRaisesRegex(RuntimeError,'Medium'):
-                    engine.reasoning({'provider':'openrouter'},1024,{'reasoning':{'supported_efforts':unsupported}})
+                self.assertEqual(engine.reasoning(
+                    {'provider':'openrouter'},1024,{'reasoning':{'supported_efforts':unsupported}}),
+                    {'reasoning': {'effort': 'medium'}})
 
-    def test_pllm_free_modes_use_strict_limits_router_paid_keeps_original_limits(self):
+    def test_pllm_free_modes_use_strict_limits_router_paid_skips_benchmark(self):
         for script in PLLM:
             module,path,_=self.workspace(script)
             def behavior(model,budget):
@@ -138,8 +151,9 @@ class FreePerformanceTests(unittest.TestCase):
             self.assertEqual(free['models'][2]['performance_criteria'],{'ttft_lt_seconds':30,'tokens_per_second_gt':20})
             paid,_,_=self.run_evaluation(module,path,benchmark_behavior=behavior,forced={'mode':'mode5'})
             self.assertEqual(paid['models'][4]['state'],'Valide')
-            self.assertEqual(paid['models'][4]['reasoning'],'medium')
-            self.assertEqual(paid['models'][4]['performance_criteria'],{'ttft_lt_seconds':90,'tokens_per_second_gt':15})
+            self.assertIsNone(paid['models'][4]['reasoning'])
+            self.assertIsNone(paid['models'][4]['performance_criteria'])
+            self.assertEqual(paid['models'][4]['performance_test']['status'],'not_required')
 
     def test_pllm_medium_rejection_does_not_retry_another_effort_or_tier(self):
         for script in PLLM:
@@ -262,8 +276,10 @@ class FreePerformanceTests(unittest.TestCase):
         for script in (*PLLM,*TFL):
             engine=load_script(script).performance
             for options in ({'supported_efforts':'high'}, {'supported_efforts':[1]}, {'supports_max_tokens':'yes'}):
-                with self.assertRaisesRegex(RuntimeError,'Métadonnées de raisonnement invalides'):
-                    engine.reasoning({'provider':'opencodego'},1024,{'reasoning':options})
+                model={'provider':'opencodego','api_protocol':'chat_completions'}
+                self.assertFalse(engine.effort_allowed({'reasoning':options}))
+                self.assertEqual(engine.reasoning(model,1024,{'reasoning':options}),
+                                 {'reasoning_effort':'medium'})
 
     def test_old_effort_memory_cannot_start_medium_benchmark_at_an_old_tier(self):
         for script in PLLM:

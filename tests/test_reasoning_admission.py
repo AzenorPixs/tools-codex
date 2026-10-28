@@ -37,7 +37,7 @@ class ReasoningAdmissionTests(unittest.TestCase):
                         self.assertEqual(engine.reasoning(model, 1024, metadata), parameters)
                         self.assertEqual(model['reasoning'], 'medium')
 
-    def test_high_or_xhigh_only_and_invalid_metadata_are_excluded(self):
+    def test_effort_metadata_does_not_prevent_testing_medium_parameter(self):
         invalid = (None, True, {}, [], [{'type': 'toggle'}], [{'type': 'budget_tokens'}],
                    [{'type': 'effort'}], [{'type': 'effort', 'values': None}],
                    [{'type': 'effort', 'values': 'medium'}],
@@ -54,6 +54,9 @@ class ReasoningAdmissionTests(unittest.TestCase):
                 with self.subTest(script=script, options=options):
                     metadata = {'reasoning': True, 'reasoning_options': options}
                     self.assertFalse(engine.effort_allowed(metadata))
+                    model = {'provider': 'opencodego', 'api_protocol': 'chat_completions'}
+                    self.assertEqual(engine.reasoning(model, 1024, metadata),
+                                     {'reasoning_effort': 'medium'})
             for levels in (['high'], ['xhigh'], ['high', 'xhigh'], ['low'], []):
                 self.assertFalse(engine.effort_allowed(
                     {'reasoning_capabilities': {'supported_efforts': levels}}))
@@ -73,10 +76,11 @@ class ReasoningAdmissionTests(unittest.TestCase):
                 with self.subTest(script=script, options=options):
                     metadata = {'reasoning_capabilities': options}
                     self.assertFalse(engine.effort_allowed(metadata))
-                    with self.assertRaises(RuntimeError):
-                        engine.reasoning({'provider': 'opencodego'}, 1024, metadata)
+                    self.assertEqual(engine.reasoning(
+                        {'provider': 'opencodego', 'api_protocol': 'responses'}, 1024, metadata),
+                        {'reasoning': {'effort': 'medium'}})
 
-    def test_go_builder_reads_models_dev_medium_options_before_qualification(self):
+    def test_go_builder_preserves_models_dev_effort_capabilities_for_later_testing(self):
         for script in TFL:
             module = load_script(script)
             payload, metadata, prices = go_fixtures.GoMetadataTests().fixture(module)
@@ -85,28 +89,31 @@ class ReasoningAdmissionTests(unittest.TestCase):
                 {'type': 'effort', 'values': ['low', 'medium', 'high']}])
             retained, excluded = module.build_rows(payload, metadata, prices)
             self.assertEqual(excluded, [])
-            self.assertEqual(retained[0]['reasoning'], 'medium')
+            self.assertIsNone(retained[0]['reasoning'])
             self.assertEqual(retained[0]['reasoning_capabilities']['supported_efforts'], ['low', 'medium', 'high'])
 
             metadata['models']['new-model']['reasoning_options'] = [
                 {'type': 'effort', 'values': ['high', 'xhigh']}]
             retained, excluded = module.build_rows(payload, metadata, prices)
-            self.assertEqual(retained, [])
-            self.assertTrue(excluded)
+            self.assertEqual(excluded, [])
+            self.assertEqual(retained[0]['reasoning_capabilities']['supported_efforts'], ['high', 'xhigh'])
 
-    def test_go_builder_requires_medium_proof_for_free_and_paid(self):
+    def test_go_builder_retains_unknown_effort_for_later_medium_request(self):
         for script in TFL:
             module = load_script(script)
             payload, metadata, prices = go_fixtures.GoMetadataTests().fixture(module)
             metadata['models']['new-model'].pop('reasoning', None)
             payload['data'][0].pop('reasoning_capabilities', None)
-            self.assertEqual(module.build_rows(payload, metadata, prices)[0], [])
+            retained, excluded = module.build_rows(payload, metadata, prices)
+            self.assertEqual(excluded, [])
+            self.assertEqual(retained[0]['reasoning_capabilities'], {})
+            self.assertIsNone(retained[0]['reasoning'])
             metadata['models']['new-model']['effort'] = {'supported_levels': ['medium']}
             retained, excluded = module.build_rows(payload, metadata, prices)
             self.assertEqual(excluded, [])
-            self.assertEqual(retained[0]['reasoning'], 'medium')
+            self.assertEqual(retained[0]['reasoning_capabilities']['supported_efforts'], ['medium'])
 
-    def test_paid_and_free_ineligible_rows_never_reach_benchmark_or_tables(self):
+    def test_high_only_effort_metadata_is_proved_by_a_medium_benchmark(self):
         for script in TFL:
             module = load_script(script)
             for section in ('opencode_go', 'opencode', 'openrouter'):
@@ -114,16 +121,23 @@ class ReasoningAdmissionTests(unittest.TestCase):
                 for item in rows:
                     item['reasoning_capabilities'] = {'supported_efforts': ['high', 'xhigh']}
                 excluded, audit = [], []
-                with patch.object(module.performance, 'benchmark', side_effect=AssertionError('Génération interdite')):
+                def successful_medium(model, key, budget, metadata, session_id=None):
+                    acceptance = {'status': 'accepted', 'parameter': 'medium',
+                                  'verified_by': 'completed_api_response'}
+                    model.update(ttft_seconds=1, tokens_per_second=40,
+                                 reasoning_acceptance=acceptance,
+                                 performance_test={'status': 'completed',
+                                                   'reasoning_acceptance': acceptance})
+                    return True
+                with patch.object(module.performance, 'benchmark', side_effect=successful_medium) as benchmark:
                     kept = module.qualify_free_models(rows, excluded, section, 'offline-key', audit)
-                self.assertEqual(kept, [])
-                self.assertEqual(len(excluded), 2)
-                self.assertEqual(audit, [])
-                report = (module.format_openrouter_table(rows, 'date') if section == 'openrouter'
-                          else module.format_opencode_table(rows, 'mode1', 'date'))
-                self.assertNotIn('hidden-', report)
-                self.assertNotIn('hidden-', module.format_free_performance([
-                    {'model_id': 'hidden-free', 'reasoning_capabilities': {'supported_efforts': ['high']}}]))
+                self.assertEqual([item['id'] for item in kept], ['hidden-paid', 'hidden-free'])
+                self.assertEqual(excluded, [])
+                self.assertEqual(len(audit), 1)
+                self.assertEqual(audit[0]['reasoning_acceptance']['status'], 'accepted')
+                benchmark.assert_called_once()
+                self.assertEqual([item['id'] for item in rows], ['hidden-paid', 'hidden-free'])
+                self.assertIn('hidden-free', module.format_free_performance(audit))
 
     def test_pllm_candidate_history_and_forcing_cannot_bypass_medium_proof(self):
         for script in PLLM:
@@ -167,13 +181,13 @@ class ReasoningAdmissionTests(unittest.TestCase):
                 require_recorded=True))
             hidden = copy.deepcopy(eligible)
             hidden.update(id='hidden', reasoning_capabilities={'supported_efforts': ['high', 'xhigh']})
-            with self.assertRaisesRegex(RuntimeError, 'Medium'):
-                module.catalog_candidate(hidden, 'opencode_go', 1, 'date')
+            hidden_candidate = module.catalog_candidate(hidden, 'opencode_go', 1, 'date')
+            self.assertEqual(hidden_candidate['reasoning'], 'medium')
             with patch.object(module, 'load_tfl_catalog', return_value={'opencode_go': {'models': [hidden, eligible]}}):
                 model = {'mode': 'mode1', 'candidate_exclusions': []}
-                with self.assertRaisesRegex(RuntimeError, 'forcé non admissible'):
-                    module.candidates_for(model, 'paid', None, forced={'rank': 1})
-                self.assertEqual(module.candidates_for(model, 'paid', None)[0]['model_id'], 'eligible')
+                forced = module.candidates_for(model, 'paid', None, forced={'rank': 1})
+                self.assertEqual(forced[0]['model_id'], 'hidden')
+                self.assertEqual(module.candidates_for(model, 'paid', None)[0]['model_id'], 'hidden')
             historical = {**module.initial_model(1, 'opencodego'), 'model_id': 'hidden',
                           'model': 'hidden', 'reasoning': 'high', 'requested_reasoning': 'high',
                           'reasoning_capabilities': {'supported_efforts': ['medium', 'high']},
@@ -194,8 +208,14 @@ class ReasoningAdmissionTests(unittest.TestCase):
     def test_deepseek_direct_requires_medium_proof(self):
         for script in PLLM:
             module = load_script(script)
-            with self.assertRaisesRegex(RuntimeError, 'Medium'):
-                module.candidates_for({'mode': 'mode6'}, 'paid', None)
+            unsupported = {'provider': 'deepseek', 'model_id': 'deepseek-v4-flash',
+                           'field': 'reasoning', 'protocol': 'chat_completions',
+                           'status': 'unsupported', 'conclusion': 'DeepSeek mappe medium à high.'}
+            with patch.object(module.evidence_module.EvidenceResolver, 'resolve',
+                              return_value=unsupported):
+                candidate = module.candidates_for({'mode': 'mode7'}, 'paid', None)[0]
+            self.assertEqual(candidate['model_id'], 'deepseek-v4-flash')
+            self.assertEqual(candidate['model_investigations'][0]['status'], 'unsupported')
 
 
 if __name__ == '__main__':

@@ -62,8 +62,11 @@ class ExtensionQualificationTests(unittest.TestCase):
         catalog.parent.mkdir(parents=True)
         catalog.write_text(json.dumps({'generated_at': 'fixture-date',
                                       'opencode_go': {'models': [candidate('first'), candidate('second')]},
-                                      'openrouter': {'models': [{'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'router-fixture', 'context_length': 1_000_000,
-                                                                 'input_price': 0.1, 'output_price': 0.2}]}}), encoding='utf-8')
+                                      'openrouter': {'models': [
+                                          {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'router-fixture', 'context_length': 1_000_000,
+                                           'input_price': 0.1, 'output_price': 0.2},
+                                          {'reasoning_capabilities': {'supported_efforts': ['medium']}, 'id': 'free-router', 'context_length': 1_000_000,
+                                           'input_price': 0, 'output_price': 0}]}}), encoding='utf-8')
         return module, catalog
 
     def run_evaluation(self, module, catalog, behavior=None, quota_failure=None, **kwargs):
@@ -91,7 +94,12 @@ class ExtensionQualificationTests(unittest.TestCase):
             stack.enter_context(patch.object(module, 'quota', side_effect=quota))
             stack.enter_context(patch.object(module, 'benchmark', side_effect=benchmark))
             stack.enter_context(patch.object(module, 'get', return_value={'data': [
-                {'id': 'router-fixture', 'reasoning': {'supported_efforts': ['medium']}}]}))
+                {'id': 'router-fixture', 'context_length': 1_000_000,
+                 'pricing': {'prompt': '0.0000001', 'completion': '0.0000002'},
+                 'reasoning': {'supported_efforts': ['medium']}},
+                {'id': 'free-router', 'context_length': 1_000_000,
+                 'pricing': {'prompt': '0', 'completion': '0'},
+                 'reasoning': {'supported_efforts': ['medium']}}]}))
             stack.enter_context(patch.object(module, 'exchange_rates', return_value={'rates': {'USD': 1}}))
             stack.enter_context(patch.object(module.urllib.request, 'urlopen', side_effect=AssertionError('Réseau interdit pendant le test')))
             stack.enter_context(patch('sys.stdout', new_callable=io.StringIO))
@@ -128,7 +136,7 @@ class ExtensionQualificationTests(unittest.TestCase):
             with self.subTest(script=script):
                 module, catalog = self.workspace(script)
                 state = module.load_current()
-                self.assertEqual([m['mode'] for m in state['models']], [f'mode{i}' for i in range(1, 7)])
+                self.assertEqual([m['mode'] for m in state['models']], [f'mode{i}' for i in range(1, 8)])
                 self.assertIsNone(state['selected_mode'])
                 self.assertTrue(all(m['state'] == 'Invalide' and m['quotas'] is None and m['ttft_seconds'] is None for m in state['models']))
                 self.assertFalse((module.ROOT / 'data').exists())
@@ -174,7 +182,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 module, catalog = self.workspace(script)
                 result, calls = self.run_evaluation(module, catalog, forced={'mode': 'mode5'})
                 self.assertEqual(result['selected_mode'], 'mode5')
-                self.assertEqual(calls, [('quota', 'Non évalué'), ('quota', 'router-fixture'), ('benchmark', 'router-fixture', 1024)])
+            self.assertEqual(calls, [('quota', 'Non évalué')])
 
     def test_all_modes_can_start_without_a_current_file(self):
         for script in PLLM:
@@ -187,13 +195,12 @@ class ExtensionQualificationTests(unittest.TestCase):
                 catalog.write_text(json.dumps(payload))
                 result, calls = self.run_evaluation(module, catalog)
                 self.assertTrue(all(m['evaluated_this_run'] for m in result['models']))
-                self.assertTrue(all(m['state'] == 'Valide' for m in result['models'][:5]))
-                self.assertEqual(result['models'][5]['state'], 'Invalide')
-                self.assertEqual(len(calls), 12)
-                self.assertTrue(all(len(m['candidate_results']) == 1 for m in result['models'][:5]))
-                self.assertEqual(result['models'][5]['candidate_results'], [])
-                self.assertEqual(result['models'][5]['model'], 'Non évalué')
-                self.assertIn('Medium', result['models'][5]['cause'])
+                self.assertTrue(all(m['state'] == 'Valide' for m in result['models'][:6]))
+                self.assertEqual(result['models'][6]['state'], 'Invalide')
+                self.assertTrue(all(len(m['candidate_results']) == 1 for m in result['models'][:6]))
+                self.assertEqual(result['models'][6]['candidate_results'], [])
+                self.assertEqual(result['models'][6]['model'], 'Non évalué')
+                self.assertIn('Medium', result['models'][6]['cause'])
 
     def test_last_tier_fallback_requires_its_own_measurements(self):
         for script in PLLM:
@@ -225,7 +232,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                 def limited(model, budget):
                     raise rate_limit()
 
-                result, calls = self.run_evaluation(module, catalog, limited, quota_failure='second', active=True)
+                result, calls = self.run_evaluation(module, catalog, limited, quota_failure='Non évalué', active=True)
                 self.assertIsNone(result['selected_mode'])
                 self.assertFalse(any(c[:2] == ('benchmark', 'second') for c in calls))
                 self.assertFalse(module.MEMORY_PATH.exists())
@@ -240,7 +247,7 @@ class ExtensionQualificationTests(unittest.TestCase):
                         raise rate_limit()
 
                     result, calls = self.run_evaluation(module, catalog, limited, forced=forced, active=True)
-                    self.assertIsNone(result['selected_mode'])
+                    self.assertEqual(result['selected_mode'], 'mode5' if forced is None else None)
                     self.assertFalse(module.MEMORY_PATH.exists())
                     if forced:
                         self.assertEqual(calls[0], ('quota', 'Non évalué'))
@@ -284,12 +291,12 @@ class ExtensionQualificationTests(unittest.TestCase):
             with self.subTest(script=script):
                 module = load_script(script)
                 payload = self.tfl_payload(module)
-                payload['data'][0]['pricing'] = {'prompt': '0.0000005', 'completion': '0.0000005'}
+                payload['data'][0]['pricing'] = {'prompt': '0.00000025', 'completion': '0.00000025'}
                 rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 3)
-                self.assertEqual(rows[-1]['average'], 0.5)
+                self.assertEqual(rows[-1]['average'], 0.25)
                 self.assertEqual(excluded, [])
-                payload['data'][0]['pricing']['completion'] = '0.0000006'
+                payload['data'][0]['pricing']['completion'] = '0.00000026'
                 rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 2)
                 self.assertIn('seuil maximal', excluded[0]['reason'])

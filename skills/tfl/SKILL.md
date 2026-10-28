@@ -142,7 +142,9 @@ doit pas être remplacée silencieusement par une autre.
   uniquement la modalité de sortie. Les sorties non textuelles audio, vidéo,
   speech ou sound sont exclues.
 - Le contexte doit être au moins de 1M et le coût moyen compris entre zéro et
-  0.20 €/M inclus après conversion BCE vérifiée. Un gratuit vérifié reste admissible.
+  0.10 €/M inclus après conversion BCE vérifiée. Un gratuit vérifié reste admissible.
+- Les payants sont conservés avec contexte/prix/modalités admissibles sans
+  exiger Medium ; les gratuits doivent publier Medium et réussir le benchmark.
 - La liste noire partagée LM s'applique sans liste propre à OpenRouter.
 - Les modalités d’entrée/sortie, capacités (`tools`, `reasoning`, `JSON`),
   paramètres API et motifs d’exclusion restent dans la section OpenRouter du
@@ -184,7 +186,7 @@ onéreux`. Il restitue la date de récupération, les filtres appliqués,
 les chemins des fichiers et les exclusions dans le JSON.
 
 TFL mesure désormais la latence et le débit des seuls gratuits structurellement
-admissibles. Les payants restent un catalogue tarifaire sans benchmark.
+admissibles. Les payants restent un catalogue tarifaire sans benchmark ni filtre Medium.
 TFL ne mesure pas la qualité fonctionnelle du code généré. Les tarifs sont
 des références fournisseur susceptibles d’évoluer. Le catalogue TFL est la
 source à utiliser par `/PLLM` pour son modèle OpenRouter économique, via
@@ -201,10 +203,9 @@ candidat gratuit avec scripts/performance.py, moteur local embarqué identique
 utilise la réponse seule. Aucune mesure commerciale ou historique ne valide
 la collecte courante.
 
-Tous les tests demandent exclusivement Medium, sans repli vers un autre effort. Chat Completions
+Tous les tests gratuits demandent exclusivement Medium, sans repli vers un autre effort. Chat Completions
 utilise reasoning_effort, Responses reasoning.effort, Messages thinking
-adaptive et output_config.effort. OpenRouter exige une déclaration vérifiable
-de Medium ; un budget seul est exclu. Un refus 400 propre à l'effort, comme
+adaptive et output_config.effort. Une capacité Medium publiée peut établir son acceptation ; sinon, une réponse API complète à la requête Medium la prouve, même si le fournisseur convertit ou ignore l'effort en interne. Des métadonnées absentes ou différentes ne bloquent pas seules l'essai. Les payants OpenRouter ne demandent pas cette preuve. Un refus 400 propre à l'effort, comme
 401/403/429, arrête le candidat. Les paliers sont 1024, 2048, 4096, 8192, 120 s par requête,
 arrêt au premier succès. Le niveau effectif et les paramètres sont tracés.
 
@@ -279,49 +280,52 @@ rapport manuel valide empêche encore le lancement planifié de PLLM ; aucune
 section générale opencode n’est exigée.
 
 
-## Admission stricte Medium
+## Admission stricte Medium pour les candidats benchmarkés
 
-Tout modèle gratuit ou payant doit publier une capacité Medium vérifiable
+Tout candidat gratuit ou Go payant doit publier une capacité Medium vérifiable
 avant test, sélection et affichage. Une liste supported_efforts contenant
 medium ou un null explicitement publié (tous les efforts) est admissible. Une
 clé absente, une valeur invalide, un booléen reasoning, une liste sans medium
 ou un budget seul ne suffit pas. Aucun autre effort n'est autorisé.
 Les exclus restent dans les audits JSON, sans apparaître dans les tableaux.
 Les anciens catalogues, historiques et rangs forcés ne contournent pas ce
-filtre ; DeepSeek direct exige aussi une preuve. Une section TFL vide est
+filtre pour les candidats benchmarkés ; DeepSeek direct exige aussi une preuve.
+Les payants OpenRouter sont conservés même sans Medium. Une section TFL vide est
 publiée explicitement avec ses exclusions et ne bloque pas les autres sections.
 
 Les niveaux publiés dans `reasoning_options` (type=effort, values) sont des
 preuves. Medium officiellement accepté reste admissible même sans intensité
 distincte : tracer l'équivalence et envoyer les paramètres documentés du
 protocole utilisé, comme thinking.type=enabled pour une équivalence documentée.
-Une preuve historique qui ne couvre pas Medium ne permet pas l'admission.
-Une valeur absente, un budget ou un interrupteur seul n'invente pas cette preuve.
+Une preuve historique qui ne couvre pas Medium ne remplace pas une requête
+courante acceptée. Une valeur absente, un budget ou un interrupteur seul
+n'invente pas cette preuve.
 
 ## Investigation obligatoire des efforts et contextes
 
-Pour tous les fournisseurs, « Medium non vérifiable » ou « contexte non
-vérifiable » impose une analyse et une recherche du LLM dans les sources
-officielles. Suivre [le protocole de preuve](references/model-evidence.md),
+Un contexte non vérifiable impose une analyse et une recherche du LLM dans les
+sources officielles. Pour un effort Medium inconnu, envoyer la requête Medium
+sur le transport publié et utiliser une réponse complète comme preuve de son
+acceptation. Suivre [le protocole de preuve](references/model-evidence.md),
 compléter les conclusions sourcées dans le répertoire du rapport et relancer
-le générateur. Le JSON marque les investigations `required` ; le rapport est
-alors provisoire. Ne pas le présenter comme définitif sans recherche terminée
-ou blocage explicitement signalé. Si le contexte reste invérifiable après
-investigation, le modèle est écarté. Les seuils restent inchangés.
+le générateur. Le JSON marque les investigations de contexte `required` ; le
+rapport reste provisoire jusqu'à leur résolution ou à un blocage explicite.
+Si le contexte reste invérifiable après investigation, le modèle est écarté.
+Les seuils restent inchangés.
 
 
 ## Plafond OpenRouter en euros
 
 Collecter le dernier taux USD par EUR publié par la BCE à
 https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml à chaque invocation.
-Calculer EUR = USD / taux et comparer la moyenne non arrondie à 0,20 EUR/M
+Calculer EUR = USD / taux et comparer la moyenne non arrondie à 0,10 EUR/M
 inclus. Une source, une date ou un taux absent, invalide ou inaccessible bloque
 la publication sans repli historique. Conserver prix natifs USD, prix EUR,
 source, date de publication et date de récupération dans le JSON. Les prix
 OpenRouter affichés sont en €/M ; le taux daté accompagne le tableau.
-Go garde le plafond 0,50 USD/M. Le filtre Medium s’applique
-avant benchmark aux gratuits et payants ; les exclus d’effort sont absents
-de tous les tableaux mais restent dans les audits JSON.
+Go garde le plafond 0,50 USD/M. Le filtre Medium s’applique aux gratuits et
+aux payants Go benchmarkés ; les payants OpenRouter n’en dépendent pas. Les
+exclus d’effort sont absents des tableaux des gratuits mais restent dans les audits JSON.
 
 La commande canonique est `/TFL` ; `/tfl` reste
 un alias compatible. L’identifiant technique du skill reste en minuscules.

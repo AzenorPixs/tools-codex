@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "provider": "deepseek",
+      "model_id": "deepseek-v4-flash",
+      "field": "reasoning",
+      "protocol": "chat_completions",
+      "status": "verified",
+      "value": {
+        "supported_efforts": ["medium"],
+        "effort_equivalence": "accepted_alias",
+        "effort_protocol": "chat_completions"
+      },
+      "conclusion": "DeepSeek accepte le paramètre medium sur Chat Completions et le mappe à high. Selon la règle validée par le développeur le 28 octobre 2026, l'acceptation du paramètre suffit ; elle ne prétend pas que l'effort interne est medium.",
+      "investigated_at": "2026-10-28T01:16:14+01:00",
+      "sources": [
+        {
+          "url": "https://api-docs.deepseek.com/api/create-chat-completion/",
+          "authority": "official",
+          "fingerprint_method": "html_visible_text_v1",
+          "sha256": "d0fe8631d9dbc40bf51dcbfd3bbed1516c3035730a07c5fe541760c9ec3babd2",
+          "retrieved_at": "2026-10-28T01:16:14+01:00"
+        },
+        {
+          "url": "https://api-docs.deepseek.com/quick_start/agent_integrations/",
+          "authority": "official",
+          "fingerprint_method": "html_visible_text_v1",
+          "sha256": "6dad7347b7a8fe45b754fc4b0f665deb4b819c1cf9bebf9dd60e447796ed8851",
+          "retrieved_at": "2026-10-28T01:16:14+01:00"
+        }
+      ]
+    }
+  ]
+}

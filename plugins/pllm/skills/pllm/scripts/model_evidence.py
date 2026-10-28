@@ -2,17 +2,77 @@
 
 from datetime import datetime
 import hashlib
+from html.parser import HTMLParser
 import ipaddress
 import json
 from pathlib import Path
 import re
+import unicodedata
 from urllib.error import URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-PROVIDERS = ('opencode_go', 'opencode', 'openrouter')
+PROVIDERS = ('opencode_go', 'opencode', 'openrouter', 'deepseek')
 PROTOCOLS = ('chat_completions', 'responses', 'messages')
 MAX_BYTES = 2_000_000
+HTML_FINGERPRINT = 'html_visible_text_v1'
+RAW_FINGERPRINT = 'raw_bytes_v1'
+
+
+class _VisibleText(HTMLParser):
+    """Extract visible HTML text without volatile markup or embedded scripts."""
+
+    _SKIP_TAGS = {'head', 'script', 'style', 'noscript', 'template', 'svg', 'nav', 'header', 'footer'}
+    _BLOCK_TAGS = {'address', 'article', 'aside', 'blockquote', 'br', 'dd', 'div', 'dl', 'dt', 'h1', 'h2',
+                   'h3', 'h4', 'h5', 'h6', 'li', 'main', 'ol', 'p', 'section', 'table', 'td', 'th', 'tr', 'ul'}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self._skip_tag = None
+        self._parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if self._skip_tag is None and tag in self._SKIP_TAGS:
+            self._skip_tag = tag
+        elif self._skip_tag is None and tag in self._BLOCK_TAGS:
+            self._parts.append(' ')
+
+    def handle_endtag(self, tag):
+        if self._skip_tag == tag:
+            self._skip_tag = None
+        elif self._skip_tag is None and tag in self._BLOCK_TAGS:
+            self._parts.append(' ')
+
+    def handle_data(self, data):
+        if self._skip_tag is None:
+            self._parts.append(data)
+
+    def visible_text(self):
+        return unicodedata.normalize('NFC', ' '.join(' '.join(self._parts).split()))
+
+
+def source_fingerprint(raw, method=None):
+    """Return a stable SHA-256 for visible HTML text or exact non-HTML bytes."""
+    prefix = raw.lstrip()[:4096].lower()
+    detected = (HTML_FINGERPRINT if b'<html' in prefix or b'<!doctype html' in prefix
+                else RAW_FINGERPRINT)
+    method = detected if method is None else method
+    if method == HTML_FINGERPRINT:
+        if detected != HTML_FINGERPRINT:
+            raise RuntimeError('Preuve : empreinte HTML attendue')
+        parser = _VisibleText()
+        try:
+            parser.feed(raw.decode('utf-8'))
+        except UnicodeError as error:
+            raise RuntimeError('Preuve : source HTML non UTF-8') from error
+        payload = parser.visible_text().encode('utf-8')
+        if not payload:
+            raise RuntimeError('Preuve : source HTML sans texte visible')
+    elif method == RAW_FINGERPRINT:
+        payload = raw
+    else:
+        raise RuntimeError('Preuve : méthode d’empreinte inconnue')
+    return method, hashlib.sha256(payload).hexdigest()
 
 
 def timestamp():
@@ -42,10 +102,15 @@ def source_url(value):
 
 
 def fetch_source(url, timeout):
-    request = Request(source_url(url), headers={'Accept': 'text/html,text/markdown,application/json',
-                                               'User-Agent': 'TFL/1.0'})
+    original = urlsplit(source_url(url))
+    request = Request(url, headers={'Accept': 'text/html,text/markdown,application/json',
+                                    'User-Agent': 'TFL/1.0'})
     with urlopen(request, timeout=timeout) as response:
-        source_url(response.geturl())
+        redirected = urlsplit(response.geturl())
+        if (redirected.scheme != 'https' or redirected.hostname != original.hostname
+                or redirected.username is not None or redirected.password is not None
+                or redirected.fragment or redirected.port not in (None, 443)):
+            raise RuntimeError('Preuve : redirection de source hors origine interdite')
         raw = response.read(MAX_BYTES + 1)
     if len(raw) > MAX_BYTES:
         raise RuntimeError('Preuve : source trop volumineuse')
@@ -67,6 +132,7 @@ def validate_record(record):
             source_url(source['url'])
             if (source.get('authority') != 'official'
                     or not re.fullmatch('[0-9a-f]{64}', source['sha256'])
+                    or source.get('fingerprint_method', RAW_FINGERPRINT) not in (RAW_FINGERPRINT, HTML_FINGERPRINT)
                     or datetime.fromisoformat(source['retrieved_at']).tzinfo is None):
                 raise ValueError('source')
         if record['status'] == 'verified':
@@ -130,7 +196,8 @@ class EvidenceResolver:
             url = source['url']
             if url not in self.cache:
                 try:
-                    self.cache[url] = hashlib.sha256(self.fetch(url, self.timeout)).hexdigest()
+                    method = source.get('fingerprint_method', RAW_FINGERPRINT)
+                    _, self.cache[url] = source_fingerprint(self.fetch(url, self.timeout), method)
                 except (OSError, URLError, TimeoutError, RuntimeError):
                     self.cache[url] = None
             if self.cache[url] != source['sha256']:
@@ -158,5 +225,8 @@ def recheck_findings(findings, provider, model_id, protocol, timeout=15):
         key = (provider, model_id, finding['field'], finding.get('protocol'))
         resolver.records[key] = finding
         checked = resolver.resolve(*key)
+        if checked['status'] == 'unsupported':
+            raise RuntimeError(checked['conclusion'])
         if checked['status'] != 'verified':
-            raise RuntimeError('Preuve supplémentaire non vérifiable : nouvelle investigation du LLM requise')
+            raise RuntimeError('Preuve supplémentaire non vérifiable : '
+                               + checked.get('conclusion', 'nouvelle investigation requise'))

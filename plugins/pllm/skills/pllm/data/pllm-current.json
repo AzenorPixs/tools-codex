@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "selected_mode": null,
   "selection_status": "no_valid_model",
   "models": [
@@ -116,13 +116,10 @@
       "priority": 5,
       "provider": "openrouter",
       "model": "Non évalué",
-      "reasoning": "medium",
+      "reasoning": null,
       "state": "Invalide",
-      "condition": "TTFT < 90 s ET tokens/s > 15 ET candidat payant ET solde > 0",
-      "performance_criteria": {
-        "ttft_lt_seconds": 90,
-        "tokens_per_second_gt": 15
-      },
+      "condition": "candidat payant ET contexte >= 1M ET coût moyen <= 0,20 EUR/M ET solde > 0",
+      "performance_criteria": null,
       "throughput_metric": "request_average_v1",
       "throughput_window": "request_total",
       "measurement_protocol_version": 8,
@@ -135,12 +132,39 @@
       "quotas": null,
       "cause": "Non évalué",
       "performance_test": {
-        "status": "not_run"
+        "status": "not_required"
       }
     },
     {
       "mode": "mode6",
       "priority": 6,
+      "provider": "openrouter",
+      "model": "Non évalué",
+      "reasoning": "medium",
+      "state": "Invalide",
+      "condition": "TTFT < 30 s ET tokens/s > 20 ET gratuité vérifiée ET contexte >= 1M",
+      "performance_criteria": {
+        "ttft_lt_seconds": 30,
+        "tokens_per_second_gt": 20
+      },
+      "throughput_metric": "request_average_v1",
+      "throughput_window": "request_total",
+      "measurement_protocol_version": 8,
+      "quota_status": "not_applicable",
+      "selected": false,
+      "evaluated_this_run": false,
+      "evaluated_at": null,
+      "ttft_seconds": null,
+      "tokens_per_second": null,
+      "quotas": null,
+      "cause": "Non évalué",
+      "performance_test": {
+        "status": "not_run"
+      }
+    },
+    {
+      "mode": "mode7",
+      "priority": 7,
       "provider": "deepseek",
       "model": "Non évalué",
       "reasoning": "medium",
@@ -165,5 +189,7 @@
         "status": "not_run"
       }
     }
-  ]
+  ],
+  "migrated_from_schema_version": 2,
+  "evaluation_mode": "all"
 }

@@ -633,18 +633,12 @@ def build_rows(payload: dict, metadata: dict, pricing: dict, *, general_catalog:
             continue
         transport = go_transport(model, metadata, payload.get("retrieved_at"))
         reasoning_capabilities = performance.capabilities(model, go_model_metadata(model, metadata))
-        try:
-            effort = performance.verified_effort({'reasoning_capabilities': reasoning_capabilities})
-        except RuntimeError as error:
-            excluded.append({'id': model_id, 'reason': str(error),
-                             'reasoning_capabilities': reasoning_capabilities, 'exclusion_type': 'reasoning_effort'})
-            continue
         row = {
             "id": model_id,
             "name": model.get("name") or model_id,
             "available": True,
             "reasoning_capabilities": reasoning_capabilities,
-            "reasoning": effort,
+            "reasoning": None,
             "api_metadata": {key: model.get(key) for key in ("object", "owned_by", "created") if key in model},
             **transport,
             "context_length": context,
@@ -698,8 +692,6 @@ def format_opencode_table(rows: list[dict], policy: str | None, generated_at: st
         "|---:|---|---:|---|---:|---:|:---:|:---:|",
     ]
     for row in rows:
-        if not performance.effort_allowed(row):
-            continue
         prices = row["reference_pricing_usd_per_million_tokens"] or {}
         input_key, output_key, average_key = ("input", "output", "average") if general_catalog else ("input_off_peak", "output_off_peak", "average_off_peak")
         lines.append("| " + " | ".join(escape(value) for value in (
@@ -875,12 +867,10 @@ def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | N
             continue
         supported = set(model.get("supported_parameters") or [])
         reasoning_capabilities = performance.capabilities(model)
-        try:
-            effort = performance.verified_effort({'reasoning_capabilities': reasoning_capabilities})
-        except RuntimeError as error:
-            excluded.append({'id': model_id, 'reason': str(error),
-                             'reasoning_capabilities': reasoning_capabilities, 'exclusion_type': 'reasoning_effort'})
-            continue
+        pricing_details = openrouter_pricing_details(pricing)
+        free = performance.is_free({'input_price': input_price, 'output_price': output_price,
+                                    'pricing_details': pricing_details}, 'openrouter')
+        effort = 'medium' if free else None
         capabilities = []
         if "tools" in supported:
             capabilities.append("tools")
@@ -902,9 +892,10 @@ def build_openrouter_rows(payload: dict, blacklisted_models: tuple[str, ...] | N
             "exchange_rates": exchange_rates,
             "reasoning_capabilities": reasoning_capabilities,
             "reasoning": effort,
+            "is_free": free,
             "pricing_source": payload.get("pricing_source", OPENROUTER_API_URL),
             "pricing_retrieved_at": payload.get("pricing_retrieved_at"),
-            "pricing_details": openrouter_pricing_details(pricing),
+            "pricing_details": pricing_details,
             "input_modalities": input_modalities,
             "output_modalities": output_modalities,
             "capabilities": capabilities,
@@ -926,8 +917,6 @@ def format_openrouter_table(rows: list[dict], generated_at: str, *, excluded: li
         "|---:|---|---:|---|---:|---:|:---:|:---:|",
     ]
     for row in rows:
-        if not performance.effort_allowed(row):
-            continue
         try:
             prices = performance.openrouter_eur_prices(*performance.native_openrouter_prices(row), row.get('exchange_rates'))
         except (KeyError, RuntimeError):
@@ -945,7 +934,7 @@ def format_openrouter_table(rows: list[dict], generated_at: str, *, excluded: li
     lines.append("")
     if not rows:
         lines.extend(format_empty_selection(excluded or []))
-    lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, effort Medium vérifiable, coût moyen ≤ 0.20 €/M, classement croissant.")
+        lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, coût moyen ≤ 0.10 €/M, classement croissant. Medium et les tests de performance sont requis uniquement pour les modèles gratuits.")
     rates = exchange_rates or next((row.get('exchange_rates') for row in rows if row.get('exchange_rates')), None)
     if rates:
         lines.append(f"Taux BCE du {rates['date']} : 1 EUR = {rates['rates']['USD']} USD ; source : {performance.ECB_RATES_URL}.")
@@ -1037,10 +1026,6 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
         if blacklist.is_blocked(row['id'], blacklisted_models):
             excluded.append({**row, 'reason': 'liste noire LM'})
             continue
-        if not performance.effort_allowed(row):
-            excluded.append({**row, 'reason': 'Medium non vérifiable ou non pris en charge',
-                             'exclusion_type': 'reasoning_effort'})
-            continue
         row['is_free'] = performance.is_free(row, section)
         if not row['is_free']:
             retained.append(row)
@@ -1051,13 +1036,17 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
                  'api_endpoint': row.get('api_endpoint') if section != 'openrouter' else 'https://openrouter.ai/api/v1/chat/completions',
                  'is_free': True, 'section': section, 'context_length': row.get('context_length'),
                  'model_investigations': copy.deepcopy(row.get('model_investigations', [])),
-                 'reasoning_capabilities': row['reasoning_capabilities']}
+                 'reasoning_capabilities': row.get('reasoning_capabilities', {}),
+                 'reasoning': 'medium', 'requested_reasoning': 'medium'}
         evaluate_free(model, key, {'reasoning_capabilities': row.get('reasoning_capabilities', {})})
         audit.append(copy.deepcopy(model))
         row.update({field: copy.deepcopy(model[field]) for field in (
             'reasoning', 'requested_reasoning', 'evaluated_at', 'ttft_seconds', 'tokens_per_second',
             'performance_criteria', 'quota_status', 'performance_test',
-            'throughput_metric', 'throughput_window', 'measurement_protocol_version')})
+            'throughput_metric', 'throughput_window', 'measurement_protocol_version',
+            'reasoning_acceptance', 'reasoning_semantics') if field in model})
+        if model.get('reasoning_acceptance', {}).get('status') == 'accepted':
+            row['reasoning_capabilities'] = copy.deepcopy(model.get('reasoning_capabilities', {}))
         if model['state'] == 'Valide':
             if 'reasoning_semantics' in model:
                 row['reasoning_semantics'] = model['reasoning_semantics']
@@ -1073,13 +1062,11 @@ def qualify_free_models(rows: list[dict], excluded: list[dict], section: str,
 
 def format_free_performance(audit: list[dict]) -> str:
     lines = ['## Tests de performance des modèles gratuits', '',
-             'Critères : contexte ≥1M, gratuité vérifiée, réponse complète, TTFT <30 s et débit >20 tokens/s. Medium vérifié ; aucun contrôle de quota.',
+             'Critères : contexte ≥1M, gratuité vérifiée, paramètre Medium accepté par l’API, réponse complète, TTFT <30 s et débit >20 tokens/s. Aucun contrôle de quota.',
              'Débit moyen sur la requête complète, attente et TTFT inclus.', '',
              '| Fournisseur | Modèle / ID | TTFT (s) | Tokens/s | Raisonnement | État / cause |',
              '|---|---|---:|---:|---|---|']
     for model in audit:
-        if not performance.effort_allowed(model):
-            continue
         value = lambda field: '-' if model.get(field) is None else f'{model[field]:.4f}'
         state = ('🟢 Valide' if model['state'] == 'Valide' else '🔴 Exclu') + ' — ' + model['cause']
         lines.append('| ' + ' | '.join(escape(item) for item in (
@@ -1091,20 +1078,18 @@ def format_free_performance(audit: list[dict]) -> str:
 
 
 def build_investigated(builder, payload, metadata, section, resolver):
-    """Réexaminer les seuls champs inconnus, sans modifier disponibilité ni route."""
+    """Réexaminer les preuves utiles sans modifier disponibilité ni route."""
     working = copy.deepcopy(payload)
     models = {model['id']: model for model in working['data'] if isinstance(model, dict) and model.get('id')}
     investigations = {}
-    for _ in range(3):  # Contexte, puis effort éventuellement révélé par sa résolution.
+    for _ in range(2):
         rows, excluded = builder(working)
         changed = False
         for item in excluded:
             model = models[item['id']]
             reason = item['reason']
             field = None
-            if 'Medium non vérifiable' in reason:
-                field = 'reasoning'
-            elif 'contexte' in reason:
+            if 'contexte' in reason:
                 context = (positive_integer(model.get('context_length')) if section == 'openrouter'
                            else context_info(model, metadata)[0])
                 if context is None:
@@ -1112,19 +1097,30 @@ def build_investigated(builder, payload, metadata, section, resolver):
             if field is None or (item['id'], field) in investigations:
                 continue
             protocol = None
-            if field == 'reasoning':
-                protocol = ('chat_completions' if section == 'openrouter'
-                            else go_transport(model, metadata, working.get('retrieved_at'))['api_protocol'])
             result = resolver.resolve(section, item['id'], field, protocol)
             investigations[item['id'], field] = result
             if result['status'] == 'verified':
                 if field == 'context':
                     model['context_length'] = result['value']
-                else:
-                    model['reasoning_capabilities'] = {**result['value'], 'effort_protocol': protocol}
                 changed = True
         if not changed:
             break
+    for item in rows:
+        if section == 'openrouter' and not performance.is_free(item, section):
+            continue
+        capabilities = performance.capabilities(item)
+        levels = capabilities.get('supported_efforts')
+        if ('supported_efforts' in capabilities
+                and (levels is None or (isinstance(levels, list) and 'medium' in levels))):
+            continue
+        protocol = item.get('api_protocol') or 'chat_completions'
+        result = resolver.resolve(section, item['id'], 'reasoning', protocol)
+        if result['status'] == 'verified':
+            investigations[item['id'], 'reasoning'] = result
+            item['reasoning_capabilities'] = result['value']
+            item['reasoning'] = 'medium'
+        elif result['status'] != 'required':
+            investigations[item['id'], 'reasoning'] = result
     for item in (*rows, *excluded):
         findings = [value for (model_id, _), value in investigations.items() if model_id == item['id']]
         if findings:
@@ -1132,10 +1128,8 @@ def build_investigated(builder, payload, metadata, section, resolver):
             for finding in findings:
                 if finding['field'] == 'context' and finding['status'] == 'verified':
                     item['context_source'] = 'documented_investigation'
-                if finding['status'] in ('unverifiable', 'unsupported') and 'reason' in item:
-                    item['reason'] = ('contexte non vérifiable après investigation' if finding['field'] == 'context'
-                                      else 'Medium non pris en charge après investigation' if finding['status'] == 'unsupported'
-                                      else 'Medium non vérifiable après investigation')
+                if finding['status'] == 'unverifiable' and 'reason' in item:
+                    item['reason'] = 'contexte non vérifiable après investigation'
     return rows, excluded, list(investigations.values())
 
 
@@ -1202,7 +1196,7 @@ def main() -> int:
     }
     openrouter_catalog = {
         "cost_exchange_rates": cost_exchange_rates,
-        "maximum_average_eur_per_million_tokens": 0.20,
+        "maximum_average_eur_per_million_tokens": 0.10,
         "source_api": OPENROUTER_API_URL,
         "pricing_source": openrouter_payload.get("pricing_source", OPENROUTER_API_URL),
         "pricing_retrieved_at": openrouter_payload.get("pricing_retrieved_at"),
@@ -1229,8 +1223,8 @@ def main() -> int:
         "common_columns": ["rank", "model_id", "context", "output", "input_price", "output_price", "average_cost", "cost_color"],
         "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS,
                     "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION,
-                    "openrouter_maximum_average_eur_per_million_tokens": 0.20,
-                    "required_reasoning_efforts": ["medium"]},
+                    "openrouter_maximum_average_eur_per_million_tokens": 0.10,
+                    "required_reasoning_efforts": {"paid": [], "free": ["medium"]}},
         "lm_blacklist": {"model_ids": list(blacklisted_models)},
         "opencode_go": opencode_catalog,
         "openrouter": openrouter_catalog,

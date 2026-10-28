@@ -1,6 +1,8 @@
 # Investigation des modèles
 
-Ce workflow s'applique à OpenCode Go et OpenRouter.
+Ce workflow consomme les preuves TFL OpenCode Go et OpenRouter. PLLM possède
+également un registre direct `deepseek` pour l'unique candidat du mode7 ; une
+preuve unsupported y conserve le motif d'exclusion et bloque toute génération.
 `model_investigations` dans le JSON TFL donne les champs encore inconnus.
 Le statut `required` exige une analyse et une recherche du LLM avant sa
 restitution finale ; une collecte CLI seule ne réalise pas cette recherche.
@@ -14,11 +16,12 @@ d'une incapacité.
    d'abord le catalogue actuel et `reasoning_options` de models.dev, puis la
    documentation officielle du fournisseur ou du créateur du modèle. Vérifier
    l'applicabilité au service et au protocole réellement utilisés.
-2. Pour l'effort, chercher la prise en charge officielle de Medium. Une preuve
-   historique qui ne couvre pas Medium ne valide pas cet effort. Son équivalence à
-   l'activation du raisonnement est admissible si elle est documentée. Tracer
-   ce sens ; ne pas prétendre une intensité distincte ni considérer un HTTP 200
-   seul comme une preuve.
+2. Pour l'effort, conserver les sources officielles applicables au modèle et au
+   transport. Une requête réelle exclusivement en Medium peut établir
+   l'acceptation du paramètre ; seule une réponse complète la prouve. Un mapping
+   documenté peut être tracé, mais ne mesure pas l'effort interne. Le mapping
+   officiel DeepSeek `medium` vers `high` satisfait l'acceptation de la valeur
+   demandée conformément à la décision du développeur du 28 octobre 2026.
 3. Pour le contexte, chercher une capacité chiffrée applicable au fournisseur.
    Ne pas déduire sa taille d'un prix, du nom du modèle ou d'un autre service.
    Le seuil reste 1 000 000 tokens. Aucune requête de cette taille n'est nécessaire.
@@ -36,14 +39,14 @@ Le fichier déclare `schema_version: 1` et `records`. Chaque entrée contient :
 
 | Champ | Valeur |
 |---|---|
-| provider | opencode_go ou openrouter ; opencode est seulement accepté dans les registres historiques |
+| provider | opencode_go, openrouter ou deepseek ; opencode est seulement accepté dans les registres historiques |
 | model_id | Identifiant exact dans ce catalogue |
 | field | context ou reasoning |
 | protocol | null pour context ; chat_completions, responses ou messages pour reasoning |
 | status | verified, unsupported ou unverifiable |
 | investigated_at | Date ISO 8601 avec fuseau |
 | conclusion | Synthèse de la recherche et de son applicabilité |
-| sources | URL HTTPS officielle, authority=official, sha256 du contenu brut et retrieved_at avec fuseau |
+| sources | URL HTTPS officielle, authority=official, fingerprint_method, sha256 et retrieved_at avec fuseau |
 | value | Pour verified : entier de contexte, ou objet supported_efforts contenant medium, ou null explicitement publié pour tous les efforts |
 
 L'objet d'effort peut préciser `effort_equivalence: accepted_alias` pour
@@ -58,12 +61,24 @@ pour établir Medium lorsqu'elles ne couvrent pas cet effort ; elles ne
 permettent pas seules l'admission.
 Le registre du
 répertoire de rapport peut le compléter ou réviser une entrée exacte.
-L'agent rédige les conclusions après recherche ; le contrôle SHA-256 prouve
-seulement que la source n'a pas changé, pas l'interprétation sémantique du LLM.
+L'agent rédige les conclusions après recherche ; pour HTML, `html_visible_text_v1`
+empreinte le texte visible normalisé en UTF-8 NFC avec espaces consécutifs
+réduits, sans scripts, styles, navigation ou balisage volatil. Pour les autres
+formats, `raw_bytes_v1` empreinte les octets reçus. Le contrôle SHA-256 prouve
+seulement que le contenu retenu n'a pas changé, pas l'interprétation sémantique du LLM.
 TFL relit les sources avant admission. Un contenu changé ou inaccessible
 réactive l'investigation sans réutiliser l'ancienne preuve. PLLM recontrôle
 ces sources avant génération et conserve les résultats d'investigation TFL.
+Une preuve `unsupported` est conservée dans l'audit avec sa conclusion et
+empêche la génération. L'acceptation officielle du paramètre Medium comme
+alias d'un effort supérieur prouve l'acceptation de la valeur demandée, sans
+affirmer une intensité interne Medium.
 
 Les preuves ne qualifient ni accès au compte, ni génération, ni performance.
 Conserver tous les autres filtres et tests applicables. Ne lancer aucune
 génération payante simplement pour compléter une preuve documentaire.
+
+Le contrôle du téléchargement accepte une redirection HTTPS uniquement vers
+le même hôte public ; les paramètres de cache ajoutés par ce même hôte ne
+modifient pas l'URL enregistrée. Toute redirection vers un autre hôte, HTTP,
+un port non standard, des identifiants ou un fragment reste bloquée.
