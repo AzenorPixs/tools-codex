@@ -145,6 +145,14 @@ historiques, sans création ni migration de clé.
 Les historiques des schémas 1/2 sont adaptés au schéma 3 : l'ancien mode5 est réinitialisé, DeepSeek passe au mode7, le mode6 gratuit est neuf et aucune sélection courante n'est héritée. Les succès OpenRouter antérieurs ne sont pas
 transférés au mode5 ; la mémoire DeepSeek est déplacée au mode7. Un ancien
 évaluateur ne lit pas le schéma3 : sauvegarder ses données avant retour.
+
+PLLM récupère une mémoire sans `schema_version` uniquement si elle contient
+`policies` vide ou le seul `mode7` DeepSeek Medium avec identité, profil de
+débit du protocole 8 et succès cohérents. Le chargement conserve le fichier
+intact ; le prochain succès publie atomiquement le schéma 3. Les mémoires
+ambiguës ou corrompues restent refusées et préservées. L'écriture valide et
+normalise sa mémoire avant publication pour garantir sa relecture.
+
 Aucun historique invalide n'est écrasé. Les payants Go 1/2 sont essayés par
 coût moyen croissant. Mode5 sélectionne le payant OpenRouter admissible le
 moins cher au taux BCE courant, sans génération. Les gratuits 3/4/6 sont

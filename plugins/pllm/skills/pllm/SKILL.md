@@ -394,6 +394,14 @@ retour de version. Un fichier existant invalide bloque avant publication et rest
 préservé. Les répertoires nécessaires sont créés lors de la publication ou de
 la mémorisation d'une réussite.
 
+
+PLLM récupère une mémoire sans `schema_version` uniquement si elle contient
+`policies` vide ou le seul `mode7` DeepSeek Medium avec identité, profil de
+débit du protocole 8 et succès cohérents. Le chargement conserve le fichier
+intact ; le prochain succès publie atomiquement le schéma 3. Les mémoires
+ambiguës ou corrompues restent refusées et préservées. L'écriture valide et
+normalise sa mémoire avant publication pour garantir sa relecture.
+
 Après un repli HTTP 429, recalculer les paliers pour la nouvelle configuration :
 sans réussite mémorisée correspondante, commencer à 1 024 tokens. Effectuer les contrôles applicables avant sa requête, sans quota en 3/4/6. Le dernier palier et l'épuisement des candidats
 ne permettent jamais de déclarer valide un modèle sans mesures concluantes.

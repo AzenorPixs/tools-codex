@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.20`.
+Version de release : `0.7.21`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -50,6 +50,14 @@ durée non arrondie et sépare les anciens succès en mémoire. Une réponse
 complète en un bloc reste mesurable. Les anciens débits ne sont pas directement
 comparables ; les seuils numériques conservés peuvent modifier le classement
 et la qualification. Les références de secrets restent inchangées. Les historiques des schémas 1/2 sont adaptés au schéma 3 sans sélection actuelle héritée ; l'ancien mode5 est réinitialisé, DeepSeek est déplacé au mode7 et le mode6 OpenRouter gratuit commence sans mesure ni apprentissage. Un fichier corrompu est préservé. Le schéma3 nécessite une copie des anciennes données pour revenir à l'ancien évaluateur. Les forçages OpenRouter payants restent 51–53 et les gratuits utilisent 61–63.
+
+PLLM récupère une mémoire sans `schema_version` uniquement si elle contient
+`policies` vide ou le seul `mode7` DeepSeek Medium avec identité, profil de
+débit du protocole 8 et succès cohérents. Le chargement conserve le fichier
+intact ; le prochain succès publie atomiquement le schéma 3. Les mémoires
+ambiguës ou corrompues restent refusées et préservées. L'écriture valide et
+normalise sa mémoire avant publication pour garantir sa relecture.
+
 Pour Chat Completions OpenCode, Medium est envoyé sans le paramètre thinking
 spécifique à d'autres contrats. Un refus HTTP 400 ou une limitation 429
 arrêtent les paliers du candidat ; le diagnostic filtré et le Retry-After

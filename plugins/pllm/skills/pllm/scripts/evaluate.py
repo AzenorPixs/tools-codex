@@ -623,30 +623,86 @@ def next_tfl_opencode_model(current_id, catalog_path=None):
     return None
 
 
+def recover_unversioned_memory(memory):
+    """Accept only the empty format or the unambiguous observed mode7 format."""
+    policies = memory.get('policies')
+    if set(memory) != {'policies'} or not isinstance(policies, dict):
+        raise ValueError('Mémoire sans version ambiguë')
+    if not policies:
+        return
+    if set(policies) != {'mode7'} or not isinstance(policies['mode7'], dict):
+        raise ValueError('Politiques sans version ambiguës')
+    expected = {
+        'model_id': 'deepseek-v4-flash', 'provider': 'deepseek', 'reasoning': 'medium',
+        'throughput_scope': 'response_only', 'api_protocol': 'chat_completions',
+        'api_endpoint': 'https://api.deepseek.com/chat/completions',
+        'throughput_metric': performance.THROUGHPUT_METRIC,
+        'throughput_window': performance.THROUGHPUT_WINDOW,
+        'measurement_protocol_version': performance.MEASUREMENT_PROTOCOL_VERSION,
+    }
+
+    def validate_success(success):
+        if not isinstance(success, dict) or success.get('identity') != expected:
+            raise ValueError('Identité de succès sans version ambiguë')
+        budget = success.get('last_successful_max_tokens')
+        if type(budget) is not int or budget not in BUDGETS:
+            raise ValueError('Palier de succès sans version invalide')
+        for field in ('ttft_seconds', 'tokens_per_second'):
+            value = success.get(field)
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or (value < 0 if field == 'ttft_seconds' else value <= 0)):
+                raise ValueError('Mesure de succès sans version invalide')
+        if success['ttft_seconds'] >= TTFT_LIMIT_SECONDS or success['tokens_per_second'] <= 15:
+            raise ValueError('Seuil de succès sans version invalide')
+        date = success.get('succeeded_at')
+        if not isinstance(date, str) or datetime.fromisoformat(date).tzinfo is None:
+            raise ValueError('Date de succès sans version invalide')
+
+    success = policies['mode7']
+    validate_success(success)
+    configurations = success.get('configurations')
+    if not isinstance(configurations, dict) or not configurations:
+        raise ValueError('Configurations sans version invalides')
+    for key, record in configurations.items():
+        validate_success(record)
+        if key != json.dumps(record['identity'], sort_keys=True):
+            raise ValueError('Clé de configuration sans version incohérente')
+    if {k: v for k, v in success.items() if k != 'configurations'} != configurations.get(
+            json.dumps(expected, sort_keys=True)):
+        raise ValueError('Dernier succès sans version incohérent')
+
+
+def normalize_memory(memory):
+    memory = copy.deepcopy(memory)
+    if isinstance(memory, dict) and 'schema_version' not in memory:
+        recover_unversioned_memory(memory)
+        memory['schema_version'] = 3
+    if (not isinstance(memory, dict) or type(memory.get('schema_version')) is not int
+            or memory['schema_version'] not in (1, 2, 3)
+            or not isinstance(memory.get('policies'), dict)
+            or any(not isinstance(value, dict) for value in memory['policies'].values())):
+        raise ValueError('Structure de mémoire invalide')
+    version = memory['schema_version']
+    allowed = {f'mode{i}' for i in range(1, 5 if version == 1 else 7 if version == 2 else 8)}
+    if not set(memory['policies']).issubset(allowed):
+        raise ValueError('Politiques de mémoire invalides')
+    if version in (1, 2):
+        carried = ('mode1', 'mode2') if version == 1 else ('mode1', 'mode2', 'mode3', 'mode4')
+        migrated = {mode: value for mode, value in memory['policies'].items() if mode in carried}
+        deepseek = memory['policies'].get('mode4' if version == 1 else 'mode6')
+        if deepseek:
+            migrated['mode7'] = deepseek
+        memory.update(schema_version=3, migrated_from_schema_version=version, policies=migrated)
+    return memory
+
+
 def load_memory():
     if not MEMORY_PATH.exists():
         return {'schema_version': 3, 'policies': {}}
     try:
-        memory = json.loads(MEMORY_PATH.read_text(encoding='utf-8'))
-        if (not isinstance(memory, dict) or memory.get('schema_version') not in (1, 2, 3)
-                or not isinstance(memory.get('policies'), dict)
-                or any(not isinstance(value, dict) for value in memory['policies'].values())):
-            raise ValueError('Structure de mémoire invalide')
-        version = memory['schema_version']
-        allowed = {f'mode{i}' for i in range(1, 5 if version == 1 else 7 if version == 2 else 8)}
-        if not set(memory['policies']).issubset(allowed):
-            raise ValueError('Politiques de mémoire invalides')
-    except (OSError, ValueError) as error:
+        return normalize_memory(json.loads(MEMORY_PATH.read_text(encoding='utf-8')))
+    except (OSError, ValueError, OverflowError) as error:
         raise RuntimeError('Mémoire de performance PLLM invalide ; fichier préservé') from error
-    if memory['schema_version'] in (1, 2):
-        old_version = memory['schema_version']
-        carried = ('mode1', 'mode2') if old_version == 1 else ('mode1', 'mode2', 'mode3', 'mode4')
-        migrated = {mode: value for mode, value in memory['policies'].items() if mode in carried}
-        deepseek = memory['policies'].get('mode4' if old_version == 1 else 'mode6')
-        if deepseek:
-            migrated['mode7'] = deepseek
-        memory.update(schema_version=3, migrated_from_schema_version=old_version, policies=migrated)
-    return memory
 
 
 def identity(m):
@@ -666,6 +722,11 @@ def budgets_for(m, memory):
 
 
 def remember_success(m, budget, memory):
+    original_memory = memory
+    try:
+        memory = normalize_memory(memory)
+    except (ValueError, OverflowError) as error:
+        raise RuntimeError('Mémoire de performance PLLM invalide ; fichier préservé') from error
     previous = memory['policies'].get(m['mode'], {})
     configurations = dict(previous.get('configurations', {}))
     if 'identity' in previous:
@@ -682,6 +743,8 @@ def remember_success(m, budget, memory):
     temp = MEMORY_PATH.with_name(MEMORY_PATH.name + '.tmp')
     temp.write_text(json.dumps(memory, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     temp.replace(MEMORY_PATH)
+    original_memory.clear()
+    original_memory.update(memory)
     m['last_successful_max_tokens'] = budget
 
 

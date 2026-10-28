@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Corriger le blocage PLLM sur une mémoire sans version : récupérer seulement
+  la mémoire vide ou le seul mode7 DeepSeek Medium identifiable au protocole 8,
+  sans réécriture au chargement. Garantir l'écriture atomique d'une mémoire
+  au schéma 3 rechargeable ; préserver et refuser les données ambiguës ou
+  corrompues. Isoler MEMORY_PATH dans le test Medium mode7 pour empêcher
+  toute écriture dans les données source. Aligner la release et les six plugins sur 0.7.21.
+
 - Réduire à 0,10 EUR/M inclus le plafond moyen OpenRouter payant dans TFL et
   PLLM mode5, y compris pour les anciens catalogues et rangs forcés ; vérifier
   le chemin de benchmark complet qui enregistre l'acceptation Medium et le débit,

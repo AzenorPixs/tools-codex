@@ -209,6 +209,14 @@ apprentissage. La sélection est effacée lors de l'adaptation. Les fichiers
 invalides ne sont pas écrasés. Le schéma 3 n'est pas lisible par l'ancien
 évaluateur ; préserver une copie avant retour de version.
 
+
+PLLM récupère une mémoire sans `schema_version` uniquement si elle contient
+`policies` vide ou le seul `mode7` DeepSeek Medium avec identité, profil de
+débit du protocole 8 et succès cohérents. Le chargement conserve le fichier
+intact ; le prochain succès publie atomiquement le schéma 3. Les mémoires
+ambiguës ou corrompues restent refusées et préservées. L'écriture valide et
+normalise sa mémoire avant publication pour garantir sa relecture.
+
 Les routes et fournisseurs de chaque section sont conservés. Les candidats
 OpenCode Go utilisent la clé du compte associé au mode uniquement sur l'origine
 HTTPS OpenCode validée, un User-Agent PLLM et une session stable. Une restriction

@@ -1,6 +1,6 @@
 {
   "name": "lm",
-  "version": "0.7.20",
+  "version": "0.7.21",
   "description": "Gère la liste noire commune des modèles exclus de TFL et PLLM.",
   "author": {
     "name": "AzenorPixs"
