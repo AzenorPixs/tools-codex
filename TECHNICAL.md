@@ -522,8 +522,8 @@ retourne un état `ready`, le texte complet, le chemin et l'instruction à suivr
 Le résolveur n'exécute pas ce texte : le skill le lit intégralement puis conduit
 son processus. Une résolution réussie ne vaut pas preuve de fin de RUN.
 
-Les 38 actions sont en MAJUSCULE. GCM et GCMP sélectionnent les entrées GSCM et
-GSCMP de l'index. CISMPn et 1CISMPn, pour n de 1 à 8, conservent exactement
+Les actions sont en MAJUSCULE. GCM et GCMP sélectionnent les entrées GSCM et
+GSCMP de l'index. CISMPn et 1CISMPn, pour tout suffixe décimal ASCII positif sans zéro initial et sans borne supérieure, conservent exactement
 le RUN CISMPn. Les variantes préfixées 1 portent `max_changes=1` et l'ordre
 change complet, archivage, statistiques, arrêt de la session de codage. Cette
 directive borne la boucle de sélection après le premier change sans supprimer
@@ -531,7 +531,7 @@ les validations, clôtures ou conditions imposant une décision. Le bilan ne
 prétend pas terminer tous les changes du dépôt.
 
 La suite `test_prompt_dispatch.py` utilise des projets et référentiels
-temporaires. Elle couvre les 38 correspondances, l'isolation des projets,
+temporaires. Elle couvre les codes directs et les suffixes sans borne, l'isolation des projets,
 les variantes de RUN, LIST, les liens lus sans modification et les erreurs.
 Les paquets isolés et LIST réel sont contrôlés séparément ; aucun RUN piloté
 ou prompt à effets réels n'est lancé pendant cette qualification.
@@ -715,3 +715,11 @@ dans les exclusions et sa conclusion apparaît dans la cause de la politique ;
 elle empêche le benchmark. Un alias demandé Medium mais appliqué en High
 reste invalide. Le récupérateur suit uniquement les redirections HTTPS de
 même origine ; toute redirection de confiance différente est refusée.
+
+
+## Libellés PROMPT dans les bilans
+
+Le plugin, le skill et la commande sont présentés sous le libellé **PROMPT**.
+Le bilan JSON TCU ajoute `libelle: PROMPT` à chacune de ces ressources ; la
+restitution utilise ce libellé. Les clés techniques `brique` et `composant`,
+les chemins historiques et l’invocation `$prompt` restent compatibles.

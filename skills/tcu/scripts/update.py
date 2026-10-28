@@ -637,6 +637,10 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
         report['briques'].extend({k: v for k, v in item.items() if k in public_keys} for item in plans)
         report['succes'] = not report.get('erreur') and not any(
             row['status'] in {'conflit', 'inconnu', 'incomplet', 'non_applique'} for row in report['briques'])
+        for row in report['briques']:
+            if (row.get('composant') == 'prompt' or row['brique'] in {'prompt', 'prompt/skill'}
+                    or Path(row['brique']).name in {'prompt', *PROMPT_NAMES}):
+                row['libelle'] = 'PROMPT'
         report['nouvelle_session'] = 'Ouvrir une nouvelle session Codex pour charger les skills actualisés.'
         return report
 

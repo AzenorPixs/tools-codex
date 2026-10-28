@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Supprimer la borne de huit RUN : CISMPx et 1CISMPx acceptent tout entier
+  décimal ASCII positif sans zéro initial, sans borne supérieure. Préserver
+  le RUN exact et le cycle à un seul change des variantes 1CISMPx.
+- Uniformiser les libellés PROMPT du plugin, du skill, de la commande et
+  du bilan TCU, sans changer les identifiants techniques ni les chemins
+  historiques. Aligner la release et les six plugins sur 0.7.22.
+
 - Corriger le blocage PLLM sur une mémoire sans version : récupérer seulement
   la mémoire vide ou le seul mode7 DeepSeek Medium identifiable au protocole 8,
   sans réécriture au chargement. Garantir l'écriture atomique d'une mémoire

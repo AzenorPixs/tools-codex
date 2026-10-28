@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.21`.
+Version de release : `0.7.22`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -116,7 +116,7 @@ minuscules reste mise à jour sous son nom actuel, sans doublon. Les liens
 personnels vers les anciens chemins sources doivent être réorientés lors
 d'une migration explicite, selon BUILD.
 
-Le nouveau [skill prompt](skills/prompt/SKILL.md) utilise exclusivement le
+Le nouveau [skill PROMPT](skills/prompt/SKILL.md) utilise exclusivement le
 référentiel indiqué dans le `DEVOPS.md` du projet courant :
 
 ```text
@@ -125,6 +125,8 @@ référentiel indiqué dans le `DEVOPS.md` du projet courant :
 /PROMPT 1CISMP3
 ```
 
+`CISMPx` et `1CISMPx` acceptent tout entier décimal ASCII positif sans zéro
+initial, sans borne supérieure (par exemple `1CISMP9` ou `CISMP12345`).
 `LIST` affiche l'index. `CISMP3` lance le cycle du RUN CISMP3. `1CISMP3` borne
 ce RUN à un change complet, archivage, statistiques puis arrêt de la session
 de codage. Les codes sont en MAJUSCULE et les alias GCM/GCMP sélectionnent

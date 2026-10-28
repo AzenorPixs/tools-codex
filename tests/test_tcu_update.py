@@ -205,7 +205,7 @@ class TcuUpdateTests(unittest.TestCase):
         def fetch(url):
             return json.dumps({'sha':'a'*40}).encode() if url.endswith('/commits/HEAD') else zip_bytes(files)
         remote = self.m.snapshot(fetch)
-        self.assertEqual(remote['version'],'0.7.21')
+        self.assertEqual(remote['version'],'0.7.22')
         self.assertEqual(remote['plugins'], {'cm','lm','tfl','pllm','prompt','tcu'})
         for name in ('lm','tfl','pllm'):
             self.assertIn('skills/'+name+'/scripts/model_blacklist.py',remote['files'])
@@ -560,6 +560,27 @@ class TcuUpdateTests(unittest.TestCase):
         result = self.execute(apply=True)
         self.assertTrue(result['succes'])
         self.assertEqual(next(r for r in result['briques'] if r['brique'] == 'cm')['apres'], '0.3.0+fixture')
+
+    def test_prompt_display_labels_preserve_identifiers_and_legacy_paths(self):
+        self.enable_prompt()
+        for apply in (False, True):
+            with self.subTest(apply=apply):
+                report = self.execute(apply=apply)
+                rows = [r for r in report['briques'] if r.get('libelle') == 'PROMPT'
+                        and r.get('ressource') in {'plugin', 'skill', 'commande'}]
+                self.assertEqual({r['ressource'] for r in rows}, {'plugin', 'skill', 'commande'})
+                self.assertEqual(len(rows), 3)
+                self.assertEqual({r['brique'] for r in rows if r['ressource'] != 'commande'},
+                                 {'prompt', 'prompt/skill'})
+                self.assertTrue(all(r.get('composant', 'prompt') == 'prompt' for r in rows))
+        self.before = copy.deepcopy(self.after)
+        commands = self.home / 'prompts'
+        (commands / 'PROMPT.md').rename(commands / 'prompt.md')
+        report = self.execute()
+        row = next(r for r in report['briques'] if r.get('ressource') == 'commande')
+        self.assertEqual(row['libelle'], 'PROMPT')
+        self.assertEqual(row['brique'], str(commands / 'prompt.md'))
+        self.assertFalse((commands / 'PROMPT.md').exists())
 
     def test_prompt_check_plans_installation_without_any_write(self):
         self.enable_prompt()

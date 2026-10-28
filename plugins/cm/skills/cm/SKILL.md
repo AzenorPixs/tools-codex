@@ -25,7 +25,7 @@ installé. Ne simule pas la pastille avec un emoji.
 | TFL | `$tfl [auto\|mode1\|mode2]` | Compare Go puis OpenRouter (≤0,10 €/M) ; Medium et benchmark pour gratuits ; catalogue les payants sans exigence Medium ; collecte Go et OpenRouter ; déclencheur `/TFL`. |
 | TCU | `$tcu [check]` | Met à jour les briques installées et installe prompt si absent ; déclencheur `/TCU`, sans enregistrement d’une slash native. |
 | LM | `$lm [LIST\|ADD identifiant\|REMOVE identifiant]` | Gère les modèles exclus des listes et tests TFL/PLLM ; déclencheur `/LM`, mimo-v2.5 par défaut. |
-| PROMPT | `$prompt LIST\|CODE` | Liste ou lance un prompt du projet ; arguments en MAJUSCULE, dont 1CISMP1 à 1CISMP8 ; déclencheur `/PROMPT`. |
+| PROMPT | `$prompt LIST\|CODE` | Liste ou lance un prompt du projet ; arguments en MAJUSCULE, dont CISMPx et 1CISMPx sans borne supérieure ; déclencheur `/PROMPT`. |
 
 Ces invocations désignent des skills disponibles après leur découverte ou leur
 installation dans Codex. Le catalogue ne vérifie pas leur installation locale.

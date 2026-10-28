@@ -53,8 +53,10 @@ du CLI échoue, la sauvegarde reste disponible et l'état est inconnu. Aucune
 annulation globale de la marketplace n'est garantie.
 
 Restitue le bilan JSON en tableau français par brique : canal, état, version
-avant/après connue et cause ; distinguer les trois ressources de prompt :
-plugin, skill embarqué et commande. En contrôle seul, annoncer l'installation
+avant/après connue et cause ; distinguer les trois ressources de PROMPT :
+plugin, skill embarqué et commande. Utiliser `libelle` comme nom affiché
+dans le tableau lorsqu’il est fourni : les trois ressources portent **PROMPT**.
+Conserver `brique` et `composant` comme identifiants de suivi. En contrôle seul, annoncer l'installation
 prévue de prompt sans la réaliser, et distinguer version cible et
 version appliquée. Indique sauvegarde, conflits, succès partiels et code de
 sortie réel sans exposer les contenus sauvegardés. Une nouvelle session

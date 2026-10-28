@@ -21,7 +21,7 @@ Les plugins destinés à la marketplace sont actuellement :
 | Plugin | Skill embarqué | Fonction |
 |---|---|---|
 | `lm` | `lm` | Liste noire partagée des modèles exclus de TFL et PLLM. |
-| `prompt` | `prompt` | Liste et lancement des prompts définis par le DEVOPS du projet. |
+| **PROMPT** (`prompt`) | **PROMPT** (`prompt`) | Liste et lancement des prompts définis par le DEVOPS du projet. |
 | `cm` | `cm` | Catalogue des commandes maison et de leurs syntaxes. |
 | `tcu` | `tcu` | Mise à jour vérifiée des briques déjà installées. |
 | `pllm` | `pllm` | Évaluation et application contrôlée d'une politique LLM. |
@@ -209,7 +209,7 @@ Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.
 Ils ne sont pas installés automatiquement avec les plugins de la marketplace.
 
-## Utilisation de prompt
+## Utilisation de PROMPT
 
 Le seul référentiel est le dossier et l'index indiqués par le DEVOPS.md du
 projet courant. Les sources restent externes au plugin et ne sont pas copiées.
@@ -233,11 +233,13 @@ sans enregistrement automatique d'une slash native.
 | GCM, GCMP | Alias validés de GSCM.md et GSCMP.md, avec leurs entrées dans l'index. |
 | PPSC, PPSCP, RCAM, RCAMP | Charge le fichier du même nom et exécute son processus. |
 | SPCM, SPCMP, RSM, RSMP, SCM, SCMP | Charge le fichier du même nom et exécute son processus. |
-| CISMP1 à CISMP8 | Charge CISMP.md avec le RUN CISMPn et son cycle normal. |
-| 1CISMP1 à 1CISMP8 | Même RUN, un change complet, archivage, statistiques puis arrêt de la session de codage. |
+| CISMPx | Charge CISMP.md avec le RUN CISMPn et son cycle normal. |
+| 1CISMPx | Même RUN, un change complet, archivage, statistiques puis arrêt de la session de codage. |
 
-Les 38 arguments d'exécution et LIST sont résolus à chaque appel. Un nom
-inconnu ou en minuscules, un RUN hors bornes, une déclaration absente/ambiguë,
+Les codes directs, CISMPx, 1CISMPx et LIST sont résolus à chaque appel.
+Le suffixe x est un entier décimal ASCII strictement positif sans zéro initial,
+sans borne supérieure applicative. Un nom
+inconnu ou en minuscules, un suffixe de RUN invalide, une déclaration absente/ambiguë,
 un fichier manquant ou une sortie du dossier déclaré provoquent un blocage
 explicite. Aucun autre référentiel n'est recherché.
 
@@ -560,3 +562,11 @@ il ne prétend pas effectuer l'analyse du LLM. Un contexte encore invérifiable
 après investigation exclut le modèle. Les commandes sources et skills
 imposent ce workflow. Les politiques, seuils et règles du planning sont conservés.
 Les lectures documentaires ne qualifient ni accès, ni génération, ni débit.
+
+
+## Libellés PROMPT dans les bilans
+
+Le plugin, le skill et la commande sont présentés sous le libellé **PROMPT**.
+Le bilan JSON TCU ajoute `libelle: PROMPT` à chacune de ces ressources ; la
+restitution utilise ce libellé. Les clés techniques `brique` et `composant`,
+les chemins historiques et l’invocation `$prompt` restent compatibles.

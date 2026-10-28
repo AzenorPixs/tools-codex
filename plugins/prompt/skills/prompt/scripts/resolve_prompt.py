@@ -12,8 +12,7 @@ DIRECT = {name: name for name in (
     'ACSP', 'ACSM', 'ACSMP', 'CGP', 'CISM', 'DOP', 'DOPP', 'EDP', 'ISM', 'ISMP',
     'PPSC', 'PPSCP', 'RCAM', 'RCAMP', 'SPCM', 'SPCMP', 'RSM', 'RSMP', 'SCM', 'SCMP')}
 DIRECT.update(GCM='GSCM', GCMP='GSCMP')
-ACTIONS = tuple(DIRECT) + tuple(f'CISMP{n}' for n in range(1, 9)) + tuple(
-    f'1CISMP{n}' for n in range(1, 9))
+RUN_ACTION = re.compile(r'(1)?CISMP([1-9][0-9]*)')
 
 
 class PromptError(Exception):
@@ -146,8 +145,18 @@ def index_entries(folder: Path, index: Path) -> list[dict]:
     return entries
 
 
+def valid_action(action: str) -> bool:
+    return action in DIRECT or action == 'LIST' or RUN_ACTION.fullmatch(action) is not None
+
+
+def cli_action(action: str) -> str:
+    if not valid_action(action):
+        raise argparse.ArgumentTypeError('Code attendu en MAJUSCULE : LIST, code direct, CISMPx ou 1CISMPx (x entier positif sans zéro initial)')
+    return action
+
+
 def dispatch(project_root: Path, action: str) -> dict:
-    if action not in (*ACTIONS, 'LIST'):
+    if not valid_action(action):
         raise PromptError('Argument inconnu : utiliser un des codes en MAJUSCULE du skill')
     project, folder, index = configuration(project_root)
     entries = index_entries(folder, index)
@@ -155,7 +164,7 @@ def dispatch(project_root: Path, action: str) -> dict:
               'index_path': str(index), 'argument': action}
     if action == 'LIST':
         return {**result, 'mode': 'list', 'status': 'listed', 'entries': entries}
-    match = re.fullmatch(r'(1)?CISMP([1-8])', action)
+    match = RUN_ACTION.fullmatch(action)
     run = 'CISMP' + match[2] if match else None
     single = bool(match and match[1])
     canonical = 'CISMP' if match else DIRECT[action]
@@ -185,7 +194,7 @@ def dispatch(project_root: Path, action: str) -> dict:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=(*ACTIONS, 'LIST'), help='Argument en MAJUSCULE')
+    parser.add_argument('action', type=cli_action, help='LIST, code direct, CISMPx ou 1CISMPx ; x entier positif sans borne supérieure')
     parser.add_argument('--project-root', type=Path, default=Path.cwd(), help='Racine réelle du projet courant')
     args = parser.parse_args(argv)
     try:

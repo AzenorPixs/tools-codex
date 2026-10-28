@@ -70,7 +70,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Type | Nom | Rôle |
 |---|---|---|
 | Plugin | `lm` | Gère la liste noire partagée, appliquée avant sélection et tests TFL/PLLM. |
-| Plugin | `prompt` | Liste et lance les prompts du projet depuis son DEVOPS et son index. |
+| Plugin | **PROMPT** (`prompt`) | Liste et lance les prompts du projet depuis son DEVOPS et son index. |
 | Plugin | `tcu` | Met à jour les briques installées depuis marketplace et GitHub. |
 | Plugin | `cm` | Distribue le catalogue des commandes maison, invocable avec `$cm`. |
 | Plugin | `pllm` | Évalue une politique de modèles LLM et l'applique à une session OpenCode autorisée. |
@@ -80,7 +80,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
 | Skill | `tfl` | Expose le rapport TFL également en dehors du plugin. |
 | Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm`, `$tfl`, `$tcu`, `$lm` et `$prompt`. |
-| Skill | `prompt` (`$prompt`) | LIST et 38 actions en MAJUSCULE, dont les huit variantes à un change. |
+| Skill | **PROMPT** (`$prompt`) | LIST, codes directs et variantes CISMPx/1CISMPx sans borne supérieure. |
 | Skill | `lm` (`$lm`) | LIST, ADD et REMOVE ; mimo-v2.5 exclu par défaut. |
 | Commande source | `/LM` | Délègue au skill LM sans enregistrer automatiquement une slash native. |
 | Commande source | `/CM` | Délègue au catalogue CM, avec une seule entrée prompt et sans exécution. |
@@ -124,9 +124,10 @@ OpenSpec avant leur implémentation, conformément aux règles du dépôt.
 son processus jusqu'à ses conditions terminales ou une condition imposant
 une décision. Aucun prompt n'est embarqué dans Tools Codex.
 
-GCM et GCMP sont les alias validés de GSCM.md et GSCMP.md. CISMP1 à CISMP8
-conservent le RUN demandé et le cycle normal de CISMP.md. Les variantes
-1CISMP1 à 1CISMP8 bornent le même RUN à un change complet, suivi de
+GCM et GCMP sont les alias validés de GSCM.md et GSCMP.md. Les variantes
+CISMPx conservent le RUN demandé et le cycle normal de CISMP.md, pour tout
+entier décimal ASCII positif sans zéro initial, sans borne supérieure.
+Les variantes 1CISMPx bornent le même RUN à un change complet, suivi de
 l'archivage, des statistiques puis de l'arrêt de la session de codage.
 
 ## Liste noire des modèles
