@@ -5,8 +5,11 @@
 Relevé : **28 octobre 2026**, Europe/Paris.
 Plan **ACL-TOOLS-20261028-R1**, validé intégralement par le développeur dans la conversation ACL.
 La cartographie était un squelette réduit à son titre ; le registre était absent.
+Amendement **ACL-PRM03-R1**, validé par le développeur le **28 octobre 2026** :
+attribution rétrospective de PRM03, actualisation de son entrée et de ses preuves,
+sans renumérotation des 44 codes précédents.
 
-Couverture vérifiée : **45 archives : 44 codées et 1 sans code**, référencés dans
+Couverture vérifiée : **45 archives codées**, référencées dans
 [BATCH_CODES.md](openspec/BATCH_CODES.md). Les attributions sont des annotations
 rétrospectives du 28 octobre 2026, pas les codes historiques d’origine.
 
@@ -30,13 +33,13 @@ Les tâches, exigences, scénarios, preuves, statistiques et états des 44 archi
 **A → B signifie : A dépend de B.** Un regroupement exprime une appartenance,
 pas une dépendance. Aucune flèche n’est déduite d’un préfixe, numéro, thème ou date.
 La vue générale présente les ensembles ; la vue détaillée et le registre couvrent les
-44 lots. Les effectifs ne constituent pas de nouveaux codes.
+45 lots. Les effectifs ne constituent pas de nouveaux codes.
 
 ```mermaid
 flowchart TB
   GCAB["Historique distinct — CAB (7)"]
   GEXT["Contrats et distribution des extensions (5)"]
-  GPRM["Lancement des prompts (2)"]
+  GPRM["Lancement des prompts (3)"]
   GUPD["Mise à jour et installation TCU (4)"]
   GTFL["Catalogues fournisseurs (6)"]
   GPLL["Évaluation et politiques PLLM (10)"]
@@ -49,14 +52,14 @@ flowchart TB
 |---|---|---:|
 | CAB | Pont d’approbation, contrôleur et distribution historiques | 7 |
 | EXT | Contrats transverses, versionnement, présentation et distribution | 5 |
-| PRM | Résolution et lancement des prompts depuis DEVOPS | 2 |
+| PRM | Résolution et lancement des prompts depuis DEVOPS | 3 |
 | UPD | Mise à jour et installation des briques par TCU | 4 |
 | TFL | Collecte, sélection et publication des catalogues | 6 |
 | PLL | Politiques, sélection, diagnostics et mémoire propres à PLLM | 10 |
 | LLM | Mesures, efforts et preuves partagés TFL/PLLM | 7 |
 | LM | Gestion et normalisation de la liste noire partagée | 2 |
 | SCH | Ordonnancement conditionnel de TFL puis PLLM | 1 |
-| **Total** | | **44** |
+| **Total** | | **45** |
 
 Les sections Organisation, Catalogue actuel, Lancement de prompts, Liste noire des modèles
 et Rafraîchissement utilisateur planifié de PROJECT.md justifient les responsabilités.
@@ -90,6 +93,7 @@ flowchart TB
   subgraph PRM["Lancement des prompts"]
     PRM01["PRM01 · Résolveur et lancement"]
     PRM02["PRM02 · RUN sans borne"]
+    PRM03["PRM03 · Prise en charge d’ACL"]
   end
   subgraph UPD["Mise à jour et installation TCU"]
     UPD01["UPD01 · Mise à jour contrôlée"]
@@ -181,6 +185,7 @@ ne sont pas requalifiées par ACL. CAB03 conserve la validation E2E restante.
 | PLL10 | [restore-mode5-paid-benchmark](openspec/changes/archive/2026-10-28-restore-mode5-paid-benchmark/) | PLL — Benchmark payant mode5 | 6/6 | [Proposition et titre](openspec/changes/archive/2026-10-28-restore-mode5-paid-benchmark/proposal.md) | [Tâches](openspec/changes/archive/2026-10-28-restore-mode5-paid-benchmark/tasks.md) |
 | PRM01 | [add-prompt-dispatcher](openspec/changes/archive/2026-10-19-add-prompt-dispatcher/) | PRM — Résolveur et lancement | 11/11 | [Proposition et titre](openspec/changes/archive/2026-10-19-add-prompt-dispatcher/proposal.md) | [Tâches](openspec/changes/archive/2026-10-19-add-prompt-dispatcher/tasks.md) |
 | PRM02 | [unbound-prompt-runs](openspec/changes/archive/2026-10-28-unbound-prompt-runs/) | PRM — RUN sans borne | 5/5 | [Proposition et titre](openspec/changes/archive/2026-10-28-unbound-prompt-runs/proposal.md) | [Tâches](openspec/changes/archive/2026-10-28-unbound-prompt-runs/tasks.md) |
+| PRM03 | [support-acl-prompt](openspec/changes/archive/2026-10-28-support-acl-prompt/) | PRM — Prise en charge d’ACL | 5/5 | [Proposition et titre — attribution rétrospective du 28 octobre 2026](openspec/changes/archive/2026-10-28-support-acl-prompt/proposal.md) | [Tâches](openspec/changes/archive/2026-10-28-support-acl-prompt/tasks.md) ; [statistiques](openspec/changes/archive/2026-10-28-support-acl-prompt/STATISTICS.md) |
 | SCH01 | [add-user-llm-refresh-schedule](openspec/changes/archive/2026-10-26-add-user-llm-refresh-schedule/) | SCH — TFL puis PLLM | 12/12 | [Proposition et titre](openspec/changes/archive/2026-10-26-add-user-llm-refresh-schedule/proposal.md) | [Tâches](openspec/changes/archive/2026-10-26-add-user-llm-refresh-schedule/tasks.md) |
 | TFL01 | [add-general-opencode-catalog-to-tfl](openspec/changes/archive/2026-10-25-add-general-opencode-catalog-to-tfl/) | TFL — Catalogue général historique | 13/13 | [Proposition et titre](openspec/changes/archive/2026-10-25-add-general-opencode-catalog-to-tfl/proposal.md) | [Tâches](openspec/changes/archive/2026-10-25-add-general-opencode-catalog-to-tfl/tasks.md) |
 | TFL02 | [add-tfl-live-provider-pricing](openspec/changes/archive/2026-10-25-add-tfl-live-provider-pricing/) | TFL — Tarifs actualisés | 12/12 | [Proposition et titre](openspec/changes/archive/2026-10-25-add-tfl-live-provider-pricing/proposal.md) | [Tâches](openspec/changes/archive/2026-10-25-add-tfl-live-provider-pricing/tasks.md) |
@@ -193,22 +198,23 @@ ne sont pas requalifiées par ACL. CAB03 conserve la validation E2E restante.
 | UPD03 | [tcu-plain-check](openspec/changes/archive/2026-10-19-tcu-plain-check/) | UPD — Argument check | 6/6 | [Proposition et titre](openspec/changes/archive/2026-10-19-tcu-plain-check/proposal.md) | [Tâches](openspec/changes/archive/2026-10-19-tcu-plain-check/tasks.md) |
 | UPD04 | [install-missing-tools-codex-components](openspec/changes/archive/2026-10-28-install-missing-tools-codex-components/) | UPD — Briques absentes | 7/7 | [Proposition et titre](openspec/changes/archive/2026-10-28-install-missing-tools-codex-components/proposal.md) | [Tâches](openspec/changes/archive/2026-10-28-install-missing-tools-codex-components/tasks.md) |
 
-### Entrées provisoires sans code
+### Preuves et limites de PRM03
 
-Amendement SCM-ACL-R1 du 28 octobre 2026 ; aucun code attribué ni réservé.
+PRM03 reste **ARCHIVÉ**, avec **5/5 tâches cochées** ; la réalisabilité d’un change actif
+est sans objet. Les [statistiques historiques](openspec/changes/archive/2026-10-28-support-acl-prompt/STATISTICS.md)
+documentent 22/22 tests ciblés, 368/368 tests sur chacune des branches Python 3.13 et 3.14,
+et les validations OpenSpec standard et stricte. Ces tests ne sont pas rejoués par ACL.
 
-| Repère | Identifiant et source | État et avancement | Réalisabilité | Livraison et activation |
-|---|---|---|---|---|
-| code non attribué | [support-acl-prompt](openspec/changes/archive/2026-10-28-support-acl-prompt/proposal.md) | ARCHIVÉ ; 5/5 tâches cochées, [tâches](openspec/changes/archive/2026-10-28-support-acl-prompt/tasks.md) | Sans objet : archive vérifiée ; tests ciblés 22/22 et suite complète 368/368 sur Python 3.13 et 3.14 ; contrôles documentaires et OpenSpec standard/strict réussis | Installation utilisateur et activation non effectuées |
+Le **28 octobre 2026**, le résultat TCU et les contrôles CLI consignés dans cette conversation
+ont vérifié l’installation **0.7.26** et la reconnaissance d’ACL par les deux résolveurs autonomes
+et celui du plugin installé. La résolution retourne `ready`, le texte exact d’ACL.md, aucun RUN
+ni action de clôture, sans exécuter le prompt. Le chargement des skills actualisés dans une
+nouvelle session Codex n’est pas vérifié. Installation, résolution et chargement restent distincts.
 
-```mermaid
-flowchart TB
-  ACL_CHANGE["support-acl-prompt · code non attribué · ARCHIVÉ"]
-  classDef provisional stroke-dasharray: 5 5
-  class ACL_CHANGE provisional
-```
-
-Le pointillé identifie une entrée provisoire sans code. Ce change relève du lancement des prompts d’après sa proposition. Aucun lien de dépendance entre lots n’est ajouté ; aucun service externe n’est requis pour sa qualification hors ligne.
+Aucune entrée provisoire sans code ne reste après ACL-PRM03-R1. Le repère provisoire SCM-ACL-R1
+est remplacé par PRM03 dans le groupe Lancement des prompts, conformément à sa proposition.
+Aucun lien de dépendance entre lots n’est ajouté ; aucun service externe n’est requis pour
+sa qualification hors ligne.
 
 ## 5. Registre des dépendances
 
@@ -234,7 +240,8 @@ Les relations futures devront préciser leur source et leur preuve pour la phase
 
 Aucun change actif après archivage vérifié de support-acl-prompt, cible de SCM-ACL-R1.
 Les tests ciblés, la validation globale et les contrôles documentaires sont réussis.
-Le nouveau change archivé reste sans code ; exécuter ultérieurement ACL pour son attribution. Les archives constituent des références documentaires ;
+PRM03 est attribué rétrospectivement à ce change selon ACL-PRM03-R1.
+Les archives constituent des références documentaires ;
 leur présence et leurs cases cochées ne prouvent pas la disponibilité actuelle des composants.
 Une future sélection devra inventorier les changes alors actifs et revérifier leurs prérequis.
 
@@ -262,14 +269,16 @@ PLL06 décrit un mode5 sans génération alors que PLL10 rétablit son benchmark
 Ces successions n’impliquent ni réécriture des archives ni dépendance entre leurs lots.
 Les [spécifications courantes](openspec/specs/) priment pour le comportement actuel.
 
-Le résolveur PROMPT local ne reconnaît pas encore ACL, pourtant présent dans l’index déclaré
-par DEVOPS.md. Ce constat n’invalide pas l’invocation directe validée et n’autorise pas sa correction.
+Le constat initial de refus d’ACL par PROMPT est résolu par PRM03. Les sources 0.7.26
+et les trois résolveurs installés ont été contrôlés dans cette conversation le 28 octobre 2026 ;
+voir les preuves et limites de PRM03 ci-dessus. Aucun nouveau contrôle runtime n’est déduit
+de la seule annotation documentaire.
 
 Les hypothèses de disponibilité actuelle, de dépendance fondée sur la seule succession des
 releases ou d’indépendance liée à l’absence de flèche sont exclues des décisions automatiques.
 Les installations et activations actuelles non recontrôlées restent non vérifiées.
 
-Contrôles d’application : couverture des 44 titres et des deux registres, unicité, liens,
+Contrôles d’application : couverture des 45 titres et des deux registres, unicité, liens,
 conservation hors annotations, UTF-8/LF et comptages. Les validations OpenSpec globales standard
 et stricte portent sur les spécifications courantes ; elles ne couvrent pas les archives.
 Le contrôle natif des tâches archivées conserve l’échec historique CAB03 (4/5).

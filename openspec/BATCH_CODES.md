@@ -4,8 +4,10 @@
 
 Relevé et annotation rétrospective : **28 octobre 2026** (Europe/Paris).
 Plan **ACL-TOOLS-20261028-R1**, validé intégralement par le développeur dans la conversation ACL.
-Couverture : **0 change actif, 45 archives dont 1 sans code, 44 correspondances code/change vérifiées**.
-Aucun code antérieur attesté, aucune consolidation, aucune réservation supplémentaire.
+Couverture : **0 change actif, 45 archives codées, 45 correspondances code/change vérifiées**.
+Aucun code antérieur attesté lors du relevé initial, aucune consolidation, aucune réservation supplémentaire.
+Amendement **ACL-PRM03-R1**, validé par le développeur : attribution rétrospective de PRM03
+à support-acl-prompt le **28 octobre 2026**, sans modification des 44 codes précédents.
 
 Chaque attribution ci-dessous est une annotation rétrospective du 28 octobre 2026,
 pas le code d’origine de l’archive. La preuve est le titre principal du proposal.md lié.
@@ -28,14 +30,14 @@ utilisé ou réservé ; aucune renumérotation pour combler les trous.
 |---|---|---:|
 | CAB | Pont d’approbation, contrôleur et distribution historiques | 7 |
 | EXT | Contrats transverses, versionnement, présentation et distribution | 5 |
-| PRM | Résolution et lancement des prompts depuis DEVOPS | 2 |
+| PRM | Résolution et lancement des prompts depuis DEVOPS | 3 |
 | UPD | Mise à jour et installation des briques par TCU | 4 |
 | TFL | Collecte, sélection et publication des catalogues | 6 |
 | PLL | Politiques, sélection, diagnostics et mémoire propres à PLLM | 10 |
 | LLM | Mesures, efforts et preuves partagés TFL/PLLM | 7 |
 | LM | Gestion et normalisation de la liste noire partagée | 2 |
 | SCH | Ordonnancement conditionnel de TFL puis PLLM | 1 |
-| **Total** | | **44** |
+| **Total** | | **45** |
 
 ## Correspondances vérifiées
 
@@ -76,6 +78,7 @@ Chemins relatifs à openspec/. État constaté le 28 octobre 2026.
 | PLL10 | restore-mode5-paid-benchmark | Rétablir le benchmark des payants OpenRouter en mode5 | Archivé | [2026-10-28-restore-mode5-paid-benchmark](changes/archive/2026-10-28-restore-mode5-paid-benchmark/) | [Titre principal](changes/archive/2026-10-28-restore-mode5-paid-benchmark/proposal.md) |
 | PRM01 | add-prompt-dispatcher | Ajouter le résolveur et le lancement des prompts du projet | Archivé | [2026-10-19-add-prompt-dispatcher](changes/archive/2026-10-19-add-prompt-dispatcher/) | [Titre principal](changes/archive/2026-10-19-add-prompt-dispatcher/proposal.md) |
 | PRM02 | unbound-prompt-runs | Lever la borne des RUN PROMPT et uniformiser leurs libellés | Archivé | [2026-10-28-unbound-prompt-runs](changes/archive/2026-10-28-unbound-prompt-runs/) | [Titre principal](changes/archive/2026-10-28-unbound-prompt-runs/proposal.md) |
+| PRM03 | support-acl-prompt | Prise en charge d’ACL dans PROMPT | Archivé | [2026-10-28-support-acl-prompt](changes/archive/2026-10-28-support-acl-prompt/) | [Titre principal — annotation rétrospective du 28 octobre 2026](changes/archive/2026-10-28-support-acl-prompt/proposal.md) |
 | SCH01 | add-user-llm-refresh-schedule | Planifier TFL puis PLLM dans la session utilisateur | Archivé | [2026-10-26-add-user-llm-refresh-schedule](changes/archive/2026-10-26-add-user-llm-refresh-schedule/) | [Titre principal](changes/archive/2026-10-26-add-user-llm-refresh-schedule/proposal.md) |
 | TFL01 | add-general-opencode-catalog-to-tfl | Catalogue général OpenCode dans TFL | Archivé | [2026-10-25-add-general-opencode-catalog-to-tfl](changes/archive/2026-10-25-add-general-opencode-catalog-to-tfl/) | [Titre principal](changes/archive/2026-10-25-add-general-opencode-catalog-to-tfl/proposal.md) |
 | TFL02 | add-tfl-live-provider-pricing | Actualisation automatique des tarifs TFL | Archivé | [2026-10-25-add-tfl-live-provider-pricing](changes/archive/2026-10-25-add-tfl-live-provider-pricing/) | [Titre principal](changes/archive/2026-10-25-add-tfl-live-provider-pricing/proposal.md) |
@@ -90,11 +93,8 @@ Chemins relatifs à openspec/. État constaté le 28 octobre 2026.
 
 ## Entrées provisoires sans code
 
-Les 44 attributions validées sont présentes dans leurs supports. Entrée SCM-ACL-R1 ajoutée le 28 octobre 2026, sans attribution ni réservation de code.
-
-| Repère | Identifiant | État | Dossier et preuve |
-|---|---|---|---|
-| code non attribué | support-acl-prompt | ARCHIVÉ | [Change](changes/archive/2026-10-28-support-acl-prompt/) ; [proposition](changes/archive/2026-10-28-support-acl-prompt/proposal.md) |
+Aucune : les 45 attributions validées sont présentes dans leurs supports.
+L’entrée provisoire SCM-ACL-R1 a été remplacée par PRM03 après validation d’ACL-PRM03-R1.
 Cette section ne constitue ni une série ni une réservation.
 
 ## Limites et anomalies historiques

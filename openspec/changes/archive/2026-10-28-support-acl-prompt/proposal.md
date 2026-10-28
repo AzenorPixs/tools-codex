@@ -1,4 +1,4 @@
-# Prise en charge d’ACL dans PROMPT
+# PRM03 — Prise en charge d’ACL dans PROMPT
 
 ## Why
 ACL.md est référencé dans l’index déclaré mais rejeté par la liste des codes directs. Le développeur a validé SCM-ACL-R1 le 28 octobre 2026, y compris spécification, implémentation, release 0.7.26, tests et archivage.
