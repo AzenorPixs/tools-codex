@@ -1,3 +1,5 @@
+# CAB05 — Accepter un workspace générique pour le contrôleur CAB
+
 ## Why
 
 Le contrôleur CAB ne doit pas connaître les projets qu'il pilote. Une liste de

@@ -9,7 +9,7 @@ import re
 
 MAX_TEXT_BYTES = 1024 * 1024
 DIRECT = {name: name for name in (
-    'ACSP', 'ACSM', 'ACSMP', 'CGP', 'CISM', 'DOP', 'DOPP', 'EDP', 'ISM', 'ISMP',
+    'ACL', 'ACSP', 'ACSM', 'ACSMP', 'CGP', 'CISM', 'DOP', 'DOPP', 'EDP', 'ISM', 'ISMP',
     'PPSC', 'PPSCP', 'RCAM', 'RCAMP', 'SPCM', 'SPCMP', 'RSM', 'RSMP', 'SCM', 'SCMP')}
 DIRECT.update(GCM='GSCM', GCMP='GSCMP')
 RUN_ACTION = re.compile(r'(1)?CISMP([1-9][0-9]*)')

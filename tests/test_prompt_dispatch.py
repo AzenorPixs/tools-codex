@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DIRECT_CODES = 'ACSP ACSM ACSMP CGP CISM DOP DOPP EDP ISM ISMP PPSC PPSCP RCAM RCAMP SPCM SPCMP RSM RSMP SCM SCMP'.split()
+DIRECT_CODES = 'ACL ACSP ACSM ACSMP CGP CISM DOP DOPP EDP ISM ISMP PPSC PPSCP RCAM RCAMP SPCM SPCMP RSM RSMP SCM SCMP'.split()
 
 
 class PromptDispatchTests(unittest.TestCase):
@@ -59,6 +59,62 @@ class PromptDispatchTests(unittest.TestCase):
                 self.assertEqual(Path(result['prompt_path']), self.folder / (canonical + '.md'))
                 self.assertEqual(result['prompt_text'], (self.folder / (canonical + '.md')).read_text())
                 self.assertTrue(result['instruction'].startswith('Lance un prompt ' + canonical + '.md'))
+
+    def test_acl_cli_and_api_are_read_only_in_both_distributions(self):
+        marker = self.base / 'acl-must-not-run'
+        body = f'# ACL\nCrée {marker}, puis attends une validation.\n'
+        (self.folder / 'ACL.md').write_text(body, encoding='utf-8')
+        before = {str(p): p.read_bytes() for p in self.base.rglob('*') if p.is_file()}
+        for source in ('skills/prompt/scripts/resolve_prompt.py',
+                       'plugins/prompt/skills/prompt/scripts/resolve_prompt.py'):
+            with self.subTest(source=source):
+                spec = importlib.util.spec_from_file_location('acl_dispatch', ROOT / source)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                api = module.dispatch(self.project, 'ACL')
+                cli = subprocess.run([sys.executable, '-B', str(ROOT / source), 'ACL',
+                                      '--project-root', str(self.project)],
+                                     cwd=self.base, capture_output=True, text=True, check=True)
+                self.assertEqual(json.loads(cli.stdout), api)
+                self.assertEqual(api['canonical'], 'ACL')
+                self.assertEqual(api['status'], 'ready')
+                self.assertEqual(api['prompt_text'], body)
+                self.assertEqual(api['prompt_path'], str(self.folder / 'ACL.md'))
+                self.assertIsNone(api['run'])
+                self.assertIsNone(api['max_changes'])
+                self.assertEqual(api['finish_actions'], [])
+                with patch.object(module, 'configuration') as config:
+                    with self.assertRaises(module.PromptError):
+                        module.dispatch(self.project, 'acl')
+                    with patch('sys.stderr', new_callable=io.StringIO):
+                        with self.assertRaises(SystemExit) as caught:
+                            module.main(['acl'])
+                    self.assertEqual(caught.exception.code, 2)
+                    config.assert_not_called()
+        self.assertFalse(marker.exists())
+        self.assertEqual(before, {str(p): p.read_bytes() for p in self.base.rglob('*') if p.is_file()})
+
+    def test_acl_missing_entry_or_file_fails_without_fallback(self):
+        for source in ('skills/prompt/scripts/resolve_prompt.py',
+                       'plugins/prompt/skills/prompt/scripts/resolve_prompt.py'):
+            spec = importlib.util.spec_from_file_location('acl_errors', ROOT / source)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            for missing in ('entry', 'file'):
+                with self.subTest(source=source, missing=missing):
+                    self.write_index() if missing == 'file' else self.write_index(
+                        [('SCM', 'Session', 'SCM.md')])
+                    path = self.folder / 'ACL.md'
+                    if missing == 'file':
+                        path.unlink(missing_ok=True)
+                    with self.assertRaisesRegex(module.PromptError, 'ACL'):
+                        module.dispatch(self.project, 'ACL')
+                    result = subprocess.run([sys.executable, '-B', str(ROOT / source), 'ACL',
+                                             '--project-root', str(self.project)],
+                                            capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 1)
+                    self.assertEqual(json.loads(result.stdout)['status'], 'error')
+                    self.assertIn('ACL', json.loads(result.stdout)['error'])
 
     def test_numbered_runs_keep_the_number_without_single_change_limit(self):
         for n in (*range(1, 10), 10, 99, 12345, '9' * 5000):
@@ -131,7 +187,7 @@ class PromptDispatchTests(unittest.TestCase):
         p = self.project / 'DEVOPS.md'
         p.write_text(p.read_text() + '\n```text\nDossier des prompts : mauvais\n```\n')
         self.index.write_text('```markdown\n| Sigle | Prompt | Fichier |\n| BAD | Exemple | ../BAD.md |\n```\n' + self.index.read_text())
-        self.assertEqual(len(self.m.dispatch(self.project, 'LIST')['entries']), 23)
+        self.assertEqual(len(self.m.dispatch(self.project, 'LIST')['entries']), len(self.codes))
 
     def test_duplicate_index_codes_and_wrong_table_are_rejected(self):
         for rows in ([('SCM', 'A', 'SCM.md'), ('SCM', 'B', 'SCM.md')], [('scm', 'A', 'SCM.md')]):
@@ -200,7 +256,7 @@ class PromptDispatchTests(unittest.TestCase):
                     self.m.dispatch(self.project, 'SCM')
 
     def test_invalid_arguments_are_rejected_before_reading_configuration(self):
-        for action in ('scm', 'list', 'CISMP', 'CISMP0', 'CISMP01', 'CISMP-1', 'CISMP1.5', 'CISMP١', 'CISMP1\n', '1CISMP0', '1CISMP01', '1CISMP+2', '1CISMP1x', '11CISMP3', '../SCM', 'UNKNOWN'):
+        for action in ('acl', 'scm', 'list', 'CISMP', 'CISMP0', 'CISMP01', 'CISMP-1', 'CISMP1.5', 'CISMP١', 'CISMP1\n', '1CISMP0', '1CISMP01', '1CISMP+2', '1CISMP1x', '11CISMP3', '../SCM', 'UNKNOWN'):
             with self.subTest(action=action):
                 with patch.object(self.m, 'configuration') as config:
                     with self.assertRaises(self.m.PromptError):

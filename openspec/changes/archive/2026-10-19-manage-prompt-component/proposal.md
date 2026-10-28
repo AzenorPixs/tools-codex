@@ -1,3 +1,5 @@
+# UPD02 — Gérer le composant PROMPT et les canaux indépendants dans TCU
+
 ## Why
 
 Prompt est publié mais TCU ne l'installe pas lorsqu'il est absent. Un conflit

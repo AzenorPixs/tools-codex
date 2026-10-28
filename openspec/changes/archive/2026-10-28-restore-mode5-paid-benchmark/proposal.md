@@ -1,4 +1,4 @@
-# Rétablir le benchmark des payants OpenRouter en mode5
+# PLL10 — Rétablir le benchmark des payants OpenRouter en mode5
 
 ## Pourquoi
 Le mode5 actuel valide un candidat sur le prix, le contexte et le solde sans vérifier sa génération. Le développeur a validé le retour du benchmark payant habituel et du passage au suivant après échec.

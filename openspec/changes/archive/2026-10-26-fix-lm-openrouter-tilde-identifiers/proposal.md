@@ -1,4 +1,4 @@
-# Accepter les préfixes OpenRouter marqués sans contourner LM
+# LM02 — Accepter les préfixes OpenRouter marqués sans contourner LM
 
 ## Why
 Le catalogue réel OpenRouter contient des identifiants tels que

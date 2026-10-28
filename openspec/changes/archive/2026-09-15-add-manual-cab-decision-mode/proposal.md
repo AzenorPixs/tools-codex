@@ -1,3 +1,5 @@
+# CAB04 — Ajouter le mode de décision manuelle CAB
+
 ## Why
 
 Le contrôleur décide actuellement automatiquement chaque mandat en lançant un

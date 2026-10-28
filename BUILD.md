@@ -227,6 +227,7 @@ Les arguments sont en MAJUSCULE ; ils ne comportent pas de tirets :
 
 ```text
 /PROMPT LIST
+/PROMPT ACL
 /PROMPT CISMP3
 /PROMPT 1CISMP3
 ```
@@ -238,7 +239,7 @@ sans enregistrement automatique d'une slash native.
 | Arguments | Source et effet |
 |---|---|
 | LIST | Affiche la table réelle de l'index, sans lire les corps ni lancer un prompt. |
-| ACSP, ACSM, ACSMP, CGP, CISM | Charge le fichier du même nom et exécute son processus. |
+| ACL, ACSP, ACSM, ACSMP, CGP, CISM | Charge le fichier du même nom et exécute son processus. |
 | DOP, DOPP, EDP, ISM, ISMP | Charge le fichier du même nom et exécute son processus. |
 | GCM, GCMP | Alias validés de GSCM.md et GSCMP.md, avec leurs entrées dans l'index. |
 | PPSC, PPSCP, RCAM, RCAMP | Charge le fichier du même nom et exécute son processus. |

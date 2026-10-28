@@ -1,4 +1,4 @@
-# Proposition
+# EXT02 — Proposition
 
 ## Why
 

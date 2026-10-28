@@ -1,3 +1,5 @@
+# EXT04 — Exposer le catalogue CM comme skill découvrable
+
 ## Why
 
 Le fichier `.codex/commands/cm.md` ne suffit pas à rendre `/cm` disponible

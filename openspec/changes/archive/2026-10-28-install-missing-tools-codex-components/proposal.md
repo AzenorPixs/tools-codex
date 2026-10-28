@@ -1,4 +1,4 @@
-# Installation systématique des briques Tools Codex absentes
+# UPD04 — Installation systématique des briques Tools Codex absentes
 
 ## Why
 TCU conserve actuellement les composants absents, sauf PROMPT. Le développeur a validé le 28 octobre 2026 un mandat SCM pour installer systématiquement ces composants, conserver les mises à jour et incrémenter la release 0.7.23 en 0.7.24.

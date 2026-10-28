@@ -1,3 +1,5 @@
+# CAB06 — Corriger la corrélation des commandes natives CAB
+
 ## Why
 
 OpenCode peut enrichir une commande soumise à la permission native avec une

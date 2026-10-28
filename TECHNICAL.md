@@ -541,7 +541,8 @@ retourne un état `ready`, le texte complet, le chemin et l'instruction à suivr
 Le résolveur n'exécute pas ce texte : le skill le lit intégralement puis conduit
 son processus. Une résolution réussie ne vaut pas preuve de fin de RUN.
 
-Les actions sont en MAJUSCULE. GCM et GCMP sélectionnent les entrées GSCM et
+Les actions sont en MAJUSCULE. ACL résout ACL.md depuis l’entrée ACL de l’index,
+sans RUN ni action de clôture ; le résolveur reste en lecture seule. GCM et GCMP sélectionnent les entrées GSCM et
 GSCMP de l'index. CISMPn et 1CISMPn, pour tout suffixe décimal ASCII positif sans zéro initial et sans borne supérieure, conservent exactement
 le RUN CISMPn. Les variantes préfixées 1 portent `max_changes=1` et l'ordre
 change complet, archivage, statistiques, arrêt de la session de codage. Cette

@@ -1,4 +1,4 @@
-# Harmoniser les tests gratuits et le raisonnement
+# LLM02 — Harmoniser les tests gratuits et le raisonnement
 
 ## Why
 Le développeur a validé le cycle SCM jusqu'à l'archive et STATISTIQUES.md,

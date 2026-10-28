@@ -20,7 +20,7 @@ N'utilise aucun chemin global de repli ni copie de prompt embarquée.
 Demande l'argument s'il manque. Il est obligatoire et en MAJUSCULE :
 
 - `LIST` ;
-- `ACSP`, `ACSM`, `ACSMP`, `CGP`, `CISM`, `DOP`, `DOPP`, `EDP` ;
+- `ACL`, `ACSP`, `ACSM`, `ACSMP`, `CGP`, `CISM`, `DOP`, `DOPP`, `EDP` ;
 - `GCM`, `GCMP`, `ISM`, `ISMP`, `PPSC`, `PPSCP`, `RCAM`, `RCAMP` ;
 - `SPCM`, `SPCMP`, `RSM`, `RSMP`, `SCM`, `SCMP` ;
 - `CISMPx` et `1CISMPx`, où `x` est un entier décimal ASCII strictement

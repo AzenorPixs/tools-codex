@@ -1,3 +1,5 @@
+# PRM02 — Lever la borne des RUN PROMPT et uniformiser leurs libellés
+
 # Why
 La borne de huit RUN empêche de lancer CISMP9 ou 1CISMP9 alors que le suffixe identifie seulement le RUN. Les bilans de briques doivent présenter le nom PROMPT uniformément.
 

@@ -1,4 +1,4 @@
-# Basculer TFL et PLLM vers le raisonnement Medium
+# LLM06 — Basculer TFL et PLLM vers le raisonnement Medium
 
 ## Why
 

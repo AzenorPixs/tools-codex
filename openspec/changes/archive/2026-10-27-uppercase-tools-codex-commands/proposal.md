@@ -1,4 +1,4 @@
-# Commandes Tools Codex en majuscules
+# EXT05 — Commandes Tools Codex en majuscules
 
 ## Why
 Les commandes sources mêlent LM.md et TCU.md à quatre noms en minuscules.

@@ -1,3 +1,5 @@
+# EXT03 — Distribuer le catalogue CM comme plugin
+
 ## Why
 
 Le catalogue CM est disponible comme skill autonome, mais la marketplace

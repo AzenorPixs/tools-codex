@@ -1,5 +1,5 @@
 [project]
 name = "tools-codex"
-version = "0.7.25"
+version = "0.7.26"
 requires-python = ">=3.13,<3.15"
 dependencies = []

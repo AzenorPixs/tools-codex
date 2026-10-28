@@ -1,3 +1,5 @@
+# PLL04 — Arrêter la sélection PLLM au premier candidat valide
+
 ## Why
 
 PLLM compare actuellement tous les candidats admissibles, même après une

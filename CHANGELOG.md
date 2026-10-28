@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reconnaître ACL dans PROMPT, via CLI et API des distributions autonome et
+  embarquée, depuis le seul référentiel DEVOPS/index. Préserver la lecture seule,
+  les erreurs sans repli et les validations d’ACL. Aligner la release et les six
+  plugins sur 0.7.26 ; aucune installation utilisateur effectuée.
+
 - Rétablir le benchmark payant Medium du mode5 OpenRouter : réponse complète,
   TTFT <90 s, débit réponse seule >15 tokens/s au protocole 8 et contrôle du
   solde avant chaque essai. Parcourir les payants par prix croissant jusqu’au

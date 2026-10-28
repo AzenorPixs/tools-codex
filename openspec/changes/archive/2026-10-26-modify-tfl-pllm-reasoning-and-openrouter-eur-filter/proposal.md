@@ -1,4 +1,4 @@
-# Filtrage strict HIGH/XHIGH et plafond OpenRouter en euros
+# LLM04 — Filtrage strict HIGH/XHIGH et plafond OpenRouter en euros
 
 ## Why
 

@@ -1,4 +1,4 @@
-# Provenance TFL et diagnostics d'authentification PLLM
+# PLL08 — Provenance TFL et diagnostics d'authentification PLLM
 
 ## Why
 L'évaluation du 28 octobre 2026 à 11:28 a consommé le catalogue du plugin daté du 14 septembre, alors qu'une collecte autonome du même jour retient des gratuits Go et OpenRouter. Les modes 3/4/6 annoncent une absence sans identifier cette source. Le mode2 échoue séparément sur le contrôle des quotas avec HTTP 401.
