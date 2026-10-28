@@ -11,6 +11,11 @@ acceptée par l'API SHALL établir cette preuve. Un refus explicite du paramètr
 SHALL invalider le candidat. Un exclu SHALL NOT être sélectionné ou affiché
 dans les tableaux ; son motif précis et sa preuve SHALL rester dans le JSON.
 Les sept politiques SHALL rester présentes dans l'état interne.
+TFL et PLLM SHALL utiliser la même empreinte source : SHA-256 du texte HTML
+visible normalisé en UTF-8 NFC avec espaces consécutifs réduits, ou SHA-256
+des octets reçus pour les sources non HTML. Chaque source SHALL déclarer
+`fingerprint_method`. Le recontrôle SHALL ignorer les changements de balisage
+ou de scripts qui préservent le texte visible.
 
 #### Scenario: Mapping Medium vers High
 - **WHEN** une source officielle prouve que l'API accepte Medium comme alias de High

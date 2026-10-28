@@ -21,6 +21,7 @@ def record(provider='opencode_go', field='reasoning', status='verified', **chang
               'status': status, 'investigated_at': DATE,
               'conclusion': 'Investigation des sources officielles terminée.',
               'sources': [{'url': 'https://official.example/docs', 'authority': 'official',
+                           'fingerprint_method': 'raw_bytes_v1',
                            'sha256': hashlib.sha256(BODY).hexdigest(), 'retrieved_at': DATE}]}
     if status == 'verified':
         result['value'] = 1_000_000 if field == 'context' else {'supported_efforts': ['medium', 'xhigh']}
@@ -34,6 +35,42 @@ class ModelEvidenceTests(unittest.TestCase):
             path = Path(tmp) / 'model-evidence.json'
             path.write_text(json.dumps({'schema_version': 1, 'records': records}))
             return module.evidence_module.EvidenceResolver([path], fetch=fetch or (lambda *_: BODY))
+
+    def test_html_fingerprint_ignores_volatile_markup_and_keeps_visible_changes(self):
+        first = (b'<html><head><script nonce="first">window.id="a";</script></head>'
+                 b'<body><nav>Dynamic navigation 1</nav><main><h1>Context window</h1>'
+                 b'<p>Model supports 1M tokens.</p></main></body></html>')
+        second = (b'<html><head><script nonce="second">window.id="b";</script></head>'
+                  b'<body><nav>Dynamic navigation 2</nav><main><h1>Context window</h1>'
+                  b'<p>Model supports 1M tokens.</p></main></body></html>')
+        changed = second.replace(b'1M tokens', b'256K tokens')
+        for script in (*TFL, *PLLM):
+            engine = load_script(script).evidence_module
+            method, first_hash = engine.source_fingerprint(first)
+            repeated_method, second_hash = engine.source_fingerprint(second)
+            changed_method, changed_hash = engine.source_fingerprint(changed)
+            self.assertEqual(method, 'html_visible_text_v1')
+            self.assertEqual((repeated_method, second_hash), (method, first_hash))
+            self.assertEqual(changed_method, method)
+            self.assertNotEqual(changed_hash, first_hash)
+
+    def test_html_fingerprint_refuses_pages_without_visible_text(self):
+        for script in (*TFL, *PLLM):
+            engine = load_script(script).evidence_module
+            with self.assertRaisesRegex(RuntimeError, 'sans texte visible'):
+                engine.source_fingerprint(b'<html><head><script>window.only="dynamic"</script></head></html>')
+
+    def test_html_fingerprint_rechecks_only_the_rendered_content(self):
+        first = b'<html><body><script>nonce=1</script><main>Context: 1M</main></body></html>'
+        second = b'<html><body><script>nonce=2</script><main>Context: 1M</main></body></html>'
+        for script in (*TFL, *PLLM):
+            module = load_script(script)
+            method, fingerprint = module.evidence_module.source_fingerprint(first)
+            proof = record()
+            proof['sources'][0].update(fingerprint_method=method, sha256=fingerprint)
+            resolver = self.resolver(module, [proof], lambda *_: second)
+            result = resolver.resolve('opencode_go', 'new-model', 'reasoning', 'chat_completions')
+            self.assertEqual(result['status'], 'verified')
 
     def fixture(self, module, section):
         payload, metadata, prices = go_fixtures.GoMetadataTests().fixture(module)
@@ -144,40 +181,51 @@ class ModelEvidenceTests(unittest.TestCase):
                 with self.subTest(script=script, key=key):
                     self.assertEqual(resolver.records[key]['value']['supported_efforts'], levels)
 
-    def test_mode7_preserves_official_deepseek_medium_to_high_exclusion(self):
+    def test_mode7_accepts_documented_medium_alias_after_a_complete_response(self):
         for script in PLLM:
             module = load_script(script)
             with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as tmp:
                 root = Path(tmp)
                 references = root / 'references'
                 references.mkdir()
-                finding = record(provider='deepseek', status='unsupported',
+                finding = record(provider='deepseek', status='verified',
                                  model_id='deepseek-v4-flash',
-                                 conclusion='DeepSeek mappe medium à high ; Medium effectif indisponible.')
+                                 value={'supported_efforts': ['medium'],
+                                        'effort_equivalence': 'accepted_alias',
+                                        'effort_protocol': 'chat_completions'},
+                                 conclusion='DeepSeek accepte medium et le mappe à high.')
                 finding['protocol'] = 'chat_completions'
                 (references / 'model-evidence.json').write_text(
                     json.dumps({'schema_version': 1, 'records': [finding]}), encoding='utf-8')
+
+                def successful_medium(model, key, budget, metadata, session_id=None):
+                    acceptance = {'status': 'accepted', 'parameter': 'medium',
+                                  'verified_by': 'completed_api_response'}
+                    model.update(ttft_seconds=5, tokens_per_second=30,
+                                 reasoning_acceptance=acceptance,
+                                 performance_test={'status': 'completed',
+                                                   'reasoning_acceptance': acceptance})
+                    return True
+
                 with patch.object(module, 'ROOT', root), \
-                     patch.object(module.evidence_module, 'fetch_source', return_value=BODY):
+                     patch.object(module.evidence_module, 'fetch_source', return_value=BODY), \
+                     patch.object(module, 'quota', side_effect=lambda model, key: model.update(
+                         quotas={'is_available': True,
+                                 'balance_infos': [{'total_balance': '1'}]})), \
+                     patch.object(module, 'benchmark', side_effect=successful_medium):
                     candidate = module.candidates_for({'mode': 'mode7'}, 'paid', None)[0]
                     model = {**candidate, 'mode': 'mode7', 'reasoning': 'medium',
                              'performance_test': {'status': 'not_run'}, 'candidate_exclusions': []}
-                    result = module.evaluate_candidate(model, 'fixture', 'paid', {}, None)
-                self.assertEqual(result['state'], 'Invalide')
-                self.assertIn('DeepSeek mappe medium à high', result['cause'])
-                self.assertEqual(result['performance_test']['attempts'], [])
-                self.assertEqual(result['model_investigations'][0]['status'], 'unsupported')
+                    result = module.evaluate_candidate(model, 'fixture', 'paid', {'policies': {}}, None)
+                self.assertEqual(result['state'], 'Valide', result['cause'])
+                self.assertEqual(result['reasoning_acceptance']['status'], 'accepted')
+                self.assertEqual(result['model_investigations'][0]['status'], 'verified')
                 data = {'models': [{**result, 'candidate_results': [result],
                                     'candidate_exclusions': [], 'selected': False}]}
                 module.sanitize_reasoning_history(data)
                 published = data['models'][0]
-                self.assertEqual(published['model_id'], 'Non évalué')
-                self.assertIn('DeepSeek mappe medium à high', published['cause'])
-                self.assertEqual(published['candidate_results'], [])
-                self.assertEqual(len(published['candidate_exclusions']), 1)
-                self.assertEqual(
-                    published['candidate_exclusions'][0]['model_investigations'][0]['status'],
-                    'unsupported')
+                self.assertEqual(published['model_id'], 'deepseek-v4-flash')
+                self.assertEqual(published['candidate_results'][0]['state'], 'Valide')
 
     def test_provider_model_and_protocol_are_exact_without_cross_borrowing(self):
         for script in TFL:
@@ -200,15 +248,18 @@ class ModelEvidenceTests(unittest.TestCase):
             self.assertEqual(model['reasoning'], 'medium')
             self.assertEqual(model['reasoning_semantics'], 'documented_equivalent')
             self.assertEqual(model['api_endpoint'], 'https://opencode.ai/published/chat/completions')
-            with self.assertRaises(RuntimeError):
-                module.performance.reasoning({**model, 'api_protocol': 'messages'}, 1024, metadata)
+            messages = {**model, 'api_protocol': 'messages'}
+            self.assertEqual(module.performance.reasoning(messages, 1024, metadata),
+                             {'thinking': {'type': 'adaptive'},
+                              'output_config': {'effort': 'medium'}})
+            self.assertEqual(messages['reasoning'], 'medium')
 
     def test_documented_alias_survives_tfl_hydration_and_pllm_consumption(self):
         for tfl_script, pllm_script in zip(TFL, PLLM):
             module = load_script(tfl_script)
             payload, metadata, prices = go_fixtures.GoMetadataTests().fixture(module)
             payload['data'][0].pop('reasoning_capabilities')
-            metadata['models']['new-model']['reasoning'] = True
+            metadata['models']['new-model'].pop('reasoning', None)
             proof = record(value={'supported_efforts': ['medium', 'xhigh'],
                                   'effort_equivalence': 'thinking_enabled'})
             resolver = self.resolver(module, [proof])
@@ -224,7 +275,7 @@ class ModelEvidenceTests(unittest.TestCase):
             candidate = pllm.catalog_candidate(row, 'opencode_go', 1, DATE)
             self.assertEqual(candidate['model_investigations'], findings)
             self.assertEqual(pllm.performance.reasoning(candidate, 1024, candidate),
-                             {'thinking': {'type': 'enabled'}})
+                             {'reasoning_effort': 'medium'})
 
     def test_pllm_rechecks_sources_before_any_generation(self):
         for script in PLLM:
@@ -250,6 +301,7 @@ class ModelEvidenceTests(unittest.TestCase):
         invalid = [record(value={'supported_efforts': []}), record(sources=[]),
                    record(value={'supported_efforts': [1]}),
                    record(value={'supported_efforts': ['medium'], 'effort_equivalence': 'invented'})]
+        invalid.append(record(sources=[{**record()['sources'][0], 'fingerprint_method': 'invented'}]))
         unsafe = record()
         unsafe['sources'][0]['url'] = 'https://user:private@official.example/docs'
         invalid.append(unsafe)

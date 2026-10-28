@@ -279,24 +279,24 @@ class PricingTests(unittest.TestCase):
             with self.subTest(path=path):
                 payload = self.openrouter(module)
                 payload['data'][0]['pricing'] = {
-                    'prompt': '0.00000015', 'completion': '0.0000006',
+                    'prompt': '0.0000001', 'completion': '0.0000004',
                     'overrides': [
-                        {'utc_days': ['saturday', 'sunday'], 'prompt': '0.00000015',
-                         'completion': '0.0000006', 'input_cache_read': '0.000000003'},
+                        {'utc_days': ['saturday', 'sunday'], 'prompt': '0.0000001',
+                         'completion': '0.0000004', 'input_cache_read': '0.000000003'},
                         {'utc_days': ['monday'], 'utc_start': 100, 'utc_end': 400,
-                         'prompt': '0.0000003', 'completion': '0.0000012'},
+                         'prompt': '0.0000002', 'completion': '0.0000003'},
                     ]}
                 rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 selected = next(r for r in rows if r['id'] == OPENROUTER_FIXTURE_IDS[0])
                 self.assertEqual(excluded, [])
-                self.assertEqual(selected['average'], 0.375)
+                self.assertAlmostEqual(selected['average'], 0.25)
                 variants = selected['pricing_details']['overrides']
                 self.assertEqual(variants[0]['utc_days'], ['saturday', 'sunday'])
                 self.assertAlmostEqual(variants[0]['input_cache_read'], 0.003)
                 self.assertNotIn('min_prompt_tokens', variants[0])
                 self.assertEqual(variants[1]['utc_start'], 100)
                 self.assertEqual(variants[1]['utc_end'], 400)
-                self.assertAlmostEqual(variants[1]['completion'], 1.2)
+                self.assertAlmostEqual(variants[1]['completion'], 0.3)
 
     def test_dynamic_catalog_keeps_new_free_and_boundary_models_with_audited_exclusions(self):
         def model(model_id, **changes):
@@ -310,7 +310,7 @@ class PricingTests(unittest.TestCase):
             with self.subTest(path=path):
                 payload = {'data': [
                     model('new/free', pricing={'prompt': '0', 'completion': '0'}),
-                    model('new/boundary', pricing={'prompt': '0.0000005', 'completion': '0.0000005'}),
+                    model('new/boundary', pricing={'prompt': '0.00000025', 'completion': '0.00000025'}),
                     model('new/multimodal', architecture={'input_modalities': ['text', 'image', 'audio'],
                                                         'output_modalities': ['text']}),
                     model('new/unknown-output', architecture={}),
@@ -326,7 +326,7 @@ class PricingTests(unittest.TestCase):
                 self.assertEqual([r['id'] for r in rows],
                                  ['new/free', 'new/multimodal', 'new/unknown-output', 'new/boundary'])
                 self.assertEqual([r['rank'] for r in rows], [1, 2, 3, 4])
-                self.assertEqual(rows[-1]['average'], 0.5)
+                self.assertEqual(rows[-1]['average'], 0.25)
                 self.assertEqual(rows[2]['output_label'], 'Non vérifié')
                 self.assertEqual(len(rows) + len(excluded), len(payload['data']))
                 reasons = {m['id']: m['reason'] for m in excluded}

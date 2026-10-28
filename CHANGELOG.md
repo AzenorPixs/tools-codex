@@ -2,10 +2,18 @@
 
 ## Unreleased
 
+- Réduire à 0,10 EUR/M inclus le plafond moyen OpenRouter payant dans TFL et
+  PLLM mode5, y compris pour les anciens catalogues et rangs forcés ; vérifier
+  le chemin de benchmark complet qui enregistre l'acceptation Medium et le débit,
+  puis aligner la release locale et les six plugins sur 0.7.20.
 - Conserver les sources d'enquête DeepSeek dans le diagnostic PLLM, refuser un
   alias Medium→High comme effort effectif et limiter les redirections de preuve
   HTTPS à la même origine. Qualifier la chaîne TFL→PLLM et aligner la release
-  locale et les six plugins sur 0.7.18.
+  locale et les six plugins sur 0.7.19.
+- Corriger le chemin de benchmark complet TFL/PLLM : importer `copy` pour
+  enregistrer l'acceptation Medium et poursuivre la mesure du débit.
+- Stabiliser les empreintes des preuves HTML sur leur texte visible normalisé,
+  en conservant le hachage exact des octets pour les autres formats.
 - Reconfigurer PLLM en sept priorités : mode5 paie OpenRouter sans benchmark ni Medium avec plafond 0,20 EUR/M et contexte 1M ; mode6 benchmarke les gratuits OpenRouter en Medium ; DeepSeek devient mode7. Conserver tous les payants OpenRouter admissibles dans TFL même sans preuve Medium et aligner la release locale sur 0.7.17.
 - Corriger le filtrage PLLM qui rejetait les preuves Medium à cause d'anciens overrides/tentatives et OpenRouter à cause des arrondis binaires des prix ; conserver les décimales TFL de référence et aligner la release commune sur 0.7.16.
 - Rendre effectif le contrat Medium dans les états PLLM anciens : invalider les requêtes et tentatives mesurées avec un autre effort même si la capacité du modèle inclut Medium, vider les résultats livrés devenus incompatibles et aligner les commandes, spécifications actives, documentation, distributions et release commune sur 0.7.15.

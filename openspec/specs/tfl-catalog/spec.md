@@ -22,7 +22,7 @@ OpenCode Go puis OpenRouter ; le JSON SHALL NOT contenir de section opencode.
 - **THEN** TFL signale l'échec et ne déclare pas le catalogue actualisé
 
 ### Requirement: Seuils de sélection vérifiables
-TFL SHALL vérifier contexte ≥1M, coût moyen ≤0,50 USD/M Go et ≤0,20 EUR/M
+TFL SHALL vérifier contexte ≥1M, coût moyen ≤0,50 USD/M Go et ≤0,10 EUR/M
 OpenRouter au taux BCE. Prix/contexte inconnus sont exclus. Les payants
 OpenRouter satisfaisant contexte, coût, modalités et LM restent admissibles
 sans Medium. Les gratuits vérifiés SHALL réussir réponse complète en Medium,
@@ -38,7 +38,7 @@ dans excluded_models.
 - **THEN** il est exclu de models avec sa cause, ses tentatives et ses mesures disponibles
 
 #### Scenario: Payant sans Medium
-- **WHEN** un payant OpenRouter vérifie contexte ≥1M, coût ≤0,20 EUR/M, modalités et liste noire, mais ne publie pas Medium
+- **WHEN** un payant OpenRouter vérifie contexte ≥1M, coût ≤0,10 EUR/M, modalités et liste noire, mais ne publie pas Medium
 - **THEN** il reste dans models avec ses métadonnées d'effort, sans investigation Medium bloquante
 
 #### Scenario: Seuils gratuits stricts
@@ -206,7 +206,7 @@ TFL SHALL interroger le catalogue modèles OpenRouter sans filtre de catégorie,
 modalité ou nombre limitant l'examen local. Chaque modèle examiné SHALL être
 retenu ou exclu avec un motif selon les règles communes. Un coût moyen nul
 vérifié SHALL être admissible ; le plafond OpenRouter SHALL rester
-0,20 EUR/M au taux BCE vérifié. Une collecte invalide SHALL bloquer la
+0,10 EUR/M au taux BCE vérifié. Une collecte invalide SHALL bloquer la
 publication ; une sélection vide issue d'une collecte valide SHALL être
 publiée sans interrompre les autres catalogues.
 
@@ -304,46 +304,47 @@ de publication atomique SHALL rester inchangés.
 - **AND** les modèles interdits restent absents des listes retenues et des tests gratuits
 
 ### Requirement: Effort vérifiable avant admission
-TFL SHALL exiger une capacité Medium vérifiable avant classement et benchmark
-des modèles gratuits, y compris OpenRouter. Les payants OpenRouter peuvent être
-classés selon contexte/prix/modalités sans preuve Medium, car PLLM mode5 ne
-benchmarke pas. Les autres modèles sans preuve SHALL rester auditables dans le
-JSON et SHALL NOT apparaître dans les tableaux de benchmark gratuit.
+TFL SHALL tester Medium sur le transport publié pour les gratuits admissibles,
+même si leurs métadonnées sont absentes ou ne déclarent pas cet effort. Une
+réponse complète SHALL prouver l'acceptation du paramètre sans établir l'effort
+interne. Contexte, gratuité, réponse complète, TTFT et débit restent requis.
+Le mode5 payant OpenRouter n'exige ni Medium ni benchmark.
 
 #### Scenario: Modèle benchmarké sans preuve
-- **WHEN** Medium n'est pas vérifiable pour un candidat gratuit ou Go
-- **THEN** le modèle est exclu avant génération et motivé dans le JSON
+- **WHEN** un modèle gratuit n'a pas de métadonnée Medium avant test
+- **THEN** TFL lui envoie le paramètre Medium sur le transport publié
+- **AND** une réponse complète prouve l'acceptation du paramètre sous réserve des seuils de performance
 
 #### Scenario: Payant OpenRouter sans preuve
-- **WHEN** Medium est absent ou non pris en charge pour un modèle OpenRouter payant qui satisfait contexte/prix/modalités
-- **THEN** le modèle est conservé dans la section OpenRouter sans benchmark ni investigation Medium bloquante
+- **WHEN** Medium est absent ou non pris en charge dans les métadonnées d'un modèle OpenRouter payant qui satisfait contexte/prix/modalités
+- **THEN** le modèle est conservé dans OpenRouter sans benchmark ni investigation Medium bloquante
 
 #### Scenario: Preuve publiée et métadonnées invalides
-- **WHEN** supported_efforts publie une liste contenant medium, ou null explicite signifiant tous les efforts
-- **THEN** le candidat satisfait le filtre d'effort sous réserve des autres critères
-- **AND** une clé absente, une valeur invalide, un booléen reasoning ou supports_max_tokens seul reste exclu
+- **WHEN** supported_efforts publie medium ou null explicite, ou qu'une requête Medium complète est acceptée par l'API
+- **THEN** l'acceptation du paramètre satisfait le filtre d'effort sous réserve des autres critères
+- **AND** un budget seul ou un booléen reasoning seul ne prouve pas l'acceptation
 
 #### Scenario: Medium absent
-- **WHEN** supported_efforts publie une liste qui ne contient pas medium
-- **THEN** le candidat est exclu avant le test
+- **WHEN** supported_efforts publie une liste sans medium
+- **THEN** TFL essaie le paramètre Medium sur l'API et conserve l'exclusion seulement si l'API le refuse ou si un autre critère échoue
 
 #### Scenario: Tous les efforts explicitement pris en charge
-- **WHEN** supported_efforts publie explicitement null
-- **THEN** le candidat peut être testé en Medium sous réserve des autres critères
+- **WHEN** supported_efforts publie explicitement null ou l'API accepte une requête complète en Medium
+- **THEN** le candidat peut être qualifié sous réserve des autres critères
 
 #### Scenario: Budget seul
-- **WHEN** le modèle ne publie qu'un budget de raisonnement sans preuve d'effort Medium
-- **THEN** il est exclu sans équivalence de niveau inventée
+- **WHEN** le modèle ne publie qu'un budget de raisonnement sans niveau Medium
+- **THEN** le budget seul ne prouve pas l'acceptation, mais TFL peut établir celle-ci par une requête Medium réelle
 
 ### Requirement: Plafond OpenRouter en EUR
-TFL SHALL appliquer une moyenne de base OpenRouter <= 0,20 EUR/M après
+TFL SHALL appliquer une moyenne de base OpenRouter <= 0,10 EUR/M après
 conversion au dernier taux BCE USD par EUR, positif et fini. Comparaison
 non arrondie, prix natifs USD, prix EUR, source et dates de publication et de
 récupération SHALL être tracés. Une conversion invérifiable SHALL bloquer
 la publication et préserver les rapports précédents.
 
 #### Scenario: Limite inclusive et montant supérieur
-- **WHEN** la moyenne convertie atteint exactement 0,20 EUR/M ou dépasse ce seuil avant arrondi
+- **WHEN** la moyenne convertie atteint exactement 0,10 EUR/M ou dépasse ce seuil avant arrondi
 - **THEN** seul le premier montant est admissible sous réserve des autres filtres
 
 #### Scenario: Conversion non vérifiable
@@ -398,12 +399,12 @@ zéro. Les erreurs réelles SHALL rester bloquantes ; le planning contrôle les 
 - **THEN** TFL signale l'erreur, retourne un code non nul et préserve les rapports précédents
 
 ### Requirement: Investigation des preuves manquantes
-Pour Go et OpenRouter, un contexte ou un effort invérifiable
-SHALL déclencher une analyse et une recherche du LLM dans les sources
-officielles. Le catalogue SHALL tracer fournisseur, ID exact, champ, sources,
-dates, empreintes et conclusion. Une absence de preuve SHALL NOT être présentée
-comme une incapacité démontrée. L'agent SHALL terminer l'investigation avant
-la restitution finale, ou déclarer explicitement son blocage.
+Pour Go et OpenRouter, un contexte inconnu SHALL déclencher une recherche
+officielle. Le JSON SHALL tracer fournisseur, ID exact, champ, sources, dates,
+méthode d'empreinte et conclusion. Le HTML est empreint sur son texte visible
+normalisé ; les autres sources le sont sur les octets reçus. Medium inconnu
+se vérifie sur la route publiée ; une réponse complète prouve l'acceptation du
+paramètre, pas l'effort interne. Un contexte invérifiable reste exclu.
 
 #### Scenario: Contexte encore invérifiable
 - **WHEN** l'investigation ne permet pas de vérifier le contexte
@@ -414,17 +415,31 @@ la restitution finale, ou déclarer explicitement son blocage.
 - **WHEN** une preuve supplémentaire ne correspond plus à sa source courante
 - **THEN** elle ne permet aucune admission et une nouvelle investigation est requise
 
+#### Scenario: Effort inconnu éprouvé par appel réel
+- **WHEN** Medium n'est pas publié dans les métadonnées mais une réponse complète suit la requête avec ce paramètre
+- **THEN** TFL enregistre l'acceptation API et continue d'appliquer les seuils de performance
+- **AND** le rapport ne prétend pas que le fournisseur a utilisé un niveau interne Medium
+
+### Requirement: Empreintes de preuves documentaires reproductibles
+TFL SHALL calculer SHA-256 du texte visible HTML normalisé en UTF-8 NFC et
+espaces réduits, ou des octets reçus pour les sources non HTML. Chaque entrée
+SHALL tracer `fingerprint_method`. Les scripts et balises sans changement de
+texte visible SHALL NOT invalider une preuve.
+
+#### Scenario: Balisage HTML volatil
+- **WHEN** les scripts ou balises changent sans différence du texte visible
+- **THEN** l'empreinte reste stable ; un changement visible déclenche une nouvelle recherche
+
 ### Requirement: Efforts publiés et équivalences documentées
-Les niveaux reasoning_options type=effort/values SHALL être normalisés.
-Medium SHALL être admissible uniquement s'il est déclaré ou si null explicite
-signifie tous les efforts. Une équivalence documentée vers un interrupteur
-SHALL être tracée avec son protocole, ses paramètres et ses sources, sans
-inventer un endpoint ni une intensité distincte.
+TFL SHALL normaliser reasoning_options et conserver la preuve Medium par
+fournisseur, modèle et protocole. Un alias ou une réponse complète acceptant
+`medium` satisfait le critère de paramètre, sans prouver l'effort interne. Seul
+le paramètre Medium du transport publié SHALL être envoyé.
 
 #### Scenario: Medium équivaut au raisonnement activé
-- **WHEN** les sources officielles du modèle établissent une équivalence Medium sur le protocole utilisé
-- **THEN** Medium est admissible et le paramètre équivalent documenté est envoyé
-- **AND** les autres critères et contrôles restent obligatoires
+- **WHEN** les sources officielles ou une réponse API complète établissent l'acceptation de Medium sur le protocole utilisé
+- **THEN** Medium est admissible et le paramètre documenté du protocole est envoyé
+- **AND** les autres critères, contrôles et seuils restent obligatoires
 
 ### Requirement: Source unique LM
 TFL SHALL appliquer uniquement la liste LM, sans liste permanente intégrée.
@@ -445,22 +460,20 @@ investigations et essais publiés SHALL concerner exclusivement Go/OpenRouter.
 - **AND** le JSON, le Markdown et stdout ne contiennent aucun modèle général
 
 ### Requirement: Effort courant exclusivement Medium pour les benchmarks
-TFL SHALL benchmarker les gratuits uniquement en Medium, transmettre cet
-effort selon le protocole et exclure un refus sans repli. Les payants OpenRouter
-ne sont pas benchmarkés et ne requièrent pas Medium pour leur admission au
-mode5. D'autres capacités publiées ne changent pas l'effort demandé.
+TFL SHALL demander exclusivement le paramètre `medium` pour ses benchmarks
+gratuits. Une réponse API complète établit son acceptation même si le fournisseur
+la convertit ou l'ignore ; cette preuve ne SHALL NOT être décrite comme une
+mesure de l'effort interne. Un refus de Medium SHALL exclure le candidat sans
+repli vers un autre effort. Les payants OpenRouter ne sont pas benchmarkés.
 
 #### Scenario: Plusieurs capacités publiées
-
 - **WHEN** les métadonnées d'un candidat déclarent Medium et d'autres capacités
 - **THEN** TFL demande Medium et n'envoie aucune autre valeur d'effort
-- **AND** seul un benchmark réussi avec Medium peut entrer dans le catalogue
+- **AND** seul un benchmark réussi avec la requête Medium peut entrer dans le catalogue
 
 #### Scenario: Medium indisponible ou refusé
-
-- **WHEN** Medium n'est pas vérifiable, n'est pas pris en charge ou est refusé
-  par le transport
-- **THEN** le candidat est exclu du catalogue avec sa cause
+- **WHEN** le transport refuse Medium ou ne fournit aucune réponse complète à la requête
+- **THEN** le candidat est exclu avec la cause filtrée
 - **AND** aucune requête de repli n'est effectuée
 
 ### Requirement: Prix décimaux canoniques malgré l'arrondi flottant

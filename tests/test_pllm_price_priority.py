@@ -153,18 +153,19 @@ class PllmPricePriorityTests(unittest.TestCase):
             self.assertIsNone(router['ttft_seconds'])
             self.assertFalse(any(e[0] == 'benchmark' and e[1] == 'mode5' for e in events))
 
-    def test_paid_go_without_medium_tries_next_candidate(self):
+    def test_paid_go_without_medium_metadata_is_tested_in_price_order(self):
         for script in PLLM:
             module, path, catalog = self.priced_catalog(script)
             catalog['opencode_go']['models'][1]['reasoning_capabilities'] = {'supported_efforts': ['low']}
             path.write_text(json.dumps(catalog))
             data, events, _ = self.run_evaluation(module, path)
             for model in data['models'][:2]:
-                self.assertEqual(model['model_id'], 'expensive')
-                self.assertEqual([c['model_id'] for c in model['candidate_results']], ['expensive'])
-                self.assertIn('Medium', model['candidate_exclusions'][0]['cause'])
+                self.assertEqual(model['model_id'], 'cheap')
+                self.assertEqual([c['model_id'] for c in model['candidate_results']], ['cheap'])
+                self.assertEqual(model['candidate_exclusions'], [])
+                self.assertEqual(model['candidate_results'][0]['reasoning_acceptance']['status'], 'accepted')
                 self.assertEqual([e[2] for e in events if e[0] == 'benchmark' and e[1] == model['mode']],
-                                 ['expensive'])
+                                 ['cheap'])
 
     def test_invalid_price_is_excluded_before_generation(self):
         for script in PLLM:

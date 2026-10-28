@@ -58,6 +58,16 @@ class ThroughputMeasurementTests(unittest.TestCase):
             self.assertEqual(model['throughput_window'],'request_total')
             self.assertEqual(model['measurement_protocol_version'],8)
 
+    def test_complete_response_records_medium_acceptance_and_throughput(self):
+        for script in (*PLLM,*TFL):
+            complete,model,_=self.run_stream(script,chat_events(),(0,1,1.5,2))
+            self.assertTrue(complete)
+            self.assertEqual(model['reasoning_acceptance']['status'],'accepted')
+            self.assertEqual(model['performance_test']['reasoning_acceptance']['status'],'accepted')
+            self.assertEqual(model['reasoning_acceptance'], model['performance_test']['reasoning_acceptance'])
+            self.assertIsNot(model['reasoning_acceptance'], model['performance_test']['reasoning_acceptance'])
+            self.assertEqual(model['tokens_per_second'],50)
+
     def test_fragment_coalescing_does_not_change_full_request_average(self):
         schedules=((1,(0,1.5,1.8,2)),
                    (2,(0,1.5,1.500001,1.8,2)),

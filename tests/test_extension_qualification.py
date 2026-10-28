@@ -291,12 +291,12 @@ class ExtensionQualificationTests(unittest.TestCase):
             with self.subTest(script=script):
                 module = load_script(script)
                 payload = self.tfl_payload(module)
-                payload['data'][0]['pricing'] = {'prompt': '0.0000005', 'completion': '0.0000005'}
+                payload['data'][0]['pricing'] = {'prompt': '0.00000025', 'completion': '0.00000025'}
                 rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 3)
-                self.assertEqual(rows[-1]['average'], 0.5)
+                self.assertEqual(rows[-1]['average'], 0.25)
                 self.assertEqual(excluded, [])
-                payload['data'][0]['pricing']['completion'] = '0.0000006'
+                payload['data'][0]['pricing']['completion'] = '0.00000026'
                 rows, excluded = module.build_openrouter_rows(payload, exchange_rates=FX)
                 self.assertEqual(len(rows), 2)
                 self.assertIn('seuil maximal', excluded[0]['reason'])

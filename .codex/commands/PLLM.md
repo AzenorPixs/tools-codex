@@ -20,9 +20,9 @@ Exécute la commande depuis le répertoire du skill PLLM installé. Ne remplace 
 Modes 1/2 : payants Go seulement ; quota épuisé → rouge et invalide sans repli.
 Modes 3/4 : gratuits vérifiés Go exclusivement avec les comptes de 1/2,
 sans aucun appel de quota ou solde, contexte ≥1M, Medium, réponse complète, TTFT <30 s
-et débit >20 tokens/s. Mode5 : payants OpenRouter, solde positif, contexte ≥1M, coût moyen ≤0,20 EUR/M, sans test de performance ni Medium. Mode6 : gratuits OpenRouter, contexte ≥1M, Medium et tests gratuits. Mode7 : DeepSeek direct et contrôles payants. Mode5 reste exclusivement payant ; un crédit épuisé le rend invalide sans repli gratuit. Les forçages OpenRouter payants restent 51–53 ; 61–63 ciblent les gratuits OpenRouter de 6, et 7 DeepSeek.
+et débit >20 tokens/s. Mode5 : payants OpenRouter, solde positif, contexte ≥1M, coût moyen ≤0,10 EUR/M, sans test de performance ni Medium. Mode6 : gratuits OpenRouter, contexte ≥1M, Medium et tests gratuits. Mode7 : DeepSeek direct et contrôles payants. Mode5 reste exclusivement payant ; un crédit épuisé le rend invalide sans repli gratuit. Les forçages OpenRouter payants restent 51–53 ; 61–63 ciblent les gratuits OpenRouter de 6, et 7 DeepSeek.
 Tous les benchmarks demandent exclusivement Medium, sauf le mode5 qui n’en exécute aucun.
-Essayer les payants Go 1/2 par coût moyen croissant. Le mode5 sélectionne les payants OpenRouter admissibles au coût moyen ≤0,20 EUR/M et contexte ≥1M sans génération. Essayer les gratuits 3/4/6 dans l'ordre TFL de leur fournisseur. Retenir le premier succès aux
+Essayer les payants Go 1/2 par coût moyen croissant. Le mode5 sélectionne les payants OpenRouter admissibles au coût moyen ≤0,10 EUR/M et contexte ≥1M sans génération. Essayer les gratuits 3/4/6 dans l'ordre TFL de leur fournisseur. Retenir le premier succès aux
 tests actuels et arrêter le parcours du mode ; après échec, essayer le suivant
 admissible avec ses propres contrôles. Le contexte ≥1M est une capacité
 d'entrée vérifiée, sans requête d'un million de tokens. Les paliers, seuils
@@ -45,7 +45,7 @@ CAB avant la reprise.
 Argument reçu : `$ARGUMENTS`
 
 Exiger Medium vérifiable pour les politiques benchmarkées et les candidats gratuits. Le mode5 payé OpenRouter en est exempté : pas de Medium ni de test performance. Garder les motifs JSON.
-OpenRouter applique la moyenne de base ≤0,20 EUR/M au dernier taux BCE
+OpenRouter applique la moyenne de base ≤0,10 EUR/M au dernier taux BCE
 publié vérifié ; aucune conversion historique implicite.
 
 Les preuves TFL et les niveaux reasoning_options publiés sont conservés.

@@ -1,5 +1,40 @@
 {
-  "schema_version": 3,
-  "policies": {},
-  "migrated_from_schema_version": 2
+  "policies": {
+    "mode7": {
+      "identity": {
+        "model_id": "deepseek-v4-flash",
+        "provider": "deepseek",
+        "reasoning": "medium",
+        "throughput_scope": "response_only",
+        "api_protocol": "chat_completions",
+        "api_endpoint": "https://api.deepseek.com/chat/completions",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
+      },
+      "last_successful_max_tokens": 1024,
+      "succeeded_at": "2026-10-28T01:42:30+01:00",
+      "ttft_seconds": 5.0,
+      "tokens_per_second": 30.0,
+      "configurations": {
+        "{\"api_endpoint\": \"https://api.deepseek.com/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"deepseek-v4-flash\", \"provider\": \"deepseek\", \"reasoning\": \"medium\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "deepseek-v4-flash",
+            "provider": "deepseek",
+            "reasoning": "medium",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://api.deepseek.com/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 1024,
+          "succeeded_at": "2026-10-28T01:42:30+01:00",
+          "ttft_seconds": 5.0,
+          "tokens_per_second": 30.0
+        }
+      }
+    }
+  }
 }

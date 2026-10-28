@@ -139,7 +139,7 @@ Les modes 1/2 épuisés deviennent rouges et invalides sans essai gratuit.
 Les modes gratuits 3/4/6 ne consultent aucun quota ou solde ; ils exigent
 contexte ≥1M, Medium, réponse complète, TTFT <30 s et débit >20 tokens/s.
 Le mode5 exige un crédit OpenRouter positif, contexte ≥1M et coût moyen
-≤0,20 EUR/M ; aucun benchmark ni effort Medium n'est requis. Le mode7 conserve
+≤0,10 EUR/M ; aucun benchmark ni effort Medium n'est requis. Le mode7 conserve
 le contrôle DeepSeek et les seuils payants. Les références de trousseau restent
 historiques, sans création ni migration de clé.
 Les historiques des schémas 1/2 sont adaptés au schéma 3 : l'ancien mode5 est réinitialisé, DeepSeek passe au mode7, le mode6 gratuit est neuf et aucune sélection courante n'est héritée. Les succès OpenRouter antérieurs ne sont pas
@@ -193,7 +193,7 @@ n'est pas une qualification de génération. Les tests de compatibilité avec
 PLLM ne lancent ni quotas ni benchmarks ; aucune dépendance SDK n'est installée.
 TFL ne collecte ni ne teste plus OpenCode général. Le JSON ne publie que
 opencode_go et openrouter et le rapport affiche leurs deux tableaux, huit
-colonnes chacun, puis les essais gratuits. Contexte ≥1M reste obligatoire ; Go ≤0,50 USD/M et OpenRouter ≤0,20 EUR/M au taux BCE vérifié. Medium est requis pour les candidats benchmarkés et gratuits, pas pour les payants OpenRouter du mode5.
+colonnes chacun, puis les essais gratuits. Contexte ≥1M reste obligatoire ; Go ≤0,50 USD/M et OpenRouter ≤0,10 EUR/M au taux BCE vérifié. Medium est requis pour les candidats benchmarkés et gratuits, pas pour les payants OpenRouter du mode5.
 PLLM ignore les anciennes sections opencode pour tous les modes 1 à 4,
 y compris leurs rangs forcés. Les erreurs de sources indispensables restent bloquantes.
 
@@ -520,7 +520,7 @@ puis les essais gratuits ayant une preuve Medium. Aucun modèle exclu
 pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
 Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
 https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
-le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
+le plafond OpenRouter est 0,10 EUR/M inclus avant arrondi. Le JSON conserve
 prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
 publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection
 et à la frontière de génération, y compris pour les anciens catalogues et

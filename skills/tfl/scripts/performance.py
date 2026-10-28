@@ -1,4 +1,5 @@
 """Mesures streaming communes PLLM/TFL, sans stockage de clé ni contrôle de quota."""
+import copy
 import json
 import math
 import re
@@ -19,7 +20,7 @@ MEASUREMENT_PROTOCOL_VERSION = 8
 THROUGHPUT_METRIC = 'request_average_v1'
 THROUGHPUT_WINDOW = 'request_total'
 ECB_RATES_URL = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
-OPENROUTER_MAX_AVERAGE_EUR = Decimal('0.20')
+OPENROUTER_MAX_AVERAGE_EUR = Decimal('0.10')
 
 FREE_CRITERIA = {'minimum_context_tokens': 1_000_000, 'ttft_lt_seconds': 30, 'tokens_per_second_gt': 20}
 
@@ -94,7 +95,7 @@ def openrouter_eur_prices(input_price, output_price, exchange_rates):
             raise ValueError('prix')
         # Comparer avant division et arrondi pour préserver la frontière inclusive.
         if sum(prices) > 2 * OPENROUTER_MAX_AVERAGE_EUR * rate:
-            raise RuntimeError('coût moyen supérieur au seuil maximal de 0.20 €/M')
+            raise RuntimeError('coût moyen supérieur au seuil maximal de 0.10 €/M')
         converted = (prices[0] / rate, prices[1] / rate, sum(prices) / (2 * rate))
         if any(not math.isfinite(float(value)) for value in converted):
             raise ValueError('débordement')

@@ -289,17 +289,19 @@ class GeneralOpenCodeTests(unittest.TestCase):
                             for section, fetch_name in fetches.items():
                                 getattr(module, fetch_name).assert_called_once()
                                 current = catalog[section]
+                                section_empty = section in empty_sections and cause == 'empty_api'
                                 self.assertEqual(current['selection_status'],
-                                                 'empty' if section in empty_sections else 'available')
-                                self.assertEqual(bool(current['models']), section not in empty_sections)
-                                expected_excluded = int(section in empty_sections and cause == 'missing_effort')
+                                                 'empty' if section_empty else 'available')
+                                self.assertEqual(bool(current['models']), not section_empty)
+                                expected_excluded = 0
                                 self.assertEqual(current['excluded_model_count'], expected_excluded)
                                 self.assertEqual(sum(current['exclusion_summary'].values()), expected_excluded)
                                 if expected_excluded:
                                     self.assertEqual(current['excluded_models'][0]['exclusion_type'], 'reasoning_effort')
                                     self.assertNotIn(current['excluded_models'][0]['id'], markdown)
                             self.assertEqual(markdown.count('Aucun modèle admissible.'),
-                                             sum(section != 'opencode' for section in empty_sections))
+                                             sum(section != 'opencode' for section in empty_sections)
+                                             if cause == 'empty_api' else 0)
                             self.assertEqual(len([line for line in markdown.splitlines() if line.startswith('| Rang |')]), 2)
                             self.assertLess(markdown.index('OpenCode Go'), markdown.index('OpenRouter'))
                             self.assertNotIn('## Rapport des LMM du catalogue général', markdown)

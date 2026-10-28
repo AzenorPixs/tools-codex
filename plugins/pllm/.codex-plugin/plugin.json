@@ -1,6 +1,6 @@
 {
   "name": "pllm",
-  "version": "0.7.18",
+  "version": "0.7.20",
   "description": "Évalue la PLLM et applique de façon sûre sa sélection aux sessions OpenCode.",
   "author": {
     "name": "AzenorPixs"

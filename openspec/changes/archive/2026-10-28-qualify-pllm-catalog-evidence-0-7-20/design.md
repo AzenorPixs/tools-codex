@@ -8,6 +8,12 @@ officielle avant de réintégrer un candidat. Le rapport conserve les constats
 et les motifs d'exclusion ; les prix, routes, disponibilités et performances
 ne sont jamais édités manuellement.
 
+Les pages HTML peuvent changer leurs scripts ou leur balisage sans modifier
+leur contenu documentaire. L'empreinte est calculée sur leur texte visible
+normalisé en UTF-8 NFC avec les espaces consécutifs réduits. Les sources non
+HTML gardent leur empreinte SHA-256 des octets reçus. Chaque entrée précise la
+méthode afin que TFL et PLLM appliquent le même recontrôle.
+
 Pour DeepSeek direct, PLLM consomme une preuve officielle pour
 `deepseek-v4-flash` sur Chat Completions. La documentation précise que la
 valeur demandée `medium` est acceptée comme alias puis mappée à `high`. Selon
@@ -26,12 +32,20 @@ consultent aucun quota ou solde. Les rapports locaux sont conservés sous
 
 Les résultats de génération restent distincts des preuves documentaires.
 La validité reste déterminée par les mesures courantes, les ressources et les
-seuils déjà spécifiés. Les candidats gratuits non présents, non accessibles
+seuils déjà spécifiés. Le plafond moyen de base OpenRouter payant est fixé à
+0,10 EUR/M après conversion BCE, recalculé par TFL à la collecte et par PLLM
+mode5 à la sélection, y compris pour les anciens catalogues et rangs forcés.
+Les candidats gratuits non présents, non accessibles
 ou en échec restent invalides avec leur motif, sans élargissement de catégorie.
+
+Le moteur TFL/PLLM doit conserver `copy` pour copier la preuve d'acceptation
+Medium de la réponse complète, puis poursuivre jusqu'au calcul du débit. La
+régression valide ce chemin dans les copies autonomes et embarquées ; le
+diagnostic d'exécution précédent ne contenait pas de traceback exploitable.
 
 ## Release
 
-`0.7.18` est la prochaine version après `0.7.17`. `VERSION` reste la source
+`0.7.20` est la prochaine version après `0.7.19`. `VERSION` reste la source
 de vérité. La valeur est alignée dans la métadonnée Python, le README et les
 six manifestes publiés. Les copies autonomes et embarquées des scripts,
 skills et registres sont contrôlées pour leur parité.

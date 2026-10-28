@@ -694,7 +694,7 @@ def initial_model(priority, provider):
     unbenchmarked = mode == 'mode5'
     ttft, throughput = (None, None) if unbenchmarked else performance_limits({'mode': mode, 'is_free': mode in FREE_MODES})
     if mode == 'mode5':
-        condition = 'candidat payant ET contexte >= 1M ET coût moyen <= 0,20 EUR/M ET solde > 0'
+        condition = 'candidat payant ET contexte >= 1M ET coût moyen <= 0,10 EUR/M ET solde > 0'
     elif mode in FREE_MODES:
         condition = f'TTFT < {ttft} s ET tokens/s > {throughput} ET gratuité vérifiée ET contexte >= 1M'
     elif mode == 'mode7':
@@ -1043,7 +1043,7 @@ def evaluate_openrouter_paid_catalog_candidate(model):
     model.update(reasoning=None, ttft_seconds=None, tokens_per_second=None,
                  last_successful_max_tokens=None,
                  performance_criteria=None,
-                 condition='candidat payant ET contexte >= 1M ET coût moyen <= 0,20 EUR/M ET solde > 0',
+                 condition='candidat payant ET contexte >= 1M ET coût moyen <= 0,10 EUR/M ET solde > 0',
                  performance_test={'status': 'not_required',
                                    'reason': 'Mode 5 : aucune génération ni mesure de performance requise'},
                  state='Valide', cause='Contexte, plafond de coût et solde vérifiés')

@@ -142,7 +142,7 @@ doit pas être remplacée silencieusement par une autre.
   uniquement la modalité de sortie. Les sorties non textuelles audio, vidéo,
   speech ou sound sont exclues.
 - Le contexte doit être au moins de 1M et le coût moyen compris entre zéro et
-  0.20 €/M inclus après conversion BCE vérifiée. Un gratuit vérifié reste admissible.
+  0.10 €/M inclus après conversion BCE vérifiée. Un gratuit vérifié reste admissible.
 - Les payants sont conservés avec contexte/prix/modalités admissibles sans
   exiger Medium ; les gratuits doivent publier Medium et réussir le benchmark.
 - La liste noire partagée LM s'applique sans liste propre à OpenRouter.
@@ -205,7 +205,7 @@ la collecte courante.
 
 Tous les tests gratuits demandent exclusivement Medium, sans repli vers un autre effort. Chat Completions
 utilise reasoning_effort, Responses reasoning.effort, Messages thinking
-adaptive et output_config.effort. Les gratuits OpenRouter exigent une déclaration vérifiable de Medium ; un budget seul est exclu. Les payants OpenRouter ne demandent pas cette preuve. Un refus 400 propre à l'effort, comme
+adaptive et output_config.effort. Une capacité Medium publiée peut établir son acceptation ; sinon, une réponse API complète à la requête Medium la prouve, même si le fournisseur convertit ou ignore l'effort en interne. Des métadonnées absentes ou différentes ne bloquent pas seules l'essai. Les payants OpenRouter ne demandent pas cette preuve. Un refus 400 propre à l'effort, comme
 401/403/429, arrête le candidat. Les paliers sont 1024, 2048, 4096, 8192, 120 s par requête,
 arrêt au premier succès. Le niveau effectif et les paramètres sont tracés.
 
@@ -297,26 +297,28 @@ Les niveaux publiés dans `reasoning_options` (type=effort, values) sont des
 preuves. Medium officiellement accepté reste admissible même sans intensité
 distincte : tracer l'équivalence et envoyer les paramètres documentés du
 protocole utilisé, comme thinking.type=enabled pour une équivalence documentée.
-Une preuve historique qui ne couvre pas Medium ne permet pas l'admission.
-Une valeur absente, un budget ou un interrupteur seul n'invente pas cette preuve.
+Une preuve historique qui ne couvre pas Medium ne remplace pas une requête
+courante acceptée. Une valeur absente, un budget ou un interrupteur seul
+n'invente pas cette preuve.
 
 ## Investigation obligatoire des efforts et contextes
 
-Pour les candidats benchmarkés, « Medium non vérifiable » ou « contexte non
-vérifiable » impose une analyse et une recherche du LLM dans les sources
-officielles. Suivre [le protocole de preuve](references/model-evidence.md),
+Un contexte non vérifiable impose une analyse et une recherche du LLM dans les
+sources officielles. Pour un effort Medium inconnu, envoyer la requête Medium
+sur le transport publié et utiliser une réponse complète comme preuve de son
+acceptation. Suivre [le protocole de preuve](references/model-evidence.md),
 compléter les conclusions sourcées dans le répertoire du rapport et relancer
-le générateur. Le JSON marque les investigations `required` ; le rapport est
-alors provisoire. Ne pas le présenter comme définitif sans recherche terminée
-ou blocage explicitement signalé. Si le contexte reste invérifiable après
-investigation, le modèle est écarté. Les seuils restent inchangés.
+le générateur. Le JSON marque les investigations de contexte `required` ; le
+rapport reste provisoire jusqu'à leur résolution ou à un blocage explicite.
+Si le contexte reste invérifiable après investigation, le modèle est écarté.
+Les seuils restent inchangés.
 
 
 ## Plafond OpenRouter en euros
 
 Collecter le dernier taux USD par EUR publié par la BCE à
 https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml à chaque invocation.
-Calculer EUR = USD / taux et comparer la moyenne non arrondie à 0,20 EUR/M
+Calculer EUR = USD / taux et comparer la moyenne non arrondie à 0,10 EUR/M
 inclus. Une source, une date ou un taux absent, invalide ou inaccessible bloque
 la publication sans repli historique. Conserver prix natifs USD, prix EUR,
 source, date de publication et date de récupération dans le JSON. Les prix

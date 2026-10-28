@@ -54,9 +54,10 @@ class PllmHttpDiagnosticsTests(unittest.TestCase):
                                  {'reasoning': {'effort': 'medium'}})
                 self.assertEqual(module.reasoning({'provider': provider, 'api_protocol': 'messages'}, 1024, {'reasoning': {'supported_efforts': ['medium']}}),
                                  {'thinking': {'type': 'adaptive'}, 'output_config': {'effort': 'medium'}})
-            with self.assertRaisesRegex(RuntimeError, 'Medium'):
-                module.reasoning({'provider': 'openrouter'}, 2048,
-                                 {'reasoning': {'supports_max_tokens': True}})
+            self.assertEqual(module.reasoning(
+                {'provider': 'openrouter'}, 2048,
+                {'reasoning': {'supports_max_tokens': True}}),
+                {'reasoning': {'effort': 'medium'}})
 
     def test_retry_after_seconds_zero_and_whitespace(self):
         for module in self.modules():

@@ -32,7 +32,7 @@ affichées.
 Argument reçu : `$ARGUMENTS`
 
 Conserver les payants OpenRouter admissibles même sans preuve Medium. Exiger Medium et un benchmark réussi pour les gratuits ; garder les motifs JSON.
-OpenRouter applique la moyenne de base ≤0,20 EUR/M au dernier taux BCE
+OpenRouter applique la moyenne de base ≤0,10 EUR/M au dernier taux BCE
 publié vérifié ; aucune conversion historique implicite.
 
 Pour Go et OpenRouter, un effort ou un contexte non

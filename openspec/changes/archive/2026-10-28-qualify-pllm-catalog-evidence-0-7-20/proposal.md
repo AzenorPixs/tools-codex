@@ -1,6 +1,6 @@
-# Qualifier les preuves TFL/PLLM et aligner Tools Codex 0.7.18
+# Qualifier les preuves TFL/PLLM et aligner Tools Codex 0.7.20
 
-## Pourquoi
+## Why
 
 La collecte TFL courante contient des modèles OpenCode Go sous le plafond de
 prix, mais PLLM les exclut faute de preuve d'acceptation du paramètre Medium
@@ -14,7 +14,7 @@ Le développeur valide le périmètre SCM le 27 octobre 2026, puis précise le
 fournisseur le convertit ou l'ignore. Les seuils de performance, les quotas et
 les soldes restent inchangés.
 
-## Changements
+## What Changes
 
 - Conserver une preuve d'acceptation Medium liée à l'identifiant et au transport OpenCode Go
   exacts : employer les niveaux courants publiés par models.dev quand ils sont
@@ -26,18 +26,31 @@ les soldes restent inchangés.
   effort interne Medium, puis effectuer le benchmark payant normal.
 - Lancer TFL, puis PLLM avec le catalogue tout juste produit et conserver les
   sept politiques, seuils, catégories, quotas, soldes et tests existants.
+- Conserver `copy` dans les moteurs TFL et PLLM afin qu'une réponse complète
+  acceptant Medium puisse enregistrer cette preuve puis terminer le calcul du
+  débit sans `NameError`. Ajouter une régression traversant le benchmark
+  complet et sa publication dans TFL ; le rapport runtime antérieur ne contient
+  pas de traceback permettant d'identifier un autre nom.
+- Empreinter les sources HTML sur leur texte visible normalisé pour ignorer
+  scripts et balisages dynamiques, conserver l'empreinte exacte des octets pour
+  les sources non HTML et tracer la méthode utilisée.
+- Réduire le plafond moyen OpenRouter à 0,10 EUR/M dans TFL et le contrôle
+  indépendant de PLLM mode5, y compris pour les anciens catalogues et rangs
+  forcés ; conserver la conversion BCE et la comparaison décimale non arrondie.
 - Publier les rapports dans un emplacement local non versionné, sans inclure
   les quotas et soldes dans les artefacts distribués.
-- Incrémenter de 0.7.17 à 0.7.18 `VERSION`, `pyproject.toml`, `README.md`,
+- Incrémenter de 0.7.19 à 0.7.20 `VERSION`, `pyproject.toml`, `README.md`,
   `CHANGELOG.md` et les six manifestes de plugins.
 
 ## Impact
 
-Delta `tfl-catalog`, `pllm-evaluation` et `release-versioning` ; preuves
+Delta `tfl-catalog` et `pllm-evaluation`, règles de version existantes
+`release-versioning` ; preuves
 TFL/PLLM ; validation des deux distributions autonomes et embarquées ; tests
 de preuves, d'admission des efforts et des sept politiques ; documentation et
-versions des six plugins. Aucun seuil, secret, configuration d'agent, liste
-noire ou politique fournisseur n'est modifié.
+versions des six plugins. Le seul seuil modifié est le plafond moyen OpenRouter
+payant ; les critères gratuits, quotas, autres prix, secrets, configuration
+d'agent, liste noire et politiques fournisseur restent inchangés.
 
 ## Acceptation et limites
 

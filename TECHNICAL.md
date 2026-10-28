@@ -193,7 +193,7 @@ restent obligatoires ; les gratuits 3/4/6 ne consultent aucun quota.
 PLLM définit sept priorités : 1/2 payants Go, 3/4 gratuits Go, 5 payants
 OpenRouter sans benchmark, 6 gratuits OpenRouter benchmarkés et 7 DeepSeek
 direct. Les modes 1/2 contrôlent les trois périodes Go ; mode5 consulte le
-crédit OpenRouter, vérifie coût moyen ≤0,20 EUR/M et contexte ≥1M sans Medium
+crédit OpenRouter, vérifie coût moyen ≤0,10 EUR/M et contexte ≥1M sans Medium
 ni génération ; mode7 conserve le contrôle DeepSeek. Les gratuits 3/4/6 ne
 consultent jamais quota ni solde et publient `quota_status=not_applicable`,
 `quotas=null` et `Non applicable`. Ils exigent gratuité vérifiée, contexte
@@ -404,7 +404,7 @@ conditions de contexte et les jours/horaires UTC publiés. Aucun seuil de
 contexte n'est inventé pour une variante temporelle. La requête modèles
 interroge tout le catalogue sans filtre de catégorie, modalité ni limite
 artificielle de nombre. La sélection est dynamique, sans liste d'identifiants :
-contexte ≥1M, moyenne API de base ≤0,20 EUR/M au taux BCE vérifié, modalités
+contexte ≥1M, moyenne API de base ≤0,10 EUR/M au taux BCE vérifié, modalités
 de sortie et blacklist. Medium s'applique aux gratuits OpenRouter benchmarkés, pas aux payants du mode5. Les prix négatifs, non finis ou débordants
 sont non exploitables. La provenance tarifaire des deux fournisseurs est
 horodatée. Une source indispensable invalide ou des tarifs Go contradictoires
@@ -660,7 +660,7 @@ puis les essais gratuits ayant une preuve Medium. Aucun modèle exclu
 pour son effort ne figure dans les tableaux ; les motifs restent dans le JSON.
 Le moteur commun collecte le dernier taux BCE USD par EUR publié depuis
 https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml. EUR = USD / taux ;
-le plafond OpenRouter est 0,20 EUR/M inclus avant arrondi. Le JSON conserve
+le plafond OpenRouter est 0,10 EUR/M inclus avant arrondi. Le JSON conserve
 prix USD/EUR, source, date du cours et date de récupération. TFL bloque avant
 publication si le cours est invérifiable ; PLLM refait le contrôle à la sélection, y compris pour les anciens catalogues et les rangs forcés ; mode5 ne génère pas. Un budget seul n’équivaut plus à Medium.
 Go garde 0,50 USD/M. Les capacités absentes peuvent vider une
@@ -684,6 +684,10 @@ le contexte ou l'effort est invérifiable pour Go ou
 OpenRouter. Le registre de référence TFL est complété par
 <répertoire-du-rapport>/model-evidence.json : fournisseur, ID exact, champ,
 protocole, conclusion, sources officielles HTTPS, dates et empreintes SHA-256.
+Pour HTML, l'empreinte porte sur le texte visible normalisé en UTF-8 NFC, avec
+espaces consécutifs réduits et balises actives exclues ; les sources non HTML
+gardent une empreinte des octets reçus. Le champ `fingerprint_method` rend ce
+choix explicite dans chaque entrée source.
 Les preuves ne sont pas empruntées entre fournisseurs ou transports.
 TFL vérifie le contenu courant des sources avant admission ; PLLM le
 recontrôle à la frontière de génération. Une source différente ou inaccessible

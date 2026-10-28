@@ -126,7 +126,7 @@ Tous les modes sauf 5 SHALL exiger réponse complète, comptage fiable et
 mesures actuelles. Contexte d'entrée ≥1M SHALL être vérifié sans benchmark
 d'un million de tokens. Les gratuits 3/4/6 exigent TTFT <30 s et débit >20 ;
 les payants benchmarkés 1/2/7 exigent TTFT <90 s et débit >15. Mode5 vérifie
-seulement paid, contexte, coût ≤0,20 EUR/M et solde positif. Le protocole reste
+seulement paid, contexte, coût ≤0,10 EUR/M et solde positif. Le protocole reste
 inchangé pour les modes mesurés ; le parcours s'arrête au premier succès.
 
 #### Scenario: Limites strictes distinctes
@@ -365,7 +365,7 @@ Les modes 1/2 SHALL examiner exclusivement les payants Go. Les modes 3/4
 SHALL examiner exclusivement les gratuits Go, et le mode6 SHALL examiner
 exclusivement les gratuits OpenRouter, indépendamment des ressources. Mode5
 SHALL examiner exclusivement les payants OpenRouter avec crédit positif,
-contexte ≥1M et coût moyen ≤0,20 EUR/M, sans benchmark ni exigence Medium.
+contexte ≥1M et coût moyen ≤0,10 EUR/M, sans benchmark ni exigence Medium.
 Mode7 SHALL conserver DeepSeek direct. Les modes 1/2/5/7 SHALL NOT basculer
 vers un candidat gratuit.
 
@@ -469,12 +469,12 @@ quotas sans inventer de mesure pour un candidat non visité.
 - **THEN** il affiche Valide et gratuit avec ressources non applicables ; un crédit OpenRouter épuisé laisse mode5 invalide
 
 ### Requirement: Contrat Medium propre au transport
-PLLM SHALL exiger Medium avant génération, sélection et affichage.
-`supported_efforts` avec `medium` ou `null` explicite suffit ; donnée absente,
-invalide, booléen `reasoning`, budget seul ou liste sans `medium` SHALL exclure.
-Envoyer `medium` selon transport : `reasoning_effort` (Chat Completions/DeepSeek),
-`reasoning.effort` (Responses), `output_config.effort` (Messages). L'équivalence
-documentée SHALL garder le protocole. Un refus SHALL NOT retenter avec un autre effort.
+PLLM SHALL envoyer exclusivement `medium` sur le paramètre propre au transport
+publié : `reasoning_effort` pour Chat Completions/DeepSeek, `reasoning.effort`
+pour Responses et `output_config.effort` pour Messages. Une réponse API
+complète SHALL établir l'acceptation, même si le fournisseur mappe ou ignore
+ce niveau ; le rapport SHALL NOT en déduire l'effort interne. Un refus SHALL
+invalider le candidat sans repli vers un autre effort.
 
 #### Scenario: Gratuit OpenCode en Chat Completions
 - **WHEN** un candidat OpenCode utilise chat_completions sans équivalence documentée
@@ -487,11 +487,12 @@ documentée SHALL garder le protocole. Un refus SHALL NOT retenter avec un autre
 
 #### Scenario: Medium non publié
 - **WHEN** les métadonnées n'annoncent pas Medium
-- **THEN** le candidat est exclu et aucun niveau différent n'est demandé
+- **THEN** le candidat est essayé avec le paramètre Medium sur sa route publiée
+- **AND** l'absence de métadonnées seule ne prouve pas un refus
 
 #### Scenario: Aucun niveau autorisé
-- **WHEN** Medium n'est pas pris en charge
-- **THEN** le candidat est invalide sans requête de performance ni repli vers un autre effort
+- **WHEN** l'API refuse explicitement le paramètre Medium
+- **THEN** le candidat est invalide sans repli vers un autre effort
 
 ### Requirement: Retry-After filtré et sans attente indéfinie
 PLLM SHALL lire au plus 64 Kio d'erreur HTTP et conserver uniquement des
@@ -625,18 +626,33 @@ la séquence planifiée sans modifier les sept politiques ou leurs contrôles.
 - **AND** seule la séquence planifiée effectue le rafraîchissement préalable et les contrôles Codex
 
 ### Requirement: Effort vérifiable indépendant du catalogue et de l'historique
-PLLM SHALL exiger une capacité Medium vérifiable pour tout candidat
-benchmarké, y compris DeepSeek direct au mode7. Le mode5 est exempté de cette
-exigence et de toute génération. Seul Medium SHALL être demandé et admis pour
-les autres modes. Un exclu SHALL NOT
-être généré, sélectionné ou affiché dans les tableaux ;
-son motif SHALL rester dans le JSON. Un forçage exclu SHALL échouer sans
-substitution. Les sept politiques SHALL rester présentes dans l'état interne.
+PLLM SHALL demander le paramètre `medium` pour tout candidat benchmarké,
+y compris DeepSeek direct au mode7. Le mode5 est exempté de cette exigence et
+de toute génération. L'acceptation courante de l'API SHALL suffire même si le
+fournisseur convertit ou ignore l'effort ; elle ne mesure pas l'effort interne.
+Un refus SHALL invalider le candidat sans autre niveau. Les exclus SHALL rester
+non sélectionnés et conserver leur motif et leurs preuves JSON ; les sept
+politiques SHALL rester présentes.
+
+#### Scenario: Mapping Medium vers High
+- **WHEN** une source officielle prouve que l'API accepte Medium comme alias de High
+- **THEN** le candidat satisfait l'exigence d'acceptation du paramètre, sous réserve des ressources, du contexte, de la réponse et des seuils de performance
+- **AND** le rapport conserve le mapping sans prétendre que l'effort interne est Medium
+
+#### Scenario: Paramètre Medium refusé par l'API
+- **WHEN** un appel réel avec le paramètre Medium reçoit un refus de compatibilité reconnu
+- **THEN** le candidat reste invalide sans reprise avec un autre effort
+- **AND** le diagnostic précis et les preuves filtrées restent dans les exclusions JSON
+
+#### Scenario: Nettoyage d'une exclusion historique
+- **WHEN** le nettoyage de publication retire un candidat qui n'a aucune preuve d'acceptation du paramètre
+- **THEN** le rapport conserve le motif dans la cause de la politique et dans les exclusions JSON
+- **AND** l'identifiant du candidat reste absent des colonnes utilisateur
 
 #### Scenario: Preuve publiée et métadonnées invalides
-- **WHEN** supported_efforts publie une liste contenant medium, ou null explicite signifiant tous les efforts
-- **THEN** le candidat satisfait le filtre d'effort sous réserve des autres critères
-- **AND** une clé absente, une valeur invalide, un booléen reasoning ou supports_max_tokens seul reste exclu
+- **WHEN** supported_efforts publie medium, null explicite, ou une requête courante avec medium est acceptée par l'API
+- **THEN** le candidat satisfait le critère d'acceptation du paramètre sous réserve des autres critères
+- **AND** une métadonnée absente ou invalide seule ne prouve pas l'acceptation, mais ne bloque pas un test réel
 
 #### Scenario: Ancien catalogue ou résultat historique
 - **WHEN** un candidat benchmarké précédemment retenu n'a pas de preuve d'effort admissible
@@ -645,16 +661,34 @@ substitution. Les sept politiques SHALL rester présentes dans l'état interne.
 
 #### Scenario: Cible forcée sans effort vérifiable
 - **WHEN** un rang forcé désigne un modèle sans preuve Medium
-- **THEN** il est refusé dans les modes benchmarkés sans génération ni substitution
+- **THEN** seule la candidate forcée est testée avec le paramètre medium, sans substitution
+- **AND** elle reste invalide si l'API refuse ce paramètre
 - **AND** un rang du mode5 reste soumis seulement au plafond de coût et au contexte
 
 #### Scenario: Candidat direct sans preuve
 - **WHEN** le modèle DeepSeek direct n'a pas de capacité Medium vérifiable
-- **THEN** il est exclu avant génération et son identité n'apparaît pas dans les tableaux
+- **THEN** PLLM envoie medium sur la route directe publiée et vérifie la réponse réelle
+- **AND** une réponse API complète établit l'acceptation, même si le fournisseur mappe ou ignore medium
+
+#### Scenario: Preuve publiée liée au transport
+- **WHEN** un candidat TFL publie une preuve d'acceptation Medium pour son identifiant et son protocole courants
+- **THEN** PLLM recontrôle cette source avant génération et conserve le résultat dans l'audit
+- **AND** l'absence ou l'inaccessibilité de cette preuve déclenche un essai API avec medium, sans conclure à un refus
+
+### Requirement: Empreintes de preuves documentaires reproductibles
+TFL et PLLM SHALL calculer la même empreinte SHA-256 pour chaque source :
+texte visible HTML normalisé en UTF-8 NFC avec espaces réduits, ou octets reçus
+pour les sources non HTML. Chaque entrée SHALL tracer `fingerprint_method`.
+Les changements de balisage sans différence visible SHALL préserver la preuve.
+
+#### Scenario: Sources dynamiques sans changement visible
+- **WHEN** le balisage ou les scripts HTML changent sans modifier le texte visible
+- **THEN** l'empreinte reste identique et la preuve reste vérifiable
+- **AND** une modification visible déclenche une nouvelle investigation
 
 ### Requirement: Plafond EUR OpenRouter réappliqué
 PLLM SHALL vérifier le coût moyen de base OpenRouter au plafond inclusif de
-0,20 EUR/M avec le dernier taux BCE publié vérifié. Il SHALL recalculer depuis
+0,10 EUR/M avec le dernier taux BCE publié vérifié. Il SHALL recalculer depuis
 les prix USD natifs sans faire confiance à une moyenne EUR historique et
 SHALL conserver la provenance. Une conversion invérifiable SHALL empêcher
 l'admission de ces candidats, y compris les rangs forcés et anciens catalogues.
@@ -662,7 +696,7 @@ Les priorités, catégories, contrôles de ressources et seuils de performance
 SHALL rester inchangés.
 
 #### Scenario: Ancien catalogue dépassant le nouveau plafond
-- **WHEN** un candidat OpenRouter dépasse 0,20 EUR/M au taux courant
+- **WHEN** un candidat OpenRouter dépasse 0,10 EUR/M au taux courant
 - **THEN** il est exclu avant génération même si son ancien catalogue le retenait
 
 #### Scenario: Gratuit général après retrait du tableau
@@ -686,41 +720,41 @@ invérifiable après investigation SHALL rester exclu.
 - **THEN** le modèle n'atteint pas la génération et le motif reste auditable
 
 ### Requirement: Effort demandé exclusivement Medium
-
-PLLM SHALL demander et publier des résultats dont l'effort effectif est
-`medium` pour les politiques benchmarkées, les forçages de rang et chaque
-transport. Le mode5 ne demande pas d'effort et n'exécute pas de génération.
-Un refus ou une absence de prise en charge SHALL invalider les autres
-candidats sans repli vers un autre effort.
+PLLM SHALL demander exclusivement le paramètre `medium` pour les politiques
+benchmarkées, les forçages de rang et chaque transport. Le mode5 ne demande
+pas d'effort et n'exécute aucune génération. Une réponse API complète SHALL
+établir l'acceptation du paramètre même si l'effort interne est converti,
+ignoré ou non appliqué. Un refus de Medium SHALL invalider le candidat sans
+repli vers un autre effort.
 
 #### Scenario: Demande forcée ou transport non compatible
-
-- **WHEN** une cible forcée ou un transport ne peut pas effectuer une requête
-  en Medium
+- **WHEN** une cible forcée ou un transport refuse le paramètre medium
 - **THEN** le candidat est déclaré invalide sans génération à un autre effort
 
 ### Requirement: Historique limité aux résultats Medium
-
-Une capacité fournisseur incluant Medium SHALL NOT valider un résultat
-historique benchmarké dont l'effort demandé ou exécuté n'est pas explicitement
-établi comme Medium. PLLM SHALL invalider ces résultats avant affichage et
-sélection, conserver leur motif dans les exclusions et ne pas réutiliser leurs
-paliers. Cette règle ne s'applique pas au mode5 non benchmarké.
+PLLM SHALL NOT valider un résultat historique benchmarké dont le paramètre
+`medium` demandé ou son acceptation API n'est pas explicitement établi. PLLM SHALL
+invalider ces résultats avant affichage et sélection, conserver leur motif
+dans les exclusions et ne pas réutiliser leurs paliers. Une mesure historique
+ne prouve pas l'acceptation API courante. Cette règle ne s'applique pas au
+mode5 non benchmarké.
 
 #### Scenario: Historique incompatible malgré une capacité Medium
-
-- **WHEN** le résultat ou une de ses tentatives historiques n'enregistre pas
-  explicitement Medium comme effort demandé
+- **WHEN** le résultat ou une de ses tentatives historiques n'enregistre pas explicitement la demande medium et son acceptation API
 - **THEN** PLLM l'invalide avant affichage et sélection
 - **AND** conserve le motif d'exclusion sans réutiliser son palier
 
 ### Requirement: Effort courant séparé des traces historiques
-PLLM SHALL valider l'effort demandé et mesuré dans l'évaluation courante sans traiter les métadonnées d'override ou d'anciennes tentatives comme son effort effectif. Les tentatives de performance courantes SHALL toujours établir Medium.
+PLLM SHALL valider la demande courante du paramètre Medium et son acceptation
+API sans traiter les métadonnées d'override ou d'anciennes tentatives comme
+preuve actuelle. Une réponse complète établit l'acceptation du paramètre ;
+elle ne mesure pas l'effort interne appliqué. Des métadonnées ou une source
+officielle actuelle et propre au transport peuvent aussi établir l'acceptation.
 
 #### Scenario: Candidat Medium avec anciennes traces XHigh
-- **WHEN** les capacités et les champs de requête et de mesure courants établissent Medium, mais que `user_override` ou `performance_attempts` historiques contiennent XHigh
+- **WHEN** la requête courante demande et l'API accepte medium, mais que `user_override` ou `performance_attempts` historiques contiennent XHigh
 - **THEN** PLLM conserve et évalue le candidat courant sans reprendre ces anciennes traces comme mesure ou palier valide
 
 #### Scenario: Tentative courante non Medium
-- **WHEN** la requête ou une tentative de performance de l'évaluation courante enregistre un effort autre que Medium
-- **THEN** PLLM exclut le résultat courant malgré une capacité fournisseur qui inclut Medium
+- **WHEN** la requête courante ne demande pas medium ou l'API ne l'accepte pas
+- **THEN** PLLM exclut le résultat courant malgré une capacité fournisseur historique qui inclut Medium

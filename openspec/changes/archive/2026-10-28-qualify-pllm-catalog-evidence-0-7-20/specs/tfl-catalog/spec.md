@@ -1,16 +1,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Effort vérifiable avant admission
-TFL SHALL conserver les modèles gratuits structurellement admissibles et
-envoyer le paramètre Medium sur leur transport publié, même si les métadonnées
-d'effort sont absentes ou ne listent pas `medium`. Une réponse API complète
-après cette requête SHALL prouver l'acceptation du paramètre, même si le
-fournisseur le convertit, l'ignore ou ne l'applique pas en interne. Les seuils
-de contexte, gratuité, réponse complète, TTFT et débit restent obligatoires.
-Les payants Go SHALL rester dans le catalogue lorsqu'ils satisfont contexte,
-prix, modalités et LM ; PLLM teste ensuite l'acceptation de Medium. Les payants
-OpenRouter restent sans exigence Medium pour le mode5. Les refus de paramètre
-Medium et leurs causes filtrées SHALL être conservés dans le JSON.
+TFL SHALL tester Medium sur le transport publié pour les gratuits admissibles,
+même si leurs métadonnées sont absentes ou ne déclarent pas cet effort. Une
+réponse complète SHALL prouver l'acceptation du paramètre sans établir l'effort
+interne. Contexte, gratuité, réponse complète, TTFT, débit, prix et LM restent
+requis. Le mode5 payant OpenRouter n'exige ni Medium ni benchmark.
 
 #### Scenario: Modèle benchmarké sans preuve
 - **WHEN** un modèle gratuit n'a pas de métadonnée Medium avant test
@@ -39,13 +34,10 @@ Medium et leurs causes filtrées SHALL être conservés dans le JSON.
 - **THEN** le budget seul ne prouve pas l'acceptation, mais TFL peut établir celle-ci par une requête Medium réelle
 
 ### Requirement: Efforts publiés et équivalences documentées
-Les niveaux reasoning_options type=effort/values SHALL rester normalisés.
-Une capacité publiée Medium ou une preuve officielle d'acceptation de la valeur
-`medium` SHALL être conservée avec fournisseur, identifiant et protocole exacts.
-Une API qui accepte `medium` comme alias, le convertit, l'ignore ou ne
-l'applique pas SHALL satisfaire le seul critère d'acceptation du paramètre ;
-TFL SHALL NOT en déduire une intensité interne mesurée. Le paramètre Medium
-propre au transport publié reste le seul envoyé.
+TFL SHALL normaliser reasoning_options et conserver la preuve Medium par
+fournisseur, modèle et protocole. Un alias ou une réponse complète acceptant
+`medium` satisfait le critère de paramètre, sans prouver l'effort interne. Seul
+le paramètre Medium du transport publié SHALL être envoyé.
 
 #### Scenario: Medium équivaut au raisonnement activé
 - **WHEN** les sources officielles ou une réponse API complète établissent l'acceptation de Medium sur le protocole utilisé
@@ -70,15 +62,12 @@ repli vers un autre effort. Les payants OpenRouter ne sont pas benchmarkés.
 - **AND** aucune requête de repli n'est effectuée
 
 ### Requirement: Investigation des preuves manquantes
-Pour Go et OpenRouter, un contexte invérifiable SHALL déclencher une analyse
-et une recherche du LLM dans les sources officielles. Le catalogue SHALL tracer
-fournisseur, ID exact, champ, sources, dates, empreintes et conclusion. Une
-absence de preuve SHALL NOT être présentée comme une incapacité démontrée.
-L'effort Medium inconnu SHALL être vérifié par une requête réelle lorsque le
-transport est publié ; une réponse complète prouve l'acceptation du paramètre.
-Une source d'effort peut documenter un mapping sans en faire une mesure
-d'intensité. L'agent SHALL terminer les investigations de contexte avant la
-restitution finale, ou déclarer explicitement son blocage.
+Pour Go et OpenRouter, un contexte inconnu SHALL déclencher une recherche
+officielle. Le JSON SHALL tracer fournisseur, ID exact, champ, sources, dates,
+méthode d'empreinte et conclusion. Le HTML est empreint sur son texte visible
+normalisé ; les autres sources le sont sur les octets reçus. Medium inconnu
+se vérifie sur la route publiée ; une réponse complète prouve l'acceptation du
+paramètre, pas l'effort interne. Un contexte invérifiable reste exclu.
 
 #### Scenario: Contexte encore invérifiable
 - **WHEN** l'investigation ne permet pas de vérifier le contexte
@@ -88,6 +77,11 @@ restitution finale, ou déclarer explicitement son blocage.
 #### Scenario: Source devenue différente ou inaccessible
 - **WHEN** une preuve supplémentaire ne correspond plus à sa source courante
 - **THEN** elle ne permet aucune admission et une nouvelle investigation est requise
+
+#### Scenario: Balisage HTML volatil sans changement documentaire
+- **WHEN** une source HTML change son balisage ou ses scripts sans modifier son texte visible
+- **THEN** son empreinte normalisée reste identique
+- **AND** une modification du texte visible déclenche une nouvelle investigation
 
 #### Scenario: Effort inconnu éprouvé par appel réel
 - **WHEN** Medium n'est pas publié dans les métadonnées mais une réponse complète suit la requête avec ce paramètre

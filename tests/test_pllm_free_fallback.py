@@ -86,6 +86,10 @@ class PllmFreeFallbackTests(unittest.TestCase):
                 complete = benchmark_behavior(model, budget)
             else:
                 model.update(ttft_seconds=5, tokens_per_second=40 if model['model_id'] in ('paid-b', 'free-general') else 25)
+            acceptance = {'status': 'accepted', 'parameter': 'medium',
+                          'verified_by': 'completed_api_response'}
+            model['reasoning_acceptance'] = acceptance
+            model['performance_test']['reasoning_acceptance'] = acceptance
             model['performance_test']['status'] = 'completed' if complete else 'truncated'
             return complete
 
@@ -485,13 +489,17 @@ class PllmFreeFallbackTests(unittest.TestCase):
             self.assertEqual([event[2] for event in events if event[0] == 'benchmark' and event[1] == 'mode1'], ['paid-a'])
             self.assertEqual(data['selected_mode'], 'mode3')
 
-    def test_medium_incompatible_metadata_prevents_generation(self):
+    def test_medium_is_requested_even_when_metadata_lists_only_another_effort(self):
         for script in PLLM:
             module, _, _ = self.workspace(script)
-            model = {'mode': 'mode5', 'provider': 'openrouter', 'model_id': 'fixture'}
-            with patch.object(module, 'request') as request, self.assertRaisesRegex(RuntimeError, 'Medium non pris en charge'):
-                module.benchmark(model, 'offline-fixture', 1024, {'reasoning': {'supported_efforts': ['low']}})
-            request.assert_not_called()
+            model = {'mode': 'mode3', 'provider': 'opencodego', 'model_id': 'fixture',
+                     'is_free': True, 'api_protocol': 'chat_completions',
+                     'api_endpoint': 'https://opencode.ai/zen/go/v1/chat/completions'}
+            with patch.object(module, 'request', side_effect=http_error(400)) as request, \
+                 self.assertRaises(HTTPError):
+                module.benchmark(model, 'offline-fixture', 1024,
+                                 {'reasoning': {'supported_efforts': ['low']}})
+            self.assertEqual(request.call_args.args[2]['reasoning_effort'], 'medium')
 
 
 if __name__ == '__main__':

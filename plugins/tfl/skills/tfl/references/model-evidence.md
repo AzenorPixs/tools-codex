@@ -16,11 +16,11 @@ d'une incapacité.
    d'abord le catalogue actuel et `reasoning_options` de models.dev, puis la
    documentation officielle du fournisseur ou du créateur du modèle. Vérifier
    l'applicabilité au service et au protocole réellement utilisés.
-2. Pour l'effort, chercher la prise en charge officielle de Medium. Une preuve
-   historique qui ne couvre pas Medium ne valide pas cet effort. Son équivalence à
-   l'activation du raisonnement est admissible si elle est documentée. Tracer
-   ce sens ; ne pas prétendre une intensité distincte ni considérer un HTTP 200
-   seul comme une preuve.
+2. Pour l'effort, conserver les sources officielles applicables au modèle et au
+   transport. Lorsqu'un benchmark TFL ou PLLM est prévu, une requête réelle
+   exclusivement en Medium peut établir l'acceptation du paramètre : seule une
+   réponse complète la prouve. Un mapping documenté peut être tracé, mais ne
+   mesure pas l'effort interne.
 3. Pour le contexte, chercher une capacité chiffrée applicable au fournisseur.
    Ne pas déduire sa taille d'un prix, du nom du modèle ou d'un autre service.
    Le seuil reste 1 000 000 tokens. Aucune requête de cette taille n'est nécessaire.
@@ -45,7 +45,7 @@ Le fichier déclare `schema_version: 1` et `records`. Chaque entrée contient :
 | status | verified, unsupported ou unverifiable |
 | investigated_at | Date ISO 8601 avec fuseau |
 | conclusion | Synthèse de la recherche et de son applicabilité |
-| sources | URL HTTPS officielle, authority=official, sha256 du contenu brut et retrieved_at avec fuseau |
+| sources | URL HTTPS officielle, authority=official, fingerprint_method, sha256 et retrieved_at avec fuseau |
 | value | Pour verified : entier de contexte, ou objet supported_efforts contenant medium, ou null explicitement publié pour tous les efforts |
 
 L'objet d'effort peut préciser `effort_equivalence: accepted_alias` pour
@@ -60,8 +60,11 @@ pour établir Medium lorsqu'elles ne couvrent pas cet effort ; elles ne
 permettent pas seules l'admission.
 Le registre du
 répertoire de rapport peut le compléter ou réviser une entrée exacte.
-L'agent rédige les conclusions après recherche ; le contrôle SHA-256 prouve
-seulement que la source n'a pas changé, pas l'interprétation sémantique du LLM.
+L'agent rédige les conclusions après recherche ; pour HTML, `html_visible_text_v1`
+empreinte le texte visible normalisé en UTF-8 NFC avec espaces consécutifs
+réduits, sans scripts, styles, navigation ou balisage volatil. Pour les autres
+formats, `raw_bytes_v1` empreinte les octets reçus. Le contrôle SHA-256 prouve
+seulement que le contenu retenu n'a pas changé, pas l'interprétation sémantique du LLM.
 TFL relit les sources avant admission. Un contenu changé ou inaccessible
 réactive l'investigation sans réutiliser l'ancienne preuve. PLLM recontrôle
 ces sources avant génération et conserve les résultats d'investigation TFL.

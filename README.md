@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.18`.
+Version de release : `0.7.20`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -30,7 +30,7 @@ Les sept politiques sont évaluées par priorité :
 |---|---|---|
 | 1/2 | Payants Go des comptes actuels | Quotas disponibles ; épuisement → rouge et invalide, sans gratuit |
 | 3/4 | Gratuits vérifiés Go exclusivement, comptes de 1/2 | Aucun contrôle de quota ; contexte ≥1M, Medium, TTFT <30 s et débit >20 tokens/s |
-| 5 | Payants OpenRouter | Solde positif, contexte ≥1M et coût moyen ≤0,20 €/M ; aucun benchmark ni exigence Medium |
+| 5 | Payants OpenRouter | Solde positif, contexte ≥1M et coût moyen ≤0,10 €/M ; aucun benchmark ni exigence Medium |
 | 6 | Gratuits OpenRouter | Aucun contrôle de solde ; contexte ≥1M, Medium, TTFT <30 s et débit >20 tokens/s |
 | 7 | Ancien mode 4 DeepSeek direct | Solde utilisable positif et benchmark payant Medium |
 
@@ -63,7 +63,7 @@ officielle et les tarifs OpenRouter dans son API. Le JSON conserve la source,
 la date et les variantes tarifaires. Une collecte indispensable en échec
 préserve les rapports précédents sans reprendre silencieusement leurs prix.
 La sélection OpenRouter examine tout le catalogue API sans liste prédéfinie :
-contexte ≥ 1M, coût moyen de base ≤0,20 EUR/M au taux BCE vérifié, sorties admissibles et blacklist. Medium est requis pour les gratuits OpenRouter benchmarkés, pas pour les payants du mode5.
+contexte ≥ 1M, coût moyen de base ≤0,10 EUR/M au taux BCE vérifié, sorties admissibles et blacklist. Medium est requis pour les gratuits OpenRouter benchmarkés, pas pour les payants du mode5.
 Les gratuits vérifiés doivent aussi réussir les tests Medium : réponse
 complète, TTFT <30 s et débit >20 tokens/s. Les échecs sont retirés de models
 et leurs preuves sont conservées dans les exclusions JSON. Un nouveau modèle admissible apparaît sans modification du code.
@@ -76,7 +76,7 @@ gratuits TFL sont désormais testés, les payants restent un catalogue tarifaire
 Le rapport comprend deux tableaux fournisseurs : OpenCode Go puis OpenRouter,
 suivis du tableau détaillé des tests gratuits admissibles à Medium.
 OpenCode général n'est plus collecté, testé ou publié. Le JSON contient
-seulement opencode_go et openrouter. Les deux catalogues exigent contexte ≥1M ; Medium est requis pour les candidats benchmarkés et gratuits, pas pour les payants OpenRouter du mode5. Go conserve ≤0,50 USD/M et OpenRouter ≤0,20 EUR/M au dernier taux BCE publié. Les modes PLLM 1/2 utilisent exclusivement les payants Go, 3/4 les gratuits Go, 5 les payants OpenRouter sans benchmark, 6 les gratuits OpenRouter benchmarkés et 7 DeepSeek direct.
+seulement opencode_go et openrouter. Les deux catalogues exigent contexte ≥1M ; Medium est requis pour les candidats benchmarkés et gratuits, pas pour les payants OpenRouter du mode5. Go conserve ≤0,50 USD/M et OpenRouter ≤0,10 EUR/M au dernier taux BCE publié. Les modes PLLM 1/2 utilisent exclusivement les payants Go, 3/4 les gratuits Go, 5 les payants OpenRouter sans benchmark, 6 les gratuits OpenRouter benchmarkés et 7 DeepSeek direct.
 TFL ne consulte aucun quota pour ses tests gratuits. Une sélection vide après
 filtrage ou qualification ne bloque pas les autres catalogues : les deux
 tableaux sont publiés, avec « Aucun modèle admissible » et une synthèse des

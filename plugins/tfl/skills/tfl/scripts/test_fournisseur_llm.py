@@ -934,7 +934,7 @@ def format_openrouter_table(rows: list[dict], generated_at: str, *, excluded: li
     lines.append("")
     if not rows:
         lines.extend(format_empty_selection(excluded or []))
-    lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, coût moyen ≤ 0.20 €/M, classement croissant. Medium et les tests de performance sont requis uniquement pour les modèles gratuits.")
+        lines.append(f"Actualisé le {generated_at}; contexte ≥ 1M, coût moyen ≤ 0.10 €/M, classement croissant. Medium et les tests de performance sont requis uniquement pour les modèles gratuits.")
     rates = exchange_rates or next((row.get('exchange_rates') for row in rows if row.get('exchange_rates')), None)
     if rates:
         lines.append(f"Taux BCE du {rates['date']} : 1 EUR = {rates['rates']['USD']} USD ; source : {performance.ECB_RATES_URL}.")
@@ -1078,7 +1078,7 @@ def format_free_performance(audit: list[dict]) -> str:
 
 
 def build_investigated(builder, payload, metadata, section, resolver):
-    """Réexaminer le contexte inconnu, sans modifier disponibilité ni route."""
+    """Réexaminer les preuves utiles sans modifier disponibilité ni route."""
     working = copy.deepcopy(payload)
     models = {model['id']: model for model in working['data'] if isinstance(model, dict) and model.get('id')}
     investigations = {}
@@ -1105,6 +1105,22 @@ def build_investigated(builder, payload, metadata, section, resolver):
                 changed = True
         if not changed:
             break
+    for item in rows:
+        if section == 'openrouter' and not performance.is_free(item, section):
+            continue
+        capabilities = performance.capabilities(item)
+        levels = capabilities.get('supported_efforts')
+        if ('supported_efforts' in capabilities
+                and (levels is None or (isinstance(levels, list) and 'medium' in levels))):
+            continue
+        protocol = item.get('api_protocol') or 'chat_completions'
+        result = resolver.resolve(section, item['id'], 'reasoning', protocol)
+        if result['status'] == 'verified':
+            investigations[item['id'], 'reasoning'] = result
+            item['reasoning_capabilities'] = result['value']
+            item['reasoning'] = 'medium'
+        elif result['status'] != 'required':
+            investigations[item['id'], 'reasoning'] = result
     for item in (*rows, *excluded):
         findings = [value for (model_id, _), value in investigations.items() if model_id == item['id']]
         if findings:
@@ -1180,7 +1196,7 @@ def main() -> int:
     }
     openrouter_catalog = {
         "cost_exchange_rates": cost_exchange_rates,
-        "maximum_average_eur_per_million_tokens": 0.20,
+        "maximum_average_eur_per_million_tokens": 0.10,
         "source_api": OPENROUTER_API_URL,
         "pricing_source": openrouter_payload.get("pricing_source", OPENROUTER_API_URL),
         "pricing_retrieved_at": openrouter_payload.get("pricing_retrieved_at"),
@@ -1207,7 +1223,7 @@ def main() -> int:
         "common_columns": ["rank", "model_id", "context", "output", "input_price", "output_price", "average_cost", "cost_color"],
         "filters": {"minimum_context_tokens": MIN_CONTEXT_TOKENS,
                     "maximum_average_usd_per_million_tokens": MAX_REFERENCE_AVERAGE_USD_PER_MILLION,
-                    "openrouter_maximum_average_eur_per_million_tokens": 0.20,
+                    "openrouter_maximum_average_eur_per_million_tokens": 0.10,
                     "required_reasoning_efforts": {"paid": [], "free": ["medium"]}},
         "lm_blacklist": {"model_ids": list(blacklisted_models)},
         "opencode_go": opencode_catalog,

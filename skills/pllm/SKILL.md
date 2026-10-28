@@ -18,7 +18,7 @@ leurs ressources propres.
 Les modes gratuits 3/4/6 exigent contexte ≥1M, Medium vérifiable, réponse
 complète, TTFT <30 s et débit >20 tokens/s. Les payants benchmarkés 1/2/7
 exigent TTFT <90 s et débit >15 tokens/s. Le mode5 est payant, exige un solde
-positif, contexte ≥1M et coût moyen de base ≤0,20 EUR/M ; il n'exige ni Medium
+positif, contexte ≥1M et coût moyen de base ≤0,10 EUR/M ; il n'exige ni Medium
 ni test de performance et n'envoie aucune requête de génération. Ses TTFT,
 tokens/s et dernier palier restent indisponibles (`-`).
 
@@ -186,14 +186,14 @@ ne teste ni performance ni Medium ; les autres benchmarks restent obligatoires.
 
 ### Mode 5 — priorité 5 — payants OpenRouter sans benchmark
 
-- Parcourir les modèles payants TFL `openrouter` de coût moyen ≤0,20 EUR/M et
+- Parcourir les modèles payants TFL `openrouter` de coût moyen ≤0,10 EUR/M et
   contexte ≥1M par coût courant croissant, ordre TFL à prix égal.
 - Aucun test de performance, génération ou preuve Medium n'est requis.
 - Référence inchangée : `service=pllm`, `policy=mode3`, `provider=openrouter`,
   `account=az.openrouter@pixs.fr`. Le numéro de politique du trousseau reste historique.
 - Contrôle avant chaque requête : `GET https://openrouter.ai/api/v1/credits`,
   solde = `data.total_credits - data.total_usage`. Garder la devise de l'API.
-- Validité : solde >0, contexte ≥1M et coût moyen de base ≤0,20 EUR/M,
+- Validité : solde >0, contexte ≥1M et coût moyen de base ≤0,10 EUR/M,
   recalculé depuis les prix natifs et le dernier taux BCE. Afficher `-` pour
   TTFT, tokens/s et dernier palier réussi. Le crédit épuisé invalide le mode,
   sans repli gratuit ; une invocation ultérieure relit le crédit.
@@ -218,9 +218,10 @@ ne teste ni performance ni Medium ; les autres benchmarks restent obligatoires.
   `is_available=true` ET au moins un `total_balance` utilisable >0.
 - Garder les devises séparées. Validité : réponse complète, TTFT <90 s et
   débit réponse seule >15 tokens/s, en plus du solde utilisable.
-- Vérifier Medium effectif depuis `references/model-evidence.json` et relire
-  ses sources officielles avant génération. Un alias Medium mappé à High
-  reste invalide ; afficher le motif précis et conserver la preuve dans le JSON.
+- Vérifier l'acceptation du paramètre Medium depuis `references/model-evidence.json`
+  et relire ses sources officielles avant génération. Le mapping DeepSeek
+  `medium` vers `high` satisfait l'acceptation du paramètre ; ne pas prétendre
+  mesurer l'effort interne et conserver la preuve dans le JSON.
 - Les crédits achetés et la consommation cumulée indisponibles ne remplacent
   jamais le contrôle du solde.
 
@@ -529,15 +530,16 @@ aucun endpoint et ne constitue pas une preuve de performance.
 ## Investigation obligatoire des métadonnées inconnues
 
 Un contexte non vérifiable impose une analyse et une recherche du LLM pour Go
-et OpenRouter ; un effort non vérifiable impose cette recherche pour les
-candidats benchmarkés et DeepSeek direct mode7. Suivre
-[le protocole de preuve](references/model-evidence.md). Rechercher les sources
-officielles applicables au fournisseur, à l'ID et au protocole exacts ; tracer
-sources, dates et conclusion. Un contexte encore invérifiable après
-investigation exclut le modèle. Un rapport provisoire ne vaut pas conclusion
-définitive ; si la recherche est bloquée, le signaler sans inventer de capacité.
-Le registre DeepSeek direct réside dans `references/model-evidence.json` ; un
-mapping Medium vers un effort supérieur reste invalide et bloque le benchmark.
+et OpenRouter. Un effort Medium inconnu se vérifie par une requête réelle avec
+Medium lorsque le transport est publié ; une réponse complète prouve
+l'acceptation, même si le fournisseur mappe ou ignore l'effort. Suivre
+[le protocole de preuve](references/model-evidence.md), tracer les sources,
+dates et conclusions officielles disponibles, et ne jamais prétendre mesurer
+l'effort interne. Un contexte encore invérifiable après investigation exclut
+le modèle. Un rapport provisoire ne vaut pas conclusion définitive ; si la
+recherche est bloquée, le signaler sans inventer de capacité. Le registre
+DeepSeek direct réside dans `references/model-evidence.json` et conserve le
+mapping Medium vers High comme preuve d'acceptation du paramètre.
 La mise à jour du registre TFL ne réécrit jamais son catalogue à la main.
 Une invocation PLLM seule ne lance pas implicitement TFL : signaler la
 collecte nécessaire si elle n'est pas autorisée. Conserver la restitution
@@ -546,7 +548,7 @@ exacte du script lorsqu'elle est demandée, sans ajouter de commentaire.
 
 ## Coût OpenRouter admissible
 
-Le mode5 applique le plafond de moyenne entrée/sortie de base <= 0,20 EUR/M et le contexte >=1M sans Medium ni performance.
+Le mode5 applique le plafond de moyenne entrée/sortie de base <= 0,10 EUR/M et le contexte >=1M sans Medium ni performance.
 Collecter le dernier taux BCE USD par EUR publié et recalculer depuis les prix
 USD du catalogue, y compris ancien ou forcé. Les moyennes EUR historiques ne
 font pas preuve. Source, date et récupération du taux sont conservées. Une
