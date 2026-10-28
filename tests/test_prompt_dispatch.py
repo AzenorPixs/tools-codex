@@ -45,13 +45,12 @@ class PromptDispatchTests(unittest.TestCase):
             '# DEVOPS\n\n# Prompts\n\n  * Dossier des prompts : ' + str(folder or self.folder) +
             '\n  * Index des prompts : ' + str(index or self.index) + '\n', encoding='utf-8')
 
-    def test_all_thirty_eight_execution_arguments_and_list_are_supported(self):
+    def test_direct_arguments_and_numbered_families_are_supported(self):
         expected = {**{n: n for n in DIRECT_CODES}, 'GCM': 'GSCM', 'GCMP': 'GSCMP'}
-        for n in range(1, 9):
+        for n in (*range(1, 10), 10, 99, 12345):
             expected['CISMP' + str(n)] = 'CISMP'
             expected['1CISMP' + str(n)] = 'CISMP'
-        self.assertEqual(set(expected), set(self.m.ACTIONS))
-        self.assertEqual(len(expected), 38)
+        self.assertEqual(set(self.m.DIRECT), {*DIRECT_CODES, "GCM", "GCMP"})
         for action, canonical in expected.items():
             with self.subTest(action=action):
                 result = self.m.dispatch(self.project, action)
@@ -62,7 +61,7 @@ class PromptDispatchTests(unittest.TestCase):
                 self.assertTrue(result['instruction'].startswith('Lance un prompt ' + canonical + '.md'))
 
     def test_numbered_runs_keep_the_number_without_single_change_limit(self):
-        for n in range(1, 9):
+        for n in (*range(1, 10), 10, 99, 12345, '9' * 5000):
             action = 'CISMP' + str(n)
             with self.subTest(action=action):
                 result = self.m.dispatch(self.project, action)
@@ -72,7 +71,7 @@ class PromptDispatchTests(unittest.TestCase):
                 self.assertTrue(result['instruction'].endswith('pour un RUN ' + action + '.'))
 
     def test_single_change_variants_preserve_run_and_lifecycle_order(self):
-        for n in range(1, 9):
+        for n in (*range(1, 10), 10, 99, 12345, '9' * 5000):
             run = 'CISMP' + str(n)
             with self.subTest(run=run):
                 result = self.m.dispatch(self.project, '1' + run)
@@ -201,11 +200,16 @@ class PromptDispatchTests(unittest.TestCase):
                     self.m.dispatch(self.project, 'SCM')
 
     def test_invalid_arguments_are_rejected_before_reading_configuration(self):
-        for action in ('scm', 'list', 'CISMP', 'CISMP0', 'CISMP9', '1CISMP0', '1CISMP9', '11CISMP3', '../SCM', 'UNKNOWN'):
+        for action in ('scm', 'list', 'CISMP', 'CISMP0', 'CISMP01', 'CISMP-1', 'CISMP1.5', 'CISMP١', 'CISMP1\n', '1CISMP0', '1CISMP01', '1CISMP+2', '1CISMP1x', '11CISMP3', '../SCM', 'UNKNOWN'):
             with self.subTest(action=action):
                 with patch.object(self.m, 'configuration') as config:
                     with self.assertRaises(self.m.PromptError):
                         self.m.dispatch(self.project, action)
+                config.assert_not_called()
+                with patch.object(self.m, 'configuration') as config, patch('sys.stderr', new_callable=io.StringIO):
+                    with self.assertRaises(SystemExit) as caught:
+                        self.m.main([action, '--project-root', str(self.project)])
+                self.assertEqual(caught.exception.code, 2)
                 config.assert_not_called()
 
     def test_resolution_never_executes_text_or_changes_files(self):
@@ -222,13 +226,19 @@ class PromptDispatchTests(unittest.TestCase):
         installed = self.base / 'installation du skill'
         installed.mkdir()
         script = installed / 'resolve_prompt.py'
-        script.write_bytes((ROOT / 'skills/prompt/scripts/resolve_prompt.py').read_bytes())
-        result = subprocess.run([sys.executable, '-B', str(script), '1CISMP3', '--project-root', str(self.project)],
-                                cwd=installed, capture_output=True, text=True, check=True)
-        value = json.loads(result.stdout)
-        self.assertEqual(value['project_root'], str(self.project))
-        self.assertEqual(value['run'], 'CISMP3')
-        self.assertEqual(value['max_changes'], 1)
+        for source in ('skills/prompt/scripts/resolve_prompt.py',
+                       'plugins/prompt/skills/prompt/scripts/resolve_prompt.py'):
+            script.write_bytes((ROOT / source).read_bytes())
+            for suffix in ('9', '12345', '9' * 5000):
+                for prefix in ('CISMP', '1CISMP'):
+                    with self.subTest(source=source, prefix=prefix, digits=len(suffix)):
+                        result = subprocess.run([sys.executable, '-B', str(script), prefix + suffix,
+                                                 '--project-root', str(self.project)],
+                                                cwd=installed, capture_output=True, text=True, check=True)
+                        value = json.loads(result.stdout)
+                        self.assertEqual(value['project_root'], str(self.project))
+                        self.assertEqual(value['run'], 'CISMP' + suffix)
+                        self.assertEqual(value['max_changes'], 1 if prefix == '1CISMP' else None)
 
     def test_main_error_is_explicit_and_lowercase_is_rejected(self):
         (self.project / 'DEVOPS.md').unlink()

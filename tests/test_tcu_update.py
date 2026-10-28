@@ -84,12 +84,25 @@ class TcuUpdateTests(unittest.TestCase):
             self.upgraded = True
             return {}
         if args[0] == 'add':
-            self.assertEqual(args, ['add', 'prompt@tools-codex', '--json'])
+            self.assertEqual(len(args), 3)
+            self.assertEqual(args[2], '--json')
+            name, marketplace = args[1].split('@')
+            self.assertEqual(marketplace, 'tools-codex')
             state = copy.deepcopy(self.after if self.after is not None else self.before)
-            enabled = state.get('prompt', {}).get('enabled', True)
-            state['prompt'] = self.prompt_entry('0.3.0', enabled)
+            self.assertIn(name, [p['name'] for p in json.loads(self.files['.agents/plugins/marketplace.json'])['plugins']])
+            enabled = state.get(name, {}).get('enabled', True)
+            release = self.files['VERSION'].decode().strip()
+            entry = self.plugin(release, enabled)
+            entry.update(name=name, pluginId=name + '@tools-codex')
+            state[name] = entry
             self.after = state
-            self.prompt_cache('0.3.0')
+            if name == 'prompt':
+                self.prompt_cache(release)
+            else:
+                package = self.m.cache_root(self.home, name, release)
+                manifest = package / '.codex-plugin/plugin.json'
+                manifest.parent.mkdir(parents=True, exist_ok=True)
+                manifest.write_bytes(self.files[f'plugins/{name}/.codex-plugin/plugin.json'])
             return {}
         self.assertEqual(args, ['list', '--marketplace', 'tools-codex', '--json'])
         return {'installed': list(copy.deepcopy(self.after if self.upgraded and self.after is not None else self.before).values())}
@@ -163,7 +176,7 @@ class TcuUpdateTests(unittest.TestCase):
                 self.files[str(path.relative_to(ROOT))] = path.read_bytes()
         self.files['.codex/commands/LM.md'] = (ROOT / '.codex/commands/LM.md').read_bytes()
 
-    def test_lm_absent_is_not_installed_and_common_policy_is_preserved(self):
+    def test_lm_absent_is_installed_and_common_policy_is_preserved(self):
         self.enable_lm()
         policy = self.home / 'lm/blacklist.json'
         policy.parent.mkdir(parents=True)
@@ -171,10 +184,10 @@ class TcuUpdateTests(unittest.TestCase):
         content = policy.read_bytes()
         report = self.execute(apply=True)
         self.assertTrue(report['succes'])
-        self.assertFalse((self.skills / 'lm').exists())
-        self.assertFalse(any(c[0] == 'add' for c in self.calls))
+        self.assertEqual((self.skills / 'lm/SKILL.md').read_bytes(), self.files['skills/lm/SKILL.md'])
+        self.assertIn(['add', 'lm@tools-codex', '--json'], self.calls)
         self.assertEqual(policy.read_bytes(), content)
-        self.assertTrue(any(r['brique'] == 'lm' and r['status'] == 'absent' for r in report['briques']))
+        self.assertTrue(any(r['brique'] == 'lm' and r['status'] == 'installe' for r in report['briques']))
 
     def test_lm_existing_autonomous_sources_update_without_changing_common_policy(self):
         self.enable_lm()
@@ -205,10 +218,26 @@ class TcuUpdateTests(unittest.TestCase):
         def fetch(url):
             return json.dumps({'sha':'a'*40}).encode() if url.endswith('/commits/HEAD') else zip_bytes(files)
         remote = self.m.snapshot(fetch)
-        self.assertEqual(remote['version'],'0.7.20')
+        self.assertEqual(remote['version'], (ROOT / 'VERSION').read_text().strip())
         self.assertEqual(remote['plugins'], {'cm','lm','tfl','pllm','prompt','tcu'})
         for name in ('lm','tfl','pllm'):
             self.assertIn('skills/'+name+'/scripts/model_blacklist.py',remote['files'])
+        self.files = files
+        roots = [('skills', self.skills), ('skills', self.base / 'agents/skills'),
+                 ('commands', self.home / 'prompts'), ('commands', self.home / 'commands')]
+        with patch.object(self.m.scheduler, 'install', return_value={'status': 'installe'}) as schedule:
+            report = self.execute(apply=True, roots=roots)
+        self.assertTrue(report['succes'], report.get('erreur'))
+        self.assertEqual(set(self.after), remote['plugins'])
+        self.assertTrue(all(p['version'] == remote['version'] for p in self.after.values()))
+        for kind, root in roots:
+            if kind == 'skills':
+                for name in ('cgpt', 'cm', 'coding-session-statistics', 'lm', 'pllm', 'prompt', 'tcu', 'tfl'):
+                    self.assertEqual((root / name / 'SKILL.md').read_bytes(), files[f'skills/{name}/SKILL.md'])
+            else:
+                for name in ('CM', 'PLLM', 'TFL', 'TCU', 'LM', 'PROMPT'):
+                    self.assertEqual((root / (name + '.md')).read_bytes(), files[f'.codex/commands/{name}.md'])
+        schedule.assert_called_once()
 
     def test_check_has_no_writes_and_does_not_refresh(self):
         target = self.local(tracked=True)
@@ -267,15 +296,134 @@ class TcuUpdateTests(unittest.TestCase):
         self.assertTrue(any(p['status'] == 'conflit' for p in plan))
         self.assertEqual((target / 'SKILL.md').read_bytes(), b'local')
 
-    def test_missing_bricks_are_not_installed(self):
+    def test_missing_bricks_are_installed_with_provenance(self):
         result = self.execute(apply=True)
         self.assertTrue(result['succes'])
-        self.assertEqual(list(self.skills.iterdir()), [])
-        self.assertTrue(all(r['status'] == 'absent' for r in result['briques']
-                            if r.get('ressource') != 'planification'))
+        for name in ('cm', 'tcu'):
+            target = self.skills / name
+            self.assertEqual((target / 'SKILL.md').read_bytes(), self.files[f'skills/{name}/SKILL.md'])
+            receipt = json.loads((target / self.m.RECEIPT).read_text())
+            self.assertEqual(receipt['version'], '0.3.0')
+            self.assertEqual(receipt['sha'], 'a' * 40)
+            self.assertEqual(receipt['hashes']['SKILL.md'], self.m.digest((target / 'SKILL.md').read_bytes()))
+            self.assertIn(['add', name + '@tools-codex', '--json'], self.calls)
+            row = next(r for r in result['briques'] if r['brique'] == str(target))
+            self.assertEqual((row['avant'], row['apres'], row['status']), (None, '0.3.0', 'installe'))
         schedule = next(r for r in result['briques'] if r.get('ressource') == 'planification')
         self.assertEqual(schedule['status'], 'composants_absents')
+
+    def test_all_roots_are_installed_and_second_apply_is_idempotent(self):
+        self.enable_prompt()
+        roots = [('skills', self.skills), ('skills', self.base / 'agents/skills'),
+                 ('commands', self.home / 'prompts'), ('commands', self.home / 'commands')]
+        check = self.execute(roots=roots)
+        planned = [r for r in check['briques'] if r['status'] == 'a_installer']
+        self.assertTrue(planned)
+        self.assertTrue(all(r['apres'] is None for r in planned))
+        self.assertFalse(self.home.exists())
+        self.assertEqual(list(self.skills.iterdir()), [])
+        report = self.execute(apply=True, roots=roots)
+        self.assertTrue(report['succes'])
+        for kind, root in roots:
+            if kind == 'skills':
+                for name in ('cm', 'tcu', 'prompt'):
+                    self.assertTrue((root / name / self.m.RECEIPT).is_file())
+            else:
+                for name in ('TCU.md', 'PROMPT.md'):
+                    self.assertEqual((root / name).read_bytes(), self.files['.codex/commands/' + name])
+                self.assertTrue((root / self.m.RECEIPT).is_file())
+                self.assertTrue((root / self.m.PROMPT_RECEIPT).is_file())
+        self.before = copy.deepcopy(self.after)
+        self.calls.clear()
+        second = self.execute(apply=True, roots=roots)
+        self.assertTrue(second['succes'])
         self.assertFalse(any(c[0] == 'add' for c in self.calls))
+        self.assertTrue(all(r['status'] == 'courant' for r in second['briques']
+                            if r.get('ressource') != 'planification'))
+
+    def test_new_installation_rollback_removes_created_sources_and_receipts(self):
+        plans = self.m.local_plan(self.remote, [('skills', self.skills)], False)
+        calls = 0
+
+        def failing(path, data):
+            nonlocal calls
+            calls += 1
+            self.m.atomic_write(path, data)
+            if calls == 3:
+                raise OSError('installation interrompue')
+
+        with self.assertRaises(OSError):
+            self.m.apply_local(plans, self.remote, self.base / 'backup', writer=failing)
+        self.assertFalse(any(p.is_file() for p in self.skills.rglob('*')))
+
+    def test_non_prompt_plugin_install_failure_preserves_observed_effect(self):
+        original = self.runner
+
+        def failing(args):
+            result = original(args)
+            if args[:2] == ['add', 'cm@tools-codex']:
+                raise self.m.UpdateError('échec après installation CM')
+            return result
+
+        with patch.object(self, 'runner', side_effect=failing):
+            report = self.execute(apply=True)
+        self.assertFalse(report['succes'])
+        cm = next(r for r in report['briques'] if r['brique'] == 'cm')
+        self.assertEqual((cm['apres'], cm['status']), ('0.3.0', 'installe'))
+        self.assertFalse((self.skills / 'cm/SKILL.md').exists())
+        self.assertTrue(Path(report['backup']).is_dir())
+
+    def test_new_plugin_missing_disabled_or_wrong_version_blocks_local_sources(self):
+        original = self.runner
+        for defect in ('missing', 'disabled', 'version'):
+            with self.subTest(defect=defect):
+                self.before = {}
+                self.after = None
+                self.upgraded = False
+
+                def invalid(args):
+                    result = original(args)
+                    if args[:2] == ['add', 'tcu@tools-codex']:
+                        if defect == 'missing':
+                            self.after.pop('tcu')
+                        elif defect == 'disabled':
+                            self.after['tcu']['enabled'] = False
+                        else:
+                            self.after['tcu']['version'] = '0.2.3'
+                    return result
+
+                with patch.object(self, 'runner', side_effect=invalid):
+                    result = self.execute(apply=True)
+                self.assertFalse(result['succes'])
+                self.assertIn('erreur', result)
+                self.assertFalse(any(p.is_file() for p in self.skills.rglob('*')))
+
+    def test_incomplete_autonomous_source_blocks_before_cli_or_writes(self):
+        self.files['skills/extra/scripts/tool.py'] = b'raise RuntimeError("must not run")\n'
+        with self.assertRaisesRegex(self.m.UpdateError, 'Skill autonome incomplet'):
+            self.execute(apply=True)
+        self.assertEqual(self.calls, [])
+        self.assertFalse(self.home.exists())
+        self.assertEqual(list(self.skills.iterdir()), [])
+
+    def test_existing_incomplete_skill_without_receipt_stays_in_conflict(self):
+        target = self.local('tcu', content=self.files['skills/tcu/SKILL.md'])
+        result = self.execute(apply=True)
+        self.assertFalse(result['succes'])
+        self.assertFalse((target / 'scripts/update.py').exists())
+        self.assertFalse((target / self.m.RECEIPT).exists())
+        self.assertEqual(next(r for r in result['briques'] if r['brique'] == str(target))['status'], 'conflit')
+
+    def test_explicit_main_roots_replace_defaults_and_keep_spaces(self):
+        skills = self.base / 'explicit skills'
+        commands = self.base / 'explicit commands'
+        with patch.object(self.m, 'execute', return_value={'succes': True}) as execute:
+            with patch.dict(self.m.os.environ, {'CODEX_HOME': str(self.home)}):
+                with patch('sys.stdout', new_callable=io.StringIO):
+                    result = self.m.main(['--apply', '--skills-dir', str(skills),
+                                          '--commands-dir', str(commands)])
+        self.assertEqual(result, 0)
+        self.assertEqual(execute.call_args.args[1], [('skills', skills), ('commands', commands)])
 
     def test_schedule_check_is_planned_without_mutation_or_generation(self):
         with patch.object(self.m.scheduler, 'install', return_value={'status': 'a_installer'}) as install:
@@ -326,7 +474,7 @@ class TcuUpdateTests(unittest.TestCase):
         self.assertFalse(self.home.exists())
         self.assertEqual(self.calls, [])
 
-    def test_existing_commands_only_are_updated(self):
+    def test_existing_commands_and_unrelated_files_are_preserved(self):
         commands = self.base / 'commands'
         commands.mkdir()
         (commands / 'TCU.md').write_bytes(b'ancienne commande')
@@ -561,6 +709,27 @@ class TcuUpdateTests(unittest.TestCase):
         self.assertTrue(result['succes'])
         self.assertEqual(next(r for r in result['briques'] if r['brique'] == 'cm')['apres'], '0.3.0+fixture')
 
+    def test_prompt_display_labels_preserve_identifiers_and_legacy_paths(self):
+        self.enable_prompt()
+        for apply in (False, True):
+            with self.subTest(apply=apply):
+                report = self.execute(apply=apply)
+                rows = [r for r in report['briques'] if r.get('libelle') == 'PROMPT'
+                        and r.get('ressource') in {'plugin', 'skill', 'commande'}]
+                self.assertEqual({r['ressource'] for r in rows}, {'plugin', 'skill', 'commande'})
+                self.assertEqual(len(rows), 3)
+                self.assertEqual({r['brique'] for r in rows if r['ressource'] != 'commande'},
+                                 {'prompt', 'prompt/skill'})
+                self.assertTrue(all(r.get('composant', 'prompt') == 'prompt' for r in rows))
+        self.before = copy.deepcopy(self.after)
+        commands = self.home / 'prompts'
+        (commands / 'PROMPT.md').rename(commands / 'prompt.md')
+        report = self.execute()
+        row = next(r for r in report['briques'] if r.get('ressource') == 'commande')
+        self.assertEqual(row['libelle'], 'PROMPT')
+        self.assertEqual(row['brique'], str(commands / 'prompt.md'))
+        self.assertFalse((commands / 'PROMPT.md').exists())
+
     def test_prompt_check_plans_installation_without_any_write(self):
         self.enable_prompt()
         report = self.execute()
@@ -594,8 +763,8 @@ class TcuUpdateTests(unittest.TestCase):
             rel = name.lower() + '.md'
             self.assertEqual((commands / rel).read_bytes(), name.encode() + b' canonical source')
             self.assertFalse((commands / (name + '.md')).exists())
-        self.assertEqual(set(json.loads((commands / self.m.RECEIPT).read_text())['hashes']), set(hashes))
-        self.assertFalse((commands / 'TCU.md').exists())
+        self.assertEqual(set(json.loads((commands / self.m.RECEIPT).read_text())['hashes']), set(hashes) | {'TCU.md'})
+        self.assertEqual((commands / 'TCU.md').read_bytes(), self.files['.codex/commands/TCU.md'])
 
     def test_uppercase_command_source_keeps_legacy_local_edits_and_links(self):
         self.files['.codex/commands/CM.md'] = b'new canonical command'
@@ -663,20 +832,21 @@ class TcuUpdateTests(unittest.TestCase):
         self.assertEqual((self.home / 'prompts/PROMPT.md').read_bytes(),
                          self.files['.codex/commands/prompt.md'])
 
-    def test_prompt_installation_manages_plugin_skill_and_command_only(self):
+    def test_prompt_installation_preserves_three_resources_and_installs_other_bricks(self):
         self.enable_prompt()
         report = self.execute(apply=True)
         self.assertTrue(report['succes'])
-        self.assertEqual([c for c in self.calls if c[0] == 'add'], [['add', 'prompt@tools-codex', '--json']])
+        self.assertEqual([c for c in self.calls if c[0] == 'add'],
+                         [['add', n + '@tools-codex', '--json'] for n in ('cm', 'prompt', 'tcu')])
         command = self.home / 'prompts/PROMPT.md'
         self.assertEqual(command.read_bytes(), self.files[self.m.PROMPT_COMMAND])
         receipt = json.loads((command.parent / self.m.PROMPT_RECEIPT).read_text())
         self.assertEqual(set(receipt['hashes']), {'PROMPT.md'})
         self.assertFalse((command.parent / self.m.RECEIPT).exists())
-        self.assertFalse((self.skills / 'prompt').exists())
+        self.assertEqual((self.skills / 'prompt/SKILL.md').read_bytes(), self.files[self.m.PROMPT_SKILL])
         rows = [r for r in report['briques'] if r['brique'] in {'prompt', 'prompt/skill'}]
         self.assertTrue(all(r['apres'] == '0.3.0' and r['status'] == 'installe' for r in rows))
-        self.assertTrue(all(r['status'] == 'absent' for r in report['briques'] if r['canal'] == 'marketplace' and r['brique'] in {'cm', 'tcu'}))
+        self.assertTrue(all(r['status'] == 'installe' for r in report['briques'] if r['canal'] == 'marketplace' and r['brique'] in {'cm', 'tcu'}))
 
     def test_prompt_existing_plugin_and_wrapper_update_without_reinstall(self):
         self.enable_prompt()
@@ -757,7 +927,9 @@ class TcuUpdateTests(unittest.TestCase):
         (commands / self.m.RECEIPT).write_bytes(receipt)
         report = self.execute(apply=True, roots=[('commands', commands)])
         self.assertTrue(report['succes'])
-        self.assertEqual((commands / self.m.RECEIPT).read_bytes(), receipt)
+        shared = json.loads((commands / self.m.RECEIPT).read_text())
+        self.assertEqual(shared['hashes']['other.md'], self.m.digest(b'other command'))
+        self.assertEqual(shared['hashes']['TCU.md'], self.m.digest(self.files['.codex/commands/TCU.md']))
         self.assertEqual((commands / 'other.md').read_bytes(), b'other command')
         self.assertEqual(set(json.loads((commands / self.m.PROMPT_RECEIPT).read_text())['hashes']), {'prompt.md'})
 
@@ -829,7 +1001,7 @@ class TcuUpdateTests(unittest.TestCase):
 
         def failing(args):
             value = original(args)
-            if args[0] == 'add':
+            if args[:2] == ['add', 'prompt@tools-codex']:
                 raise self.m.UpdateError('échec après installation simulée')
             return value
 

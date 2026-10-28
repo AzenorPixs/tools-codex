@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.20`.
+Version de release : `0.7.24`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -24,6 +24,15 @@ chargés simultanément peuvent produire deux entrées. Leur disponibilité dans
 les sources ne démontre pas une installation dans un profil Codex.
 
 PLLM accepte `--tfl-catalog CHEMIN` pour des plugins installés séparément.
+Vérifiez la date de la collecte TFL réellement produite : une copie autonome
+et une copie du plugin peuvent diverger. Passez explicitement le catalogue
+voulu ; PLLM ne relance pas TFL et ne recherche pas dans les configurations
+privées. Le JSON trace son chemin, sa date, son âge et les compteurs de
+candidats. Une absence de gratuit concerne ce catalogue. Une date non
+vérifiable ou future est signalée sans seuil arbitraire de péremption.
+Un HTTP 401 au contrôle des quotas est identifié avec sa phase et son endpoint,
+sans conclure à un épuisement ou modifier les secrets. Le mode4 continue
+indépendamment d'un refus mode2, sans consulter de quota.
 Les sept politiques sont évaluées par priorité :
 
 | Modes | Candidats | Conditions spécifiques |
@@ -50,6 +59,14 @@ durée non arrondie et sépare les anciens succès en mémoire. Une réponse
 complète en un bloc reste mesurable. Les anciens débits ne sont pas directement
 comparables ; les seuils numériques conservés peuvent modifier le classement
 et la qualification. Les références de secrets restent inchangées. Les historiques des schémas 1/2 sont adaptés au schéma 3 sans sélection actuelle héritée ; l'ancien mode5 est réinitialisé, DeepSeek est déplacé au mode7 et le mode6 OpenRouter gratuit commence sans mesure ni apprentissage. Un fichier corrompu est préservé. Le schéma3 nécessite une copie des anciennes données pour revenir à l'ancien évaluateur. Les forçages OpenRouter payants restent 51–53 et les gratuits utilisent 61–63.
+
+PLLM récupère une mémoire sans `schema_version` uniquement si elle contient
+`policies` vide ou le seul `mode7` DeepSeek Medium avec identité, profil de
+débit du protocole 8 et succès cohérents. Le chargement conserve le fichier
+intact ; le prochain succès publie atomiquement le schéma 3. Les mémoires
+ambiguës ou corrompues restent refusées et préservées. L'écriture valide et
+normalise sa mémoire avant publication pour garantir sa relecture.
+
 Pour Chat Completions OpenCode, Medium est envoyé sans le paramètre thinking
 spécifique à d'autres contrats. Un refus HTTP 400 ou une limitation 429
 arrêtent les paliers du candidat ; le diagnostic filtré et le Retry-After
@@ -94,13 +111,16 @@ Les prérequis et limites de qualification sont décrits dans
 [`BUILD.md`](BUILD.md) et [`TECHNICAL.md`](TECHNICAL.md).
 
 Utilisez **`$tcu check`** pour contrôler les mises à jour et **`$tcu`** pour
-les appliquer aux briques déjà installées depuis la marketplace et GitHub.
+actualiser les briques présentes et installer les absentes depuis la marketplace et GitHub.
 TCU est aussi reconnu via `/TCU` ; le fichier de commande n'enregistre pas une
 slash native. Le plugin [`tcu`](plugins/tcu/.codex-plugin/plugin.json) conserve
 le [skill autonome](skills/tcu/SKILL.md) et son script identiques à la copie
 embarquée. Sauvegardes, adoption et conflits sont décrits dans BUILD. TCU ne
-modifie pas le checkout de développement. Seul `prompt` absent est installé
-automatiquement, avec son skill embarqué vérifié et son wrapper de commande.
+modifie pas le checkout de développement. Tous les plugins du catalogue officiel,
+skills autonomes et commandes sources absents sont installés dans chaque racine
+configurée. PROMPT conserve la vérification de son skill embarqué et de son
+résolveur avant le wrapper. Plusieurs distributions peuvent afficher plusieurs
+entrées d’un même skill. `check` annonce ces installations sans les réaliser.
 Les conflits locaux préservent leurs cibles sans bloquer les mises à jour
 indépendantes ; le bilan reste partiel et le code de sortie non nul.
 TCU crée le nouveau wrapper sous PROMPT.md ; une copie historique en
@@ -108,7 +128,7 @@ minuscules reste mise à jour sous son nom actuel, sans doublon. Les liens
 personnels vers les anciens chemins sources doivent être réorientés lors
 d'une migration explicite, selon BUILD.
 
-Le nouveau [skill prompt](skills/prompt/SKILL.md) utilise exclusivement le
+Le nouveau [skill PROMPT](skills/prompt/SKILL.md) utilise exclusivement le
 référentiel indiqué dans le `DEVOPS.md` du projet courant :
 
 ```text
@@ -117,6 +137,8 @@ référentiel indiqué dans le `DEVOPS.md` du projet courant :
 /PROMPT 1CISMP3
 ```
 
+`CISMPx` et `1CISMPx` acceptent tout entier décimal ASCII positif sans zéro
+initial, sans borne supérieure (par exemple `1CISMP9` ou `CISMP12345`).
 `LIST` affiche l'index. `CISMP3` lance le cycle du RUN CISMP3. `1CISMP3` borne
 ce RUN à un change complet, archivage, statistiques puis arrêt de la session
 de codage. Les codes sont en MAJUSCULE et les alias GCM/GCMP sélectionnent

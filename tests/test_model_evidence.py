@@ -208,6 +208,7 @@ class ModelEvidenceTests(unittest.TestCase):
                     return True
 
                 with patch.object(module, 'ROOT', root), \
+                     patch.object(module, 'MEMORY_PATH', root / 'data/pllm-performance-memory.json'), \
                      patch.object(module.evidence_module, 'fetch_source', return_value=BODY), \
                      patch.object(module, 'quota', side_effect=lambda model, key: model.update(
                          quotas={'is_available': True,
@@ -217,6 +218,8 @@ class ModelEvidenceTests(unittest.TestCase):
                     model = {**candidate, 'mode': 'mode7', 'reasoning': 'medium',
                              'performance_test': {'status': 'not_run'}, 'candidate_exclusions': []}
                     result = module.evaluate_candidate(model, 'fixture', 'paid', {'policies': {}}, None)
+                self.assertEqual(module.MEMORY_PATH, Path(script).parent.parent / 'data/pllm-performance-memory.json')
+                self.assertEqual(json.loads((root / 'data/pllm-performance-memory.json').read_text())['schema_version'], 3)
                 self.assertEqual(result['state'], 'Valide', result['cause'])
                 self.assertEqual(result['reasoning_acceptance']['status'], 'accepted')
                 self.assertEqual(result['model_investigations'][0]['status'], 'verified')

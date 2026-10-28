@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- Installer systématiquement les plugins du catalogue officiel, les skills
+  autonomes et les commandes sources absents lors de TCU ; conserver les mises
+  à jour, racines explicites, noms historiques, reçus, sauvegardes et conflits.
+  Garder check sans écriture et distinguer les installations prévues des versions
+  appliquées. Plusieurs distributions peuvent afficher plusieurs entrées.
+  Aligner la release et les six plugins sur 0.7.24.
+
+- Tracer la provenance et la date du catalogue TFL consommé par PLLM, ses
+  compteurs et exclusions ; localiser les absences de gratuits au catalogue
+  utilisé et signaler les dates non vérifiables sans collecte implicite.
+  Identifier séparément phase, endpoint et HTTP filtré des contrôles de
+  ressources, sans assimiler un refus 401 à un quota épuisé ni bloquer le
+  mode4 à cause du mode2. Exclure les résultats et mémoires PLLM de Git en
+  conservant leurs copies locales. Aligner la release et les six plugins sur 0.7.23.
+
+- Supprimer la borne de huit RUN : CISMPx et 1CISMPx acceptent tout entier
+  décimal ASCII positif sans zéro initial, sans borne supérieure. Préserver
+  le RUN exact et le cycle à un seul change des variantes 1CISMPx.
+- Uniformiser les libellés PROMPT du plugin, du skill, de la commande et
+  du bilan TCU, sans changer les identifiants techniques ni les chemins
+  historiques. Aligner la release et les six plugins sur 0.7.22.
+
+- Corriger le blocage PLLM sur une mémoire sans version : récupérer seulement
+  la mémoire vide ou le seul mode7 DeepSeek Medium identifiable au protocole 8,
+  sans réécriture au chargement. Garantir l'écriture atomique d'une mémoire
+  au schéma 3 rechargeable ; préserver et refuser les données ambiguës ou
+  corrompues. Isoler MEMORY_PATH dans le test Medium mode7 pour empêcher
+  toute écriture dans les données source. Aligner la release et les six plugins sur 0.7.21.
+
 - Réduire à 0,10 EUR/M inclus le plafond moyen OpenRouter payant dans TFL et
   PLLM mode5, y compris pour les anciens catalogues et rangs forcés ; vérifier
   le chemin de benchmark complet qui enregistre l'acceptation Medium et le débit,

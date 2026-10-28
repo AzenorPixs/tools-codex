@@ -13,9 +13,9 @@
         "measurement_protocol_version": 8
       },
       "last_successful_max_tokens": 1024,
-      "succeeded_at": "2026-10-28T01:42:30+01:00",
-      "ttft_seconds": 5.0,
-      "tokens_per_second": 30.0,
+      "succeeded_at": "2026-10-28T11:41:06+01:00",
+      "ttft_seconds": 2.3532,
+      "tokens_per_second": 69.278,
       "configurations": {
         "{\"api_endpoint\": \"https://api.deepseek.com/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"deepseek-v4-flash\", \"provider\": \"deepseek\", \"reasoning\": \"medium\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
           "identity": {
@@ -30,11 +30,120 @@
             "measurement_protocol_version": 8
           },
           "last_successful_max_tokens": 1024,
-          "succeeded_at": "2026-10-28T01:42:30+01:00",
-          "ttft_seconds": 5.0,
-          "tokens_per_second": 30.0
+          "succeeded_at": "2026-10-28T11:41:06+01:00",
+          "ttft_seconds": 2.3532,
+          "tokens_per_second": 69.278
+        }
+      }
+    },
+    "mode1": {
+      "identity": {
+        "model_id": "muse-spark-1.3-contributor",
+        "provider": "opencodego",
+        "reasoning": "medium",
+        "throughput_scope": "reasoning_and_response",
+        "api_protocol": "responses",
+        "api_endpoint": "https://opencode.ai/inference/go/openai/v1/responses",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
+      },
+      "last_successful_max_tokens": 2048,
+      "succeeded_at": "2026-10-28T11:40:17+01:00",
+      "ttft_seconds": 8.1119,
+      "tokens_per_second": 104.974,
+      "configurations": {
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/responses\", \"api_protocol\": \"responses\", \"measurement_protocol_version\": 8, \"model_id\": \"muse-spark-1.3-contributor\", \"provider\": \"opencodego\", \"reasoning\": \"medium\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "muse-spark-1.3-contributor",
+            "provider": "opencodego",
+            "reasoning": "medium",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "responses",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/responses",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-28T11:40:17+01:00",
+          "ttft_seconds": 8.1119,
+          "tokens_per_second": 104.974
+        }
+      }
+    },
+    "mode3": {
+      "identity": {
+        "model_id": "beam-free",
+        "provider": "opencodego",
+        "reasoning": "medium",
+        "throughput_scope": "reasoning_and_response",
+        "api_protocol": "chat_completions",
+        "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
+      },
+      "last_successful_max_tokens": 4096,
+      "succeeded_at": "2026-10-28T11:40:36+01:00",
+      "ttft_seconds": 3.0957,
+      "tokens_per_second": 306.478,
+      "configurations": {
+        "{\"api_endpoint\": \"https://opencode.ai/inference/go/openai/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"beam-free\", \"provider\": \"opencodego\", \"reasoning\": \"medium\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"reasoning_and_response\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "beam-free",
+            "provider": "opencodego",
+            "reasoning": "medium",
+            "throughput_scope": "reasoning_and_response",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 4096,
+          "succeeded_at": "2026-10-28T11:40:36+01:00",
+          "ttft_seconds": 3.0957,
+          "tokens_per_second": 306.478
+        }
+      }
+    },
+    "mode6": {
+      "identity": {
+        "model_id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "provider": "openrouter",
+        "reasoning": "medium",
+        "throughput_scope": "response_only",
+        "api_protocol": "chat_completions",
+        "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+        "throughput_metric": "request_average_v1",
+        "throughput_window": "request_total",
+        "measurement_protocol_version": 8
+      },
+      "last_successful_max_tokens": 2048,
+      "succeeded_at": "2026-10-28T11:41:02+01:00",
+      "ttft_seconds": 0.8568,
+      "tokens_per_second": 35.39,
+      "configurations": {
+        "{\"api_endpoint\": \"https://openrouter.ai/api/v1/chat/completions\", \"api_protocol\": \"chat_completions\", \"measurement_protocol_version\": 8, \"model_id\": \"nvidia/nemotron-3-ultra-550b-a55b:free\", \"provider\": \"openrouter\", \"reasoning\": \"medium\", \"throughput_metric\": \"request_average_v1\", \"throughput_scope\": \"response_only\", \"throughput_window\": \"request_total\"}": {
+          "identity": {
+            "model_id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+            "provider": "openrouter",
+            "reasoning": "medium",
+            "throughput_scope": "response_only",
+            "api_protocol": "chat_completions",
+            "api_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+            "throughput_metric": "request_average_v1",
+            "throughput_window": "request_total",
+            "measurement_protocol_version": 8
+          },
+          "last_successful_max_tokens": 2048,
+          "succeeded_at": "2026-10-28T11:41:02+01:00",
+          "ttft_seconds": 0.8568,
+          "tokens_per_second": 35.39
         }
       }
     }
-  }
+  },
+  "schema_version": 3
 }

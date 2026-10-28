@@ -210,6 +210,9 @@ def snapshot(fetcher=fetch) -> dict:
                 if resource not in files or not files[resource].strip():
                     raise UpdateError('Composant prompt incomplet dans la source')
                 files[resource].decode('utf-8')
+        skills = {PurePosixPath(n).parts[1] for n in files if n.startswith('skills/')}
+        if any(f'skills/{name}/SKILL.md' not in files for name in skills):
+            raise UpdateError('Skill autonome incomplet dans la source')
         for name, data in files.items():
             if name.endswith('.py'):
                 compile(data, name, 'exec')
@@ -358,12 +361,12 @@ def local_plan(remote: dict, roots: list[tuple[str, Path]], adopt: bool) -> list
             item = {'brique': str(target), 'canal': 'github', 'avant': None,
                     'apres': None, 'cible': remote['version'], 'status': 'absent'}
             plans.append(item)
-            if not target.exists() and not target.is_symlink():
-                continue
+            missing = not target.exists() and not target.is_symlink()
+            item['operation'] = 'installer' if missing else 'mettre_a_jour'
             if kind == 'skills':
                 prefix = f'skills/{name}/'
                 selected = {n[len(prefix):]: b for n, b in files.items() if n.startswith(prefix)}
-                if not (target / 'SKILL.md').is_file() and not target.is_symlink():
+                if not missing and not (target / 'SKILL.md').is_file() and not target.is_symlink():
                     item.update(status='conflit', cause='Origine du skill ambiguë')
                     continue
             else:
@@ -375,12 +378,15 @@ def local_plan(remote: dict, roots: list[tuple[str, Path]], adopt: bool) -> list
                         continue
                     variants = command_names(name)
                     data = commands.get(variants[0], data)
-                    for rel in variants:
-                        if (target / rel).exists() or (target / rel).is_symlink():
-                            selected[rel] = data
+                    existing = [rel for rel in variants
+                                if (target / rel).exists() or (target / rel).is_symlink()]
+                    for rel in existing or [variants[0]]:
+                        selected[rel] = data
+                    if not existing:
+                        item['operation'] = 'installer'
                 if not selected:
                     continue
-            prepare_local(item, target, selected, remote, adopt,
+            prepare_local(item, target, selected, remote, adopt, allow_create=missing or kind == 'commands',
                           ignore_names=set(PROMPT_NAMES) if kind == 'commands' and 'prompt' in remote['plugins'] else frozenset())
     return plans
 
@@ -391,11 +397,11 @@ def prompt_command_plans(home: Path, roots: list, remote: dict, adopt: bool) -> 
     folders = [root for kind, root in roots if kind == 'commands'] or [home / 'prompts']
     plans = []
     seen = set()
-    for i, root in enumerate(folders):
+    for root in folders:
         names = [name for name in PROMPT_NAMES
                  if (root / name).exists() or (root / name).is_symlink()]
         key = str(root.absolute())
-        if key in seen or (i > 0 and not names):
+        if key in seen:
             continue
         seen.add(key)
         if not names:
@@ -483,7 +489,8 @@ def apply_local(plans: list[dict], remote: dict, backup: Path, writer=atomic_wri
         raise
     for item in plans:
         if item['status'] in {'pret', 'courant'}:
-            item['status'] = 'mis_a_jour' if item['status'] == 'pret' else 'courant'
+            item['status'] = ('installe' if item.get('operation') == 'installer'
+                              else 'mis_a_jour') if item['status'] == 'pret' else 'courant'
             item['apres'] = remote['version']
 
 
@@ -580,7 +587,7 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
         raise UpdateError('Plugin installé absent du catalogue officiel')
     if any(version(e['version']) > version(remote['version']) for e in before.values()):
         raise UpdateError('Retour de version marketplace refusé')
-    managed = {'prompt'} & remote['plugins']
+    managed = remote['plugins']
     plans = local_plan(remote, roots, adopt) + prompt_command_plans(home, roots, remote, adopt)
     report = {'release_github': remote['version'], 'sha': remote['sha'], 'mode': 'apply' if apply else 'check',
               'succes': False, 'briques': [], 'backup': None}
@@ -593,7 +600,7 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
                                   'status': ('a_verifier' if not apply else 'en_attente') if entry
                                   else 'a_installer' if name in managed else 'absent'})
     skill_row = None
-    if managed:
+    if 'prompt' in managed:
         actual, cause = prompt_skill_state(home, before.get('prompt'), remote)
         skill_row = {'brique': 'prompt/skill', 'composant': 'prompt', 'ressource': 'skill',
                      'canal': 'marketplace', 'avant': actual, 'apres': actual,
@@ -634,9 +641,17 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
                 item['status'] = 'non_applique'
 
     def finish():
-        report['briques'].extend({k: v for k, v in item.items() if k in public_keys} for item in plans)
+        for item in plans:
+            row = {k: v for k, v in item.items() if k in public_keys}
+            if not apply and row['status'] == 'pret' and row.get('operation') == 'installer':
+                row['status'] = 'a_installer'
+            report['briques'].append(row)
         report['succes'] = not report.get('erreur') and not any(
             row['status'] in {'conflit', 'inconnu', 'incomplet', 'non_applique'} for row in report['briques'])
+        for row in report['briques']:
+            if (row.get('composant') == 'prompt' or row['brique'] in {'prompt', 'prompt/skill'}
+                    or Path(row['brique']).name in {'prompt', *PROMPT_NAMES}):
+                row['libelle'] = 'PROMPT'
         report['nouvelle_session'] = 'Ouvrir une nouvelle session Codex pour charger les skills actualisés.'
         return report
 
@@ -666,7 +681,11 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
                 or any(state[n]['enabled'] != before[n]['enabled'] for n in before)
                 or any(version(e['version']) != version(remote['version']) for e in state.values())):
             raise UpdateError('État marketplace divergent : sources autonomes non appliquées')
-        if require_prompt and managed:
+        if require_prompt:
+            if not managed.issubset(state) or any(
+                    not state[n]['enabled'] for n in managed - set(before)):
+                raise UpdateError('Installation ou activation des plugins absents non vérifiée')
+        if require_prompt and 'prompt' in managed:
             if 'prompt' not in state or ('prompt' not in before and not state['prompt']['enabled']):
                 raise UpdateError('Installation ou activation de prompt non vérifiée')
             if skill_row['apres'] is None:
@@ -720,9 +739,12 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
             if failure:
                 raise UpdateError(failure)
             verify(after)
-            if managed and ('prompt' not in after or skill_row['apres'] is None):
+            for name in sorted(managed):
+                repair_prompt = name == 'prompt' and skill_row['apres'] is None
+                if name in after and not repair_prompt:
+                    continue
                 try:
-                    runner(['add', 'prompt@' + MARKETPLACE, '--json'])
+                    runner(['add', name + '@' + MARKETPLACE, '--json'])
                 except UpdateError as exc:
                     failure = str(exc)
                 after = inspect_after()
@@ -731,6 +753,7 @@ def execute(home: Path, roots: list, apply=False, adopt=False, fetcher=fetch, ru
                     return finish()
                 if failure:
                     raise UpdateError(failure)
+                verify(after)
             verify(after, require_prompt=True)
             apply_local(plans, remote, backup)
             register_schedule()
@@ -745,10 +768,10 @@ def main(argv=None) -> int:
     parser.add_argument('action', nargs='?', choices=('check',), help='Contrôle sans écriture')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='Contrôle sans écriture (défaut)')
-    mode.add_argument('--apply', action='store_true', help='Appliquer les mises à jour')
+    mode.add_argument('--apply', action='store_true', help='Mettre à jour et installer les briques absentes')
     parser.add_argument('--adopt', action='store_true', help='Adopter explicitement les copies historiques sans reçu, avec sauvegarde')
-    parser.add_argument('--skills-dir', action='append', type=Path, help='Racine de skills autonomes existants (répétable)')
-    parser.add_argument('--commands-dir', action='append', type=Path, help='Répertoire de commandes existantes (répétable)')
+    parser.add_argument('--skills-dir', action='append', type=Path, help='Racine de skills autonomes à installer ou actualiser (répétable)')
+    parser.add_argument('--commands-dir', action='append', type=Path, help='Répertoire de commandes à installer ou actualiser (répétable)')
     args = parser.parse_args(argv)
     if args.action == 'check' and args.apply:
         parser.error('check ne peut pas être combiné à --apply')

@@ -209,6 +209,14 @@ apprentissage. La sélection est effacée lors de l'adaptation. Les fichiers
 invalides ne sont pas écrasés. Le schéma 3 n'est pas lisible par l'ancien
 évaluateur ; préserver une copie avant retour de version.
 
+
+PLLM récupère une mémoire sans `schema_version` uniquement si elle contient
+`policies` vide ou le seul `mode7` DeepSeek Medium avec identité, profil de
+débit du protocole 8 et succès cohérents. Le chargement conserve le fichier
+intact ; le prochain succès publie atomiquement le schéma 3. Les mémoires
+ambiguës ou corrompues restent refusées et préservées. L'écriture valide et
+normalise sa mémoire avant publication pour garantir sa relecture.
+
 Les routes et fournisseurs de chaque section sont conservés. Les candidats
 OpenCode Go utilisent la clé du compte associé au mode uniquement sur l'origine
 HTTPS OpenCode validée, un User-Agent PLLM et une session stable. Une restriction
@@ -300,6 +308,23 @@ contexte, qui doit préserver l'interface et être suivi d'une réconciliation M
 et CAB.
 
 ## Données générées
+
+PLLM conserve `catalog_source` par politique consommatrice : chemin absolu,
+sélection explicit/default, generated_at validé, age_seconds ou null et
+avertissements structurés. Une date non vérifiable ou future ne définit aucun
+seuil de péremption. `catalog_selection` distingue taille de section, candidats
+gratuits/payants admissibles, candidats de catégorie et exclusions locales.
+Le choix explicite --tfl-catalog prévaut sur le défaut voisin ; aucune recherche
+privée ni collecte TFL implicite n'est ajoutée. Le diagnostic vide désigne la
+collecte utilisée, avec huit colonnes inchangées.
+`resource_control` conserve la phase, l'endpoint public, la date et le statut
+du contrôle de ressources, ainsi que le diagnostic HTTP filtré en cas de refus.
+Une réponse reçue n'est pas à elle seule une validation des valeurs du quota.
+Ces champs sont réinitialisés par politique visitée ; les gratuits n'appellent
+aucun quota et un refus mode2 n'empêche pas mode4.
+Les fichiers pllm-current.json, pllm-current.md et pllm-performance-memory.json
+sont des sorties locales régénérables exclues de Git, y compris dans les
+distributions embarquées. Le retrait de l'index conserve les copies locales.
 
 Les reçus et sauvegardes TCU restent dans les installations utilisateur,
 hors des sources versionnées. Ils ne doivent jamais être ajoutés au dépôt.
@@ -448,14 +473,17 @@ autonomes à remplacer.
 Les racines par défaut sont CODEX_HOME/skills, ~/.agents/skills,
 CODEX_HOME/prompts et CODEX_HOME/commands, avec ~/.codex par défaut pour
 CODEX_HOME. `--skills-dir` et `--commands-dir` désignent des racines explicites.
-Seul prompt absent peut être installé via le CLI après validation de la
-source et du catalogue. Le manifeste, le skill et le résolveur installés sont
+Tous les plugins absents du catalogue officiel sont installés via le CLI
+après validation de la source et du catalogue ; leur version et leur activation
+sont vérifiées, sans changer l’activation des plugins déjà présents. Le manifeste, le skill et le résolveur installés sont
 vérifiés contre l’instantané GitHub. Un cache incomplet peut être réparé via
-le CLI ; aucun wrapper n’est écrit si cette vérification échoue. Les autres
-plugins absents et skills autonomes absents ne sont pas créés.
+le CLI ; aucun wrapper n’est écrit si cette vérification échoue. Les skills autonomes et commandes sources absents sont installés dans chaque
+racine configurée, avec création des racines manquantes et reçus de provenance.
+Plusieurs distributions du même skill peuvent afficher plusieurs entrées.
 
 Le wrapper issu de `.codex/commands/PROMPT.md` est déployé par défaut dans
-CODEX_HOME/prompts/PROMPT.md, ou dans le premier --commands-dir explicite.
+chaque racine de commandes configurée, sous PROMPT.md si aucune graphie
+n’existe ; les options --commands-dir remplacent les racines par défaut.
 TCU accepte encore la source prompt.md d'une release antérieure si la source
 canonique manque. Une copie prompt.md existante reste mise à jour sous son
 nom actuel, sans doublon créé ni renommage. Si les deux graphies existent,
@@ -463,8 +491,8 @@ elles sont vérifiées dans le même plan. Son reçu dédié
 `.tools-codex-prompt-origin.json` peut reprendre une preuve du reçu partagé
 sans l’écraser. Les plans génériques ignorent les deux graphies de PROMPT.
 Pour les autres commandes, une source canonique actualise également les
-copies historiques en minuscules présentes, avec leurs reçus et sans créer
-les commandes absentes. Le wrapper
+copies historiques en minuscules présentes, avec leurs reçus. Une commande
+absente est créée sous son nom canonique sans seconde graphie. Le wrapper
 délègue au skill sans copier le référentiel métier désigné dans DEVOPS.md.
 Liens et checkouts de développement restent en conflit sans modification ;
 aucun git pull ni redémarrage de service.
@@ -514,8 +542,8 @@ retourne un état `ready`, le texte complet, le chemin et l'instruction à suivr
 Le résolveur n'exécute pas ce texte : le skill le lit intégralement puis conduit
 son processus. Une résolution réussie ne vaut pas preuve de fin de RUN.
 
-Les 38 actions sont en MAJUSCULE. GCM et GCMP sélectionnent les entrées GSCM et
-GSCMP de l'index. CISMPn et 1CISMPn, pour n de 1 à 8, conservent exactement
+Les actions sont en MAJUSCULE. GCM et GCMP sélectionnent les entrées GSCM et
+GSCMP de l'index. CISMPn et 1CISMPn, pour tout suffixe décimal ASCII positif sans zéro initial et sans borne supérieure, conservent exactement
 le RUN CISMPn. Les variantes préfixées 1 portent `max_changes=1` et l'ordre
 change complet, archivage, statistiques, arrêt de la session de codage. Cette
 directive borne la boucle de sélection après le premier change sans supprimer
@@ -523,7 +551,7 @@ les validations, clôtures ou conditions imposant une décision. Le bilan ne
 prétend pas terminer tous les changes du dépôt.
 
 La suite `test_prompt_dispatch.py` utilise des projets et référentiels
-temporaires. Elle couvre les 38 correspondances, l'isolation des projets,
+temporaires. Elle couvre les codes directs et les suffixes sans borne, l'isolation des projets,
 les variantes de RUN, LIST, les liens lus sans modification et les erreurs.
 Les paquets isolés et LIST réel sont contrôlés séparément ; aucun RUN piloté
 ou prompt à effets réels n'est lancé pendant cette qualification.
@@ -564,8 +592,8 @@ n'est pas détruite. LM ne réécrit pas les anciens rapports : l'effet concerne
 les prochaines invocations. Les priorités, ressources, seuils et protocole 8
 restent inchangés.
 
-TCU découvre LM via le catalogue et actualise ses copies présentes sans
-installer LM absent. Le fichier utilisateur hors cache reste préservé.
+TCU découvre LM via le catalogue, actualise ses copies présentes et installe
+les ressources LM absentes dans les racines configurées. Le fichier utilisateur hors cache reste préservé.
 Les tests test_lm_blacklist.py et les cas TCU utilisent des profils isolés,
 sans accès fournisseur ni installation réelle. Un retour vers 0.7.5 ignore
 la politique LM et ne conserve donc pas sa garantie d'exclusion.
@@ -584,7 +612,8 @@ TCU valide les déclarations et ressources des hooks dans l'instantané, sans
 exécuter le code téléchargé. `--apply` utilise son module local chargé pour
 le bootstrap ; `check` décrit seulement l'opération. Le bilan ajoute
 `llm-refresh`, canal `session_utilisateur`, sans version de plugin inventée.
-Des composants manquants restent en attente sans installation implicite.
+Le moteur TCU installe les paquets absents avant le bootstrap ; le module
+d’ordonnancement seul reste sans installation implicite de composants.
 Un conflit local sur TFL ou PLLM préserve aussi le planning sans l'armer.
 Une erreur du planning produit un échec visible, même après une mise à jour
 de sources réussie. Le CLI continue à gérer lui-même le cache des plugins.
@@ -707,3 +736,11 @@ dans les exclusions et sa conclusion apparaît dans la cause de la politique ;
 elle empêche le benchmark. Un alias demandé Medium mais appliqué en High
 reste invalide. Le récupérateur suit uniquement les redirections HTTPS de
 même origine ; toute redirection de confiance différente est refusée.
+
+
+## Libellés PROMPT dans les bilans
+
+Le plugin, le skill et la commande sont présentés sous le libellé **PROMPT**.
+Le bilan JSON TCU ajoute `libelle: PROMPT` à chacune de ces ressources ; la
+restitution utilise ce libellé. Les clés techniques `brique` et `composant`,
+les chemins historiques et l’invocation `$prompt` restent compatibles.

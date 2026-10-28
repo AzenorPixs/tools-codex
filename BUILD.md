@@ -21,9 +21,9 @@ Les plugins destinés à la marketplace sont actuellement :
 | Plugin | Skill embarqué | Fonction |
 |---|---|---|
 | `lm` | `lm` | Liste noire partagée des modèles exclus de TFL et PLLM. |
-| `prompt` | `prompt` | Liste et lancement des prompts définis par le DEVOPS du projet. |
+| **PROMPT** (`prompt`) | **PROMPT** (`prompt`) | Liste et lancement des prompts définis par le DEVOPS du projet. |
 | `cm` | `cm` | Catalogue des commandes maison et de leurs syntaxes. |
-| `tcu` | `tcu` | Mise à jour vérifiée des briques déjà installées. |
+| `tcu` | `tcu` | Mise à jour et installation vérifiées des briques. |
 | `pllm` | `pllm` | Évaluation et application contrôlée d'une politique LLM. |
 | `tfl` | `tfl` | Rapport OpenCode Go puis OpenRouter uniquement. |
 
@@ -86,6 +86,16 @@ emplacements de découverte sont décrits dans la
 
 ## Installation
 
+Pour PLLM, la release du paquet ne détermine pas la fraîcheur des données TFL.
+Avant une évaluation manuelle, identifier la collecte réellement produite et
+transmettre son chemin avec --tfl-catalog si les distributions sont séparées.
+La mise à jour des scripts ne synchronise pas les catalogues utilisateur.
+Le JSON publié indique source, date et compteurs ; une sélection gratuite vide
+doit être interprétée selon cette source. Un HTTP 401 au quota nécessite de
+vérifier l'accès du compte correspondant hors des rapports ; ne pas remplacer
+automatiquement sa clé ou emprunter celle d'un autre compte. Aucun nouveau
+planning ni changement OpenCode n'est requis par ce correctif.
+
 Le plugin `prompt` s'installe, une fois sa version disponible dans la
 marketplace configurée, avec `codex plugin add prompt@tools-codex`. Le skill
 autonome `skills/prompt/` conserve le même résolveur. Dans ce projet, le lien
@@ -145,6 +155,14 @@ historiques, sans création ni migration de clé.
 Les historiques des schémas 1/2 sont adaptés au schéma 3 : l'ancien mode5 est réinitialisé, DeepSeek passe au mode7, le mode6 gratuit est neuf et aucune sélection courante n'est héritée. Les succès OpenRouter antérieurs ne sont pas
 transférés au mode5 ; la mémoire DeepSeek est déplacée au mode7. Un ancien
 évaluateur ne lit pas le schéma3 : sauvegarder ses données avant retour.
+
+PLLM récupère une mémoire sans `schema_version` uniquement si elle contient
+`policies` vide ou le seul `mode7` DeepSeek Medium avec identité, profil de
+débit du protocole 8 et succès cohérents. Le chargement conserve le fichier
+intact ; le prochain succès publie atomiquement le schéma 3. Les mémoires
+ambiguës ou corrompues restent refusées et préservées. L'écriture valide et
+normalise sa mémoire avant publication pour garantir sa relecture.
+
 Aucun historique invalide n'est écrasé. Les payants Go 1/2 sont essayés par
 coût moyen croissant. Mode5 sélectionne le payant OpenRouter admissible le
 moins cher au taux BCE courant, sans génération. Les gratuits 3/4/6 sont
@@ -201,7 +219,7 @@ Les skills `cgpt` et `coding-session-statistics` requièrent respectivement
 l'outil Codex de lecture des quotas et l'historique persistant de la session.
 Ils ne sont pas installés automatiquement avec les plugins de la marketplace.
 
-## Utilisation de prompt
+## Utilisation de PROMPT
 
 Le seul référentiel est le dossier et l'index indiqués par le DEVOPS.md du
 projet courant. Les sources restent externes au plugin et ne sont pas copiées.
@@ -225,11 +243,13 @@ sans enregistrement automatique d'une slash native.
 | GCM, GCMP | Alias validés de GSCM.md et GSCMP.md, avec leurs entrées dans l'index. |
 | PPSC, PPSCP, RCAM, RCAMP | Charge le fichier du même nom et exécute son processus. |
 | SPCM, SPCMP, RSM, RSMP, SCM, SCMP | Charge le fichier du même nom et exécute son processus. |
-| CISMP1 à CISMP8 | Charge CISMP.md avec le RUN CISMPn et son cycle normal. |
-| 1CISMP1 à 1CISMP8 | Même RUN, un change complet, archivage, statistiques puis arrêt de la session de codage. |
+| CISMPx | Charge CISMP.md avec le RUN CISMPn et son cycle normal. |
+| 1CISMPx | Même RUN, un change complet, archivage, statistiques puis arrêt de la session de codage. |
 
-Les 38 arguments d'exécution et LIST sont résolus à chaque appel. Un nom
-inconnu ou en minuscules, un RUN hors bornes, une déclaration absente/ambiguë,
+Les codes directs, CISMPx, 1CISMPx et LIST sont résolus à chaque appel.
+Le suffixe x est un entier décimal ASCII strictement positif sans zéro initial,
+sans borne supérieure applicative. Un nom
+inconnu ou en minuscules, un suffixe de RUN invalide, une déclaration absente/ambiguë,
 un fichier manquant ou une sortie du dossier déclaré provoquent un blocage
 explicite. Aucun autre référentiel n'est recherché.
 
@@ -248,7 +268,7 @@ effectuées avant l'arrêt et aucun deuxième change n'est engagé.
 
 ## Mise à jour
 
-TCU automatise la mise à jour des briques déjà installées. Une fois son plugin
+TCU automatise la mise à jour des briques présentes et l’installation des absentes. Une fois son plugin
 publié dans la marketplace configurée, installez-le avec
 `codex plugin add tcu@tools-codex`, ou utilisez le skill autonome `skills/tcu/`.
 Dans ce projet, `.agents/skills/tcu` pointe vers cette source. `$tcu` lance la
@@ -272,21 +292,24 @@ Python 3.13/3.14 et HTTPS public GitHub, sans nouvelle dépendance Python ni
 secret. Il rafraîchit uniquement la marketplace officielle tools-codex,
 vérifie les versions et préserve les données générées prises en charge.
 
-Les copies autonomes présentes sont actualisées depuis le dépôt officiel,
+Les copies autonomes sont installées ou actualisées depuis le dépôt officiel,
 à un SHA identifié. Les emplacements par défaut sont CODEX_HOME/skills,
 ~/.agents/skills, CODEX_HOME/prompts et CODEX_HOME/commands, avec ~/.codex pour
 CODEX_HOME par défaut. Pour une installation spécifique, transmettez
 `--skills-dir CHEMIN` ou `--commands-dir CHEMIN`. Les liens et checkouts de
 développement sont signalés sans modification ; TCU ne met pas à jour le
-checkout de travail par git pull. Seul le composant prompt absent est
-installé automatiquement : plugin via le CLI, skill et résolveur embarqués
-vérifiés contre la source GitHub, puis wrapper de commande. Un composant
-incomplet est signalé ; aucun wrapper trompeur n’est écrit. Les autres plugins
-absents ne sont pas installés, ni une seconde copie autonome du skill.
+checkout de travail par git pull. Tous les plugins absents du catalogue officiel
+sont installés via le CLI, puis leurs versions et leur activation sont vérifiées.
+Les skills autonomes et commandes sources absents sont installés dans toutes
+les racines configurées, même si une autre distribution du même skill existe.
+Cette présence simultanée peut afficher plusieurs entrées dans Codex. Pour
+PROMPT, le skill et le résolveur embarqués sont vérifiés contre la source
+GitHub avant le wrapper ; aucun wrapper trompeur n’est écrit.
 
 Le wrapper provient de `.codex/commands/PROMPT.md` ; sa cible par défaut est
-CODEX_HOME/prompts/PROMPT.md, ou le premier --commands-dir explicite. Les
-autres copies présentes sont mises à jour. Son reçu dédié
+chaque racine de commandes configurée, sous PROMPT.md si aucune graphie
+n’existe. Les racines explicites remplacent les racines par défaut et sont
+créées si nécessaire ; les copies présentes sont mises à jour. Son reçu dédié
 `.tools-codex-prompt-origin.json` peut reprendre une preuve existante sans
 écraser le reçu partagé. Le contenu des prompts métier n’est jamais copié :
 le skill résout exclusivement leur référentiel depuis DEVOPS.md.
@@ -433,7 +456,7 @@ identique et appliquent cette liste même sans plugin LM installé.
 Une erreur de politique bloque sans réinitialisation. Les anciens rapports
 restent inchangés jusqu'à leur prochaine génération. Les variantes fournisseur
 et gratuites sont normalisées. LM est l'unique liste noire, sans exclusion permanente.
-TCU préserve le fichier utilisateur et ne crée pas un composant LM absent.
+TCU préserve le fichier utilisateur et installe les ressources LM absentes.
 Les tests isolés ne prouvent ni chargement dans une nouvelle session ni
 performance fournisseur. Pour revenir à une ancienne release, tenir compte
 du fait que 0.7.5 ignore la politique LM.
@@ -448,8 +471,9 @@ les releases suivantes exécutent le même bootstrap lors de `--apply`, sans lan
 Une première mise à jour lancée avec un ancien TCU ne possède pas ce nouveau
 code : utiliser ensuite le hook approuvé ou le TCU actualisé.
 
-TFL et PLLM doivent déjà être présents, sous forme autonome ou comme plugins
-activés de la marketplace. Le bootstrap ne les installe pas et ignore les
+TFL et PLLM doivent être présents au lancement du bootstrap, sous forme
+autonome ou comme plugins activés de la marketplace. Le moteur TCU installe
+les paquets absents avant ce bootstrap. Le module d’ordonnancement seul ne les installe pas et ignore les
 checkouts de développement. Pour une installation autonome copiée, exécuter
 une fois depuis le skill installé, dans la session de l'utilisateur :
 
@@ -552,3 +576,11 @@ il ne prétend pas effectuer l'analyse du LLM. Un contexte encore invérifiable
 après investigation exclut le modèle. Les commandes sources et skills
 imposent ce workflow. Les politiques, seuils et règles du planning sont conservés.
 Les lectures documentaires ne qualifient ni accès, ni génération, ni débit.
+
+
+## Libellés PROMPT dans les bilans
+
+Le plugin, le skill et la commande sont présentés sous le libellé **PROMPT**.
+Le bilan JSON TCU ajoute `libelle: PROMPT` à chacune de ces ressources ; la
+restitution utilise ce libellé. Les clés techniques `brique` et `composant`,
+les chemins historiques et l’invocation `$prompt` restent compatibles.

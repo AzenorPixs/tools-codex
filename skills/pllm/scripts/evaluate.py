@@ -243,6 +243,23 @@ def get(url, key):
         signal.alarm(0)
 
 
+def resource_get(model, url, key):
+    """Trace only the public resource endpoint and filtered transport evidence."""
+    control = {'phase': 'resource_control', 'endpoint': url, 'evaluated_at': now(),
+               'status': 'running', 'http_status': None}
+    model['resource_control'] = control
+    try:
+        result = get(url, key)
+    except Exception as error:
+        control['status'] = 'failed'
+        if isinstance(error, (urllib.error.HTTPError, ApiFailure)):
+            control['http_error'] = copy.deepcopy(http_diagnostic(error))
+            control['http_status'] = control['http_error'].get('http_status')
+        raise
+    control['status'] = 'received'
+    return result
+
+
 def quota(m, key):
     if m['mode'] in FREE_MODES:
         m.update(quotas=None, quota_status='not_applicable')
@@ -250,7 +267,7 @@ def quota(m, key):
     provider = 'opencodego' if m['mode'] in ('mode1', 'mode2') else m['provider']
     m['quota_provider'] = provider
     if provider == 'opencodego':
-        q = get('https://opencode.ai/zen/go/v1/usage', key)['usage']
+        q = resource_get(m, 'https://opencode.ai/zen/go/v1/usage', key)['usage']
         m['quotas'] = q
         periods = ('rolling', 'weekly', 'monthly')
         values = {p: finite(q[p]['percent']) for p in periods}
@@ -263,14 +280,14 @@ def quota(m, key):
         if any(q[p]['status'] != 'ok' for p in periods):
             raise RuntimeError('Quota indisponible sans épuisement confirmé')
     elif provider == 'openrouter':
-        q = get('https://openrouter.ai/api/v1/credits', key)['data']
+        q = resource_get(m, 'https://openrouter.ai/api/v1/credits', key)['data']
         balance = finite(q['total_credits']) - finite(q['total_usage'])
         m['quotas'] = {'balance': balance, 'currency': 'USD'}
         m['quotas_evaluated_at'] = now()
         if balance <= 0:
             raise QuotaExhausted('Crédit épuisé')
     else:
-        q = get('https://api.deepseek.com/user/balance', key)
+        q = resource_get(m, 'https://api.deepseek.com/user/balance', key)
         m['quotas'] = q
         if q['is_available'] is not True or not any(finite(b['total_balance']) > 0 for b in q['balance_infos']):
             raise RuntimeError('Solde indisponible ou épuisé')
@@ -403,14 +420,19 @@ def policy_table(models):
         if (model.get('model_id', model.get('model')) != 'Non évalué'
                 and model['mode'] != 'mode5' and not performance.effort_allowed(model)):
             continue
+        state = ('🟢 Valide' + (' — gratuit' if model['mode'] in FREE_MODES else '')
+                 if model['state'] == 'Valide' else '🔴 Invalide — ' + (model.get('cause') or 'Non évalué'))
+        warnings = model.get('catalog_source', {}).get('warnings', [])
+        if warnings:
+            state += (' — date du catalogue future' if 'future_generated_at' in warnings
+                      else ' — date du catalogue non vérifiable')
         values = [
             model['mode'],
             model.get('model_id', model['model']),
             model['provider'],
             performance_display('ttft', model.get('ttft_seconds'), mode='mode3' if model.get('is_free') else model['mode']),
             performance_display('tokens', model.get('tokens_per_second'), model.get('throughput_scope'), 'mode3' if model.get('is_free') else model['mode']),
-            ('🟢 Valide' + (' — gratuit' if model['mode'] in FREE_MODES else '')
-             if model['state'] == 'Valide' else '🔴 Invalide — ' + (model.get('cause') or 'Non évalué')),
+            state,
             model.get('last_successful_max_tokens') or '-',
             display_timestamp(model.get('evaluated_at')),
         ]
@@ -558,6 +580,36 @@ def load_tfl_catalog(catalog_path=None):
     return catalog
 
 
+def catalog_provenance(catalog, catalog_path=None):
+    path = Path(catalog_path) if catalog_path is not None else ROOT.parent / 'tfl/data/tfl.json'
+    result = {'path': str(path.resolve()), 'selection': 'explicit' if catalog_path is not None else 'default',
+              'generated_at': None, 'age_seconds': None, 'warnings': []}
+    raw = catalog.get('generated_at')
+    if raw is None:
+        result['warnings'].append('missing_generated_at')
+        return result
+    try:
+        stamp = datetime.fromisoformat(raw) if isinstance(raw, str) else None
+        if stamp is None or stamp.tzinfo is None or stamp.utcoffset() is None:
+            raise ValueError
+        age = (datetime.now(timezone.utc) - stamp).total_seconds()
+        result['generated_at'] = stamp.isoformat(timespec='seconds')
+        if age < 0:
+            result['warnings'].append('future_generated_at')
+        else:
+            result['age_seconds'] = round(age, 3)
+    except (ValueError, TypeError, OverflowError):
+        result['warnings'].append('invalid_generated_at')
+    return result
+
+
+def empty_catalog_message(model, category):
+    stamp = model.get('catalog_source', {}).get('generated_at')
+    date = display_timestamp(stamp) if stamp else 'date non vérifiable'
+    return ('Aucun candidat TFL admissible ' + ('gratuit' if category == 'free' else 'payant')
+            + ' dans ce catalogue (collecte : ' + date + ')')
+
+
 def tfl_opencode_model_at(rank, catalog_path=None):
     catalog = load_tfl_catalog(catalog_path)
     if not isinstance(catalog.get('opencode_go'), dict):
@@ -623,30 +675,86 @@ def next_tfl_opencode_model(current_id, catalog_path=None):
     return None
 
 
+def recover_unversioned_memory(memory):
+    """Accept only the empty format or the unambiguous observed mode7 format."""
+    policies = memory.get('policies')
+    if set(memory) != {'policies'} or not isinstance(policies, dict):
+        raise ValueError('Mémoire sans version ambiguë')
+    if not policies:
+        return
+    if set(policies) != {'mode7'} or not isinstance(policies['mode7'], dict):
+        raise ValueError('Politiques sans version ambiguës')
+    expected = {
+        'model_id': 'deepseek-v4-flash', 'provider': 'deepseek', 'reasoning': 'medium',
+        'throughput_scope': 'response_only', 'api_protocol': 'chat_completions',
+        'api_endpoint': 'https://api.deepseek.com/chat/completions',
+        'throughput_metric': performance.THROUGHPUT_METRIC,
+        'throughput_window': performance.THROUGHPUT_WINDOW,
+        'measurement_protocol_version': performance.MEASUREMENT_PROTOCOL_VERSION,
+    }
+
+    def validate_success(success):
+        if not isinstance(success, dict) or success.get('identity') != expected:
+            raise ValueError('Identité de succès sans version ambiguë')
+        budget = success.get('last_successful_max_tokens')
+        if type(budget) is not int or budget not in BUDGETS:
+            raise ValueError('Palier de succès sans version invalide')
+        for field in ('ttft_seconds', 'tokens_per_second'):
+            value = success.get(field)
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or (value < 0 if field == 'ttft_seconds' else value <= 0)):
+                raise ValueError('Mesure de succès sans version invalide')
+        if success['ttft_seconds'] >= TTFT_LIMIT_SECONDS or success['tokens_per_second'] <= 15:
+            raise ValueError('Seuil de succès sans version invalide')
+        date = success.get('succeeded_at')
+        if not isinstance(date, str) or datetime.fromisoformat(date).tzinfo is None:
+            raise ValueError('Date de succès sans version invalide')
+
+    success = policies['mode7']
+    validate_success(success)
+    configurations = success.get('configurations')
+    if not isinstance(configurations, dict) or not configurations:
+        raise ValueError('Configurations sans version invalides')
+    for key, record in configurations.items():
+        validate_success(record)
+        if key != json.dumps(record['identity'], sort_keys=True):
+            raise ValueError('Clé de configuration sans version incohérente')
+    if {k: v for k, v in success.items() if k != 'configurations'} != configurations.get(
+            json.dumps(expected, sort_keys=True)):
+        raise ValueError('Dernier succès sans version incohérent')
+
+
+def normalize_memory(memory):
+    memory = copy.deepcopy(memory)
+    if isinstance(memory, dict) and 'schema_version' not in memory:
+        recover_unversioned_memory(memory)
+        memory['schema_version'] = 3
+    if (not isinstance(memory, dict) or type(memory.get('schema_version')) is not int
+            or memory['schema_version'] not in (1, 2, 3)
+            or not isinstance(memory.get('policies'), dict)
+            or any(not isinstance(value, dict) for value in memory['policies'].values())):
+        raise ValueError('Structure de mémoire invalide')
+    version = memory['schema_version']
+    allowed = {f'mode{i}' for i in range(1, 5 if version == 1 else 7 if version == 2 else 8)}
+    if not set(memory['policies']).issubset(allowed):
+        raise ValueError('Politiques de mémoire invalides')
+    if version in (1, 2):
+        carried = ('mode1', 'mode2') if version == 1 else ('mode1', 'mode2', 'mode3', 'mode4')
+        migrated = {mode: value for mode, value in memory['policies'].items() if mode in carried}
+        deepseek = memory['policies'].get('mode4' if version == 1 else 'mode6')
+        if deepseek:
+            migrated['mode7'] = deepseek
+        memory.update(schema_version=3, migrated_from_schema_version=version, policies=migrated)
+    return memory
+
+
 def load_memory():
     if not MEMORY_PATH.exists():
         return {'schema_version': 3, 'policies': {}}
     try:
-        memory = json.loads(MEMORY_PATH.read_text(encoding='utf-8'))
-        if (not isinstance(memory, dict) or memory.get('schema_version') not in (1, 2, 3)
-                or not isinstance(memory.get('policies'), dict)
-                or any(not isinstance(value, dict) for value in memory['policies'].values())):
-            raise ValueError('Structure de mémoire invalide')
-        version = memory['schema_version']
-        allowed = {f'mode{i}' for i in range(1, 5 if version == 1 else 7 if version == 2 else 8)}
-        if not set(memory['policies']).issubset(allowed):
-            raise ValueError('Politiques de mémoire invalides')
-    except (OSError, ValueError) as error:
+        return normalize_memory(json.loads(MEMORY_PATH.read_text(encoding='utf-8')))
+    except (OSError, ValueError, OverflowError) as error:
         raise RuntimeError('Mémoire de performance PLLM invalide ; fichier préservé') from error
-    if memory['schema_version'] in (1, 2):
-        old_version = memory['schema_version']
-        carried = ('mode1', 'mode2') if old_version == 1 else ('mode1', 'mode2', 'mode3', 'mode4')
-        migrated = {mode: value for mode, value in memory['policies'].items() if mode in carried}
-        deepseek = memory['policies'].get('mode4' if old_version == 1 else 'mode6')
-        if deepseek:
-            migrated['mode7'] = deepseek
-        memory.update(schema_version=3, migrated_from_schema_version=old_version, policies=migrated)
-    return memory
 
 
 def identity(m):
@@ -666,6 +774,11 @@ def budgets_for(m, memory):
 
 
 def remember_success(m, budget, memory):
+    original_memory = memory
+    try:
+        memory = normalize_memory(memory)
+    except (ValueError, OverflowError) as error:
+        raise RuntimeError('Mémoire de performance PLLM invalide ; fichier préservé') from error
     previous = memory['policies'].get(m['mode'], {})
     configurations = dict(previous.get('configurations', {}))
     if 'identity' in previous:
@@ -682,6 +795,8 @@ def remember_success(m, budget, memory):
     temp = MEMORY_PATH.with_name(MEMORY_PATH.name + '.tmp')
     temp.write_text(json.dumps(memory, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     temp.replace(MEMORY_PATH)
+    original_memory.clear()
+    original_memory.update(memory)
     m['last_successful_max_tokens'] = budget
 
 
@@ -856,6 +971,10 @@ def candidates_for(model, category, catalog_path, forced=None, key=None):
             candidate['reasoning_capabilities'] = evidence['value']
         return [candidate]
     catalog = load_tfl_catalog(catalog_path)
+    model['catalog_source'] = catalog_provenance(catalog, catalog_path)
+    model['catalog_selection'] = {'section_models': 0, 'admissible_free': 0,
+                                  'admissible_paid': 0, 'category_candidates': 0,
+                                  'exclusion_summary': {}}
     go = model['mode'] in ('mode1', 'mode2', 'mode3', 'mode4')
     sections = ('opencode_go',) if go else ('openrouter',)
     candidates = []
@@ -873,6 +992,7 @@ def candidates_for(model, category, catalog_path, forced=None, key=None):
         rows = source.get('models') if isinstance(source, dict) else None
         if not isinstance(rows, list):
             raise RuntimeError('Section TFL absente ou invalide : ' + section)
+        model['catalog_selection']['section_models'] += len(rows)
         requested = forced.get('rank') if forced and model['mode'] not in FREE_MODES else None
         if requested is not None and (requested < 1 or requested > len(rows)):
             raise RuntimeError('Rang TFL indisponible : ' + str(requested))
@@ -888,7 +1008,12 @@ def candidates_for(model, category, catalog_path, forced=None, key=None):
                 if forced and requested is not None:
                     raise RuntimeError('Candidat forcé non admissible : ' + error_message(error)) from error
                 model['candidate_exclusions'].append({'section': section, 'rank': rank, 'cause': error_message(error)})
+                summary = model['catalog_selection']['exclusion_summary']
+                reason = error_message(error)
+                summary[reason] = summary.get(reason, 0) + 1
                 continue
+            count = 'admissible_free' if candidate['is_free'] else 'admissible_paid'
+            model['catalog_selection'][count] += 1
             if candidate['is_free'] != (category == 'free'):
                 if forced and requested is not None:
                     raise RuntimeError('Candidat forcé incompatible avec les ressources : catégorie ' + category)
@@ -937,6 +1062,7 @@ def candidates_for(model, category, catalog_path, forced=None, key=None):
                                                'input_price_usd_per_million_tokens': format(prices[0], 'f'),
                                                'output_price_usd_per_million_tokens': format(prices[1], 'f')})
             candidates.append(candidate)
+    model['catalog_selection']['category_candidates'] = len(candidates)
     if forced and model['mode'] in FREE_MODES:
         rank = forced.get('rank', 1)
         if rank < 1 or rank > len(candidates):
@@ -1085,7 +1211,8 @@ def main(active=False, forced=None, tfl_catalog=None):
                      performance_test={'status': 'not_run', 'reason': 'Contrôle des ressources requis'})
         for field in ('quotas_evaluated_at', 'quota_provider', 'api_endpoint', 'api_protocol', 'model_source', 'is_free',
                       'average_price_usd_per_million_tokens', 'average_price_eur_per_million_tokens',
-                      'cost_exchange_rates', 'base_pricing_usd_per_million_tokens'):
+                      'cost_exchange_rates', 'base_pricing_usd_per_million_tokens',
+                      'catalog_source', 'catalog_selection', 'resource_control'):
             model.pop(field, None)
         key = ''
         try:
@@ -1100,7 +1227,7 @@ def main(active=False, forced=None, tfl_catalog=None):
                 model['selection_category'] = category
                 candidates = candidates_for(model, category, tfl_catalog, forced=forced, key=key)
                 if not candidates:
-                    raise RuntimeError('Aucun candidat TFL admissible ' + ('gratuit' if category == 'free' else 'payant'))
+                    raise RuntimeError(empty_catalog_message(model, category))
                 results = []
                 try:
                     for candidate in candidates:
@@ -1142,6 +1269,8 @@ def main(active=False, forced=None, tfl_catalog=None):
                 break
         except Exception as error:
             model.update(state='Invalide', cause=error_message(error), ttft_seconds=None, tokens_per_second=None)
+            if model.get('resource_control', {}).get('status') == 'failed':
+                model['cause'] = 'Contrôle des quotas / solde : ' + model['cause']
             status = 'not_run' if model['performance_test']['status'] == 'not_run' else 'failed'
             model['performance_test'].update(status=status, reason=model['cause'])
             if isinstance(error, (urllib.error.HTTPError, ApiFailure)):

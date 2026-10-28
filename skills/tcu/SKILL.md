@@ -1,6 +1,6 @@
 ---
 name: tcu
-description: Mettre à jour les briques Tools Codex installées depuis marketplace et GitHub. Utiliser pour $tcu, /TCU, /tcu ou une demande explicite de mise à jour Tools Codex.
+description: Mettre à jour ou installer les briques Tools Codex depuis marketplace et GitHub. Utiliser pour $tcu, /TCU, /tcu ou une demande explicite de mise à jour Tools Codex.
 ---
 
 TCU est le nom final de l'outil initialement proposé comme TFU. Une demande
@@ -18,11 +18,12 @@ Pour une invocation explicite, exécute le script depuis ce skill installé :
 
 Le script utilise Python 3.13/3.14, le CLI Codex et HTTPS public GitHub. Son
 invocation explicite autorise le rafraîchissement de la seule marketplace
-`tools-codex`, les sauvegardes et la mise à jour des copies déjà installées
-dans les racines identifiées. Seul le composant `prompt` absent est installé
-automatiquement : plugin via le CLI, skill et résolveur embarqués vérifiés,
-puis wrapper de commande issu de `.codex/commands/PROMPT.md`. Aucun autre
-plugin absent ni doublon autonome de skill n'est créé. Le code du cache
+`tools-codex`, les sauvegardes, la mise à jour des copies présentes et l’installation
+systématique des plugins, skills autonomes et commandes sources absents dans
+toutes les racines configurées. Les plugins du catalogue officiel sont installés
+via le CLI ; les skills et commandes proviennent de l’instantané GitHub vérifié.
+Pour PROMPT, le skill et le résolveur embarqués sont vérifiés avant son wrapper.
+Plusieurs distributions d’un même skill peuvent apparaître dans Codex. Le code du cache
 plugin reste géré par le CLI. Ne pas lancer PLLM/TFL pendant TCU.
 
 Le mot `check` a priorité sur le lancement par défaut : ne jamais appliquer
@@ -30,12 +31,13 @@ une demande `/tcu check`. `--check` reste un alias compatible. Le script seul
 vérifie sans écriture par défaut ; appliquer exige `--apply`.
 Les racines par défaut sont CODEX_HOME/skills, ~/.agents/skills,
 CODEX_HOME/prompts et CODEX_HOME/commands (CODEX_HOME vaut ~/.codex par défaut).
-Le wrapper PROMPT.md est créé dans CODEX_HOME/prompts par défaut, ou dans le
-premier --commands-dir explicite ; les autres copies présentes sont mises à
-jour. Il délègue au skill sans copier les prompts métier : DEVOPS.md reste
-leur seule référence. Un lien ou checkout de développement reste inchangé.
+Les skills absents sont installés dans chaque racine de skills configurée.
+Les commandes absentes, dont PROMPT.md, sont créées dans chaque racine de
+commandes configurée, y compris les racines absentes ; les copies présentes
+sont mises à jour. Le wrapper PROMPT délègue au skill sans copier les prompts
+métier : DEVOPS.md reste leur seule référence. Un lien ou checkout de développement reste inchangé.
 Les anciennes copies en minuscules sont actualisées sous leur nom actuel,
-avec leurs reçus et sauvegardes, sans doublon créé ni renommage. Si PROMPT.md
+avec leurs reçus et sauvegardes, sans seconde graphie créée ni renommage. Si PROMPT.md
 et prompt.md existent, ils sont vérifiés dans le même plan et reçu de
 composant. Une ancienne source prompt.md reste lisible si PROMPT.md manque.
 Son conflit ne bloque pas les opérations indépendantes ; il reste signalé
@@ -53,9 +55,11 @@ du CLI échoue, la sauvegarde reste disponible et l'état est inconnu. Aucune
 annulation globale de la marketplace n'est garantie.
 
 Restitue le bilan JSON en tableau français par brique : canal, état, version
-avant/après connue et cause ; distinguer les trois ressources de prompt :
-plugin, skill embarqué et commande. En contrôle seul, annoncer l'installation
-prévue de prompt sans la réaliser, et distinguer version cible et
+avant/après connue et cause ; distinguer les trois ressources de PROMPT :
+plugin, skill embarqué et commande. Utiliser `libelle` comme nom affiché
+dans le tableau lorsqu’il est fourni : les trois ressources portent **PROMPT**.
+Conserver `brique` et `composant` comme identifiants de suivi. En contrôle seul, annoncer toutes les installations
+prévues sans les réaliser, et distinguer version cible et
 version appliquée. Indique sauvegarde, conflits, succès partiels et code de
 sortie réel sans exposer les contenus sauvegardés. Une nouvelle session
 Codex charge les skills actualisés.
@@ -73,7 +77,8 @@ de modèle. `check` décrit seulement cette opération. Restituer la ligne
 `llm-refresh` du bilan : installation, état courant, composants absents ou
 échec ; aucune version de plugin n'est inventée pour ce planning.
 
-Les deux composants TFL/PLLM doivent déjà être installés. Les six plugins
+Les deux composants TFL/PLLM doivent être installés avant le bootstrap du
+planning ; TCU les installe s’ils sont absents, comme les autres composants. Les six plugins
 proposent le même bootstrap par hook SessionStart, soumis à la confiance
 native Codex. L'installateur autonome est `python3 -B scripts/scheduler.py install`,
 à utiliser seulement pour une installation demandée. Une mise à jour lancée
@@ -83,8 +88,8 @@ Le timer systemd utilisateur déclenche à 00 h et 12 h Europe/Paris, sans
 rattrapage, si l'application ou un CLI interactif Codex est ouvert. Il lit
 le quota Codex avant TFL puis avant PLLM : quota nul ou inconnu, aucun appel
 de l'étape. Un échec TFL empêche PLLM. La séquence ne modifie ni LM ni les
-seuils et n'exécute aucun achat, connexion ou reset de quota. TCU n'installe
-pas les composants absents et ne déclenche pas la séquence pendant son apply.
+seuils et n'exécute aucun achat, connexion ou reset de quota. Le module d’ordonnancement n’installe pas lui-même
+les composants. TCU ne déclenche pas la séquence pendant son apply.
 
 La commande canonique est `/TCU` ; `/tcu` reste
 un alias compatible. L’identifiant technique du skill reste en minuscules.

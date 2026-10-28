@@ -7,6 +7,9 @@ Ce skill lance le processus du prompt demandé ; une résolution de fichier ne
 signifie pas que ce processus est terminé. Une demande de création ou de
 modification de ce plugin ne lance aucun des prompts qu'il distribue.
 
+Nom affiché du plugin, du skill et de la commande : **PROMPT**. Les chemins
+et l’invocation technique `$prompt` restent compatibles.
+
 ## Résolution
 
 Relève la racine réelle du projet courant dans le contexte de la tâche.
@@ -20,10 +23,10 @@ Demande l'argument s'il manque. Il est obligatoire et en MAJUSCULE :
 - `ACSP`, `ACSM`, `ACSMP`, `CGP`, `CISM`, `DOP`, `DOPP`, `EDP` ;
 - `GCM`, `GCMP`, `ISM`, `ISMP`, `PPSC`, `PPSCP`, `RCAM`, `RCAMP` ;
 - `SPCM`, `SPCMP`, `RSM`, `RSMP`, `SCM`, `SCMP` ;
-- `CISMP1` à `CISMP8` ;
-- `1CISMP1` à `1CISMP8`.
+- `CISMPx` et `1CISMPx`, où `x` est un entier décimal ASCII strictement
+  positif sans zéro initial, sans borne supérieure.
 
-Les alias validés sont `GCM → GSCM.md` et `GCMP → GSCMP.md`. Les seize
+Les alias validés sont `GCM → GSCM.md` et `GCMP → GSCMP.md`. Toutes les
 variantes CISMP sélectionnent toutes `CISMP.md`, avec le RUN exact `CISMPn`.
 Ne transforme pas silencieusement un argument invalide ou en minuscules.
 

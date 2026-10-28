@@ -1,7 +1,7 @@
 {
   "name": "tcu",
-  "version": "0.7.20",
-  "description": "Met à jour les briques Tools Codex installées depuis la marketplace et GitHub.",
+  "version": "0.7.24",
+  "description": "Met à jour ou installe les briques Tools Codex depuis la marketplace et GitHub.",
   "author": {
     "name": "AzenorPixs"
   },
@@ -10,12 +10,12 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "TCU",
-    "shortDescription": "Mise à jour des briques Tools Codex installées.",
-    "longDescription": "Vérifie et actualise plugins et copies autonomes, avec sauvegardes et gestion des conflits.",
+    "shortDescription": "Mise à jour et installation des briques Tools Codex.",
+    "longDescription": "Vérifie, actualise et installe les plugins, skills autonomes et commandes absents, avec sauvegardes et gestion des conflits.",
     "developerName": "AzenorPixs",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Utilise $tcu pour mettre à jour les briques Tools Codex installées."
+    "defaultPrompt": "Utilise $tcu pour mettre à jour les briques présentes et installer les briques absentes de Tools Codex."
   },
   "hooks": "./hooks/hooks.json"
 }

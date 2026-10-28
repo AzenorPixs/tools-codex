@@ -1,4 +1,4 @@
 interface:
   display_name: "TCU"
-  short_description: "Mise à jour des briques Tools Codex installées."
-  default_prompt: "Utilise $tcu pour mettre à jour les briques Tools Codex installées."
+  short_description: "Mise à jour et installation des briques Tools Codex."
+  default_prompt: "Utilise $tcu pour mettre à jour les briques présentes et installer les briques absentes de Tools Codex."
