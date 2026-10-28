@@ -15,6 +15,13 @@ l'option `--tfl-catalog CHEMIN` au même script, sans modifier leur valeur.
 Le chemin explicite s'applique aussi aux replis ; sans option, le chemin
 voisin du skill reste utilisé.
 
+Vérifier la date du catalogue réellement produit par TFL avant de choisir son
+chemin. Une copie autonome récente et une copie de plugin ancienne peuvent
+diverger malgré une même release. Transmettre explicitement la collecte connue,
+sans recherche privée ni collecte TFL implicite. Le JSON trace catalog_source,
+catalog_selection et les refus de ressources dans resource_control ; une absence
+de gratuit concerne ce catalogue, et HTTP 401 au quota n'est pas un épuisement.
+
 Exécute la commande depuis le répertoire du skill PLLM installé. Ne remplace pas cette exécution par une lecture des anciens fichiers `data/pllm-current.*`. Le script contrôle les ressources applicables avant les tests (aucun quota en 3/4/6), publie les résultats et ne doit jamais afficher de secret.
 
 Modes 1/2 : payants Go seulement ; quota épuisé → rouge et invalide sans repli.

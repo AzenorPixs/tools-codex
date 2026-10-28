@@ -86,6 +86,16 @@ emplacements de découverte sont décrits dans la
 
 ## Installation
 
+Pour PLLM, la release du paquet ne détermine pas la fraîcheur des données TFL.
+Avant une évaluation manuelle, identifier la collecte réellement produite et
+transmettre son chemin avec --tfl-catalog si les distributions sont séparées.
+La mise à jour des scripts ne synchronise pas les catalogues utilisateur.
+Le JSON publié indique source, date et compteurs ; une sélection gratuite vide
+doit être interprétée selon cette source. Un HTTP 401 au quota nécessite de
+vérifier l'accès du compte correspondant hors des rapports ; ne pas remplacer
+automatiquement sa clé ou emprunter celle d'un autre compte. Aucun nouveau
+planning ni changement OpenCode n'est requis par ce correctif.
+
 Le plugin `prompt` s'installe, une fois sa version disponible dans la
 marketplace configurée, avec `codex plugin add prompt@tools-codex`. Le skill
 autonome `skills/prompt/` conserve le même résolveur. Dans ce projet, le lien

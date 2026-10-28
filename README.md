@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.22`.
+Version de release : `0.7.23`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -24,6 +24,15 @@ chargés simultanément peuvent produire deux entrées. Leur disponibilité dans
 les sources ne démontre pas une installation dans un profil Codex.
 
 PLLM accepte `--tfl-catalog CHEMIN` pour des plugins installés séparément.
+Vérifiez la date de la collecte TFL réellement produite : une copie autonome
+et une copie du plugin peuvent diverger. Passez explicitement le catalogue
+voulu ; PLLM ne relance pas TFL et ne recherche pas dans les configurations
+privées. Le JSON trace son chemin, sa date, son âge et les compteurs de
+candidats. Une absence de gratuit concerne ce catalogue. Une date non
+vérifiable ou future est signalée sans seuil arbitraire de péremption.
+Un HTTP 401 au contrôle des quotas est identifié avec sa phase et son endpoint,
+sans conclure à un épuisement ou modifier les secrets. Le mode4 continue
+indépendamment d'un refus mode2, sans consulter de quota.
 Les sept politiques sont évaluées par priorité :
 
 | Modes | Candidats | Conditions spécifiques |

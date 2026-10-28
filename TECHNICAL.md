@@ -309,6 +309,23 @@ et CAB.
 
 ## Données générées
 
+PLLM conserve `catalog_source` par politique consommatrice : chemin absolu,
+sélection explicit/default, generated_at validé, age_seconds ou null et
+avertissements structurés. Une date non vérifiable ou future ne définit aucun
+seuil de péremption. `catalog_selection` distingue taille de section, candidats
+gratuits/payants admissibles, candidats de catégorie et exclusions locales.
+Le choix explicite --tfl-catalog prévaut sur le défaut voisin ; aucune recherche
+privée ni collecte TFL implicite n'est ajoutée. Le diagnostic vide désigne la
+collecte utilisée, avec huit colonnes inchangées.
+`resource_control` conserve la phase, l'endpoint public, la date et le statut
+du contrôle de ressources, ainsi que le diagnostic HTTP filtré en cas de refus.
+Une réponse reçue n'est pas à elle seule une validation des valeurs du quota.
+Ces champs sont réinitialisés par politique visitée ; les gratuits n'appellent
+aucun quota et un refus mode2 n'empêche pas mode4.
+Les fichiers pllm-current.json, pllm-current.md et pllm-performance-memory.json
+sont des sorties locales régénérables exclues de Git, y compris dans les
+distributions embarquées. Le retrait de l'index conserve les copies locales.
+
 Les reçus et sauvegardes TCU restent dans les installations utilisateur,
 hors des sources versionnées. Ils ne doivent jamais être ajoutés au dépôt.
 

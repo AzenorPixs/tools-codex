@@ -364,6 +364,24 @@ session persistante, puis réussir le test CAB avant de reprendre les mandats.
 
 ## Catalogue explicite et première évaluation
 
+Avant l'évaluation, identifier le catalogue réellement produit par TFL et
+vérifier son `generated_at`. Des copies autonome et plugin peuvent diverger :
+la version du paquet ne prouve pas la date de collecte. Si une collecte récente
+est connue dans la session, transmettre son chemin avec `--tfl-catalog` au lieu
+de choisir silencieusement une autre copie. En cas d'ambiguïté, signaler les
+sources connues ; ne pas parcourir les configurations privées ni lancer TFL
+implicitement. Le chemin explicite est prioritaire, le défaut voisin est conservé.
+
+Le JSON conserve par politique `catalog_source` (chemin, sélection, date, âge
+et avertissements) et `catalog_selection` (compteurs et synthèse des exclusions).
+Une date absente, invalide ou future est signalée sans seuil arbitraire de
+péremption. L'absence de gratuit désigne le catalogue utilisé, pas une absence
+universelle. Les erreurs du contrôle payant conservent dans `resource_control`
+la phase, l'endpoint public et le statut HTTP filtré ; HTTP 401 sur les quotas
+ne prouve ni épuisement ni refus de génération. Ne pas modifier le trousseau
+ni emprunter la clé d'un autre compte. Le mode4 continue indépendamment du
+refus mode2, sans appel de quota. Garder les huit colonnes et les sorties active.
+
 Pour des plugins installés séparément, transmettre le catalogue produit par TFL :
 
 ```bash

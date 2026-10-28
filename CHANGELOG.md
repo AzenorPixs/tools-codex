@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Tracer la provenance et la date du catalogue TFL consommé par PLLM, ses
+  compteurs et exclusions ; localiser les absences de gratuits au catalogue
+  utilisé et signaler les dates non vérifiables sans collecte implicite.
+  Identifier séparément phase, endpoint et HTTP filtré des contrôles de
+  ressources, sans assimiler un refus 401 à un quota épuisé ni bloquer le
+  mode4 à cause du mode2. Exclure les résultats et mémoires PLLM de Git en
+  conservant leurs copies locales. Aligner la release et les six plugins sur 0.7.23.
+
 - Supprimer la borne de huit RUN : CISMPx et 1CISMPx acceptent tout entier
   décimal ASCII positif sans zéro initial, sans borne supérieure. Préserver
   le RUN exact et le cycle à un seul change des variantes 1CISMPx.

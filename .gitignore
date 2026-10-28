@@ -34,6 +34,11 @@
 output/
 reports/
 
+# Résultats PLLM locaux : quotas et historique de performance
+pllm-current.json
+pllm-current.md
+pllm-performance-memory.json
+
 # ----------------------------------------------------------
 # Fichiers système
 # ----------------------------------------------------------
