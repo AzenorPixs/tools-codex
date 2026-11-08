@@ -170,7 +170,7 @@ fichier, sans promesse de transaction commune.
 
 Les champs api_endpoint, api_protocol et endpoint_source restent lisibles
 par PLLM. Les métadonnées supplémentaires tracent les sources et dates ;
-generation_tested=false reste explicite. ORCHESTRATED_CODING.md est non
+generation_tested=false reste explicite. ancien protocole local est non
 applicable à cette session directe sans pilotage. Aucun quota n'est consulté.
 État : TERMINÉ pour la livraison locale SCM 0.5.5. Aucun réarchivage ni échec
 non résolu. Publication et installation de profil n'ont pas été effectuées.

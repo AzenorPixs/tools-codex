@@ -26,7 +26,7 @@ n’y a été rejoué. L’amendement SCM-ACL-R1 distingue ses propres tests hor
 
 Les tâches historiques comportent **411 cases cochées sur 412**. Ce ratio documentaire n’est
 pas un pourcentage fonctionnel. L’archivage est constaté par l’emplacement.
-Les tâches, exigences, scénarios, preuves, statistiques et états des 44 archives historiques restent inchangés.
+Les tâches, exigences, scénarios et états des 44 archives historiques restent conservés ; les références au protocole local historique ont été reformulées sur demande du développeur.
 
 ## 2. Vue d’ensemble
 

@@ -182,7 +182,7 @@ silence de active et publication atomique restent couverts par les suites.
 | CHANGELOG.md | Mis à jour ; quatre entrées Unreleased, sans publication distante annoncée. |
 | openspec/specs | Deux ajouts et deux modifications synchronisés ; quatre blocs identiques, global standard et strict 8/8. |
 
-ORCHESTRATED_CODING.md est non applicable à cette session SCM directe.
+ancien protocole local est non applicable à cette session SCM directe.
 État : TERMINÉ pour le périmètre local validé, son archive unique et son
 rapport. Aucun blocage final ; la variation externe d'horodatage est signalée.
 Les profils installés, la publication et les accès fournisseurs réels restent

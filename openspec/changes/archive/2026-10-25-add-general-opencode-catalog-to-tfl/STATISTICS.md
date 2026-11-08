@@ -166,7 +166,7 @@ sans promesse de transaction commune aux deux fichiers.
 Consignes TFL/CM et wrapper décrivent le même ordre et la même portée. Le
 manifeste TFL actualise ses descriptions et son prompt de lancement ; les
 cinq plugins partagent la release. Les politiques et moteurs PLLM restent
-inchangés. ORCHESTRATED_CODING.md est non applicable à cette session directe
+inchangés. ancien protocole local est non applicable à cette session directe
 sans pilotage. Aucune consultation de quota ni génération n'est effectuée.
 État : TERMINÉ pour la livraison locale SCM 0.5.6. Aucun réarchivage ni échec
 non résolu. Publication et installation de profil n'ont pas été effectuées.

@@ -175,7 +175,7 @@ restent couverts par les suites sur les deux branches Python.
 | CHANGELOG.md | Mis à jour dans Unreleased ; comportement, seuils et version locale, sans date de publication inventée. |
 | openspec/specs | Onze exigences pllm-evaluation synchronisées ; standard et strict 8/8 après archive. |
 
-ORCHESTRATED_CODING.md est non applicable à cette SCM directe.
+ancien protocole local est non applicable à cette SCM directe.
 L'absence de contrôle de quota des gratuits ne promet pas l'absence de limites
 fournisseur. Livraison locale, installation, publication et disponibilité
 fournisseur restent distinctes. Aucun blocage final connu.

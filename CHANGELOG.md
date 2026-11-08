@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.28 - 2026-11-08
+
+- Retirer les mentions du protocole local historique dans les rapports conservés.
+
 
 - Prendre en charge CISMx et 1CISMx en mode direct, avec conservation du numéro et limite à un change pour 1CISMx.
 

@@ -67,7 +67,7 @@ préexistante dans « Classement interne par performances » dit encore
 « Go avant général pour le repli modes 1/2 », alors que les gratuits autonomes
 sont en 3/4 et 1/2 restent payants. Ce libellé historique est signalé hors
 périmètre et laissé intact ; il ne change pas le calcul ni l'ordre exécuté.
-ORCHESTRATED_CODING.md est non applicable à cette SCM directe.
+ancien protocole local est non applicable à cette SCM directe.
 La clôture exige encore l'archive unique et le rapport post-archive vérifié.
 
 ## Clôture observée

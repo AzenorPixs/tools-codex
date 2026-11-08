@@ -63,7 +63,7 @@ STATISTIQUES.md produit et vérifié dans cette archive, sans réarchivage.
 | CHANGELOG.md | Mis à jour dans Unreleased ; comportement livré, seuils, schéma et version locale. |
 | openspec/specs | Onze exigences pllm-evaluation synchronisées et identiques au delta ; global 9/9 standard/strict. |
 
-ORCHESTRATED_CODING.md est non applicable : SCM directe, sans pilotage.
+ancien protocole local est non applicable : SCM directe, sans pilotage.
 L'installation réelle, la publication et les performances fournisseur actuelles
 restent des preuves distinctes non réalisées dans ce périmètre.
 

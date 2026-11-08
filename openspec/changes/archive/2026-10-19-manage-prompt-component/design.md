@@ -88,7 +88,7 @@ parité, formats, paquet isolé, versions, UTF-8/LF et OpenSpec strict.
 
 Le nombre de manifestes TCU passe de quatre à cinq dans le delta pour rester
 cohérent avec le composant prompt et la release commune validée. Aucun autre
-cadrage n'est absent ou bloqué ; ORCHESTRATED_CODING.md reste inchangé car
+cadrage n'est absent ou bloqué ; ancien protocole local reste inchangé car
 cette session SCM est directe.
 
 Contrôles complémentaires exécutés et réussis : instantané en mémoire de 24

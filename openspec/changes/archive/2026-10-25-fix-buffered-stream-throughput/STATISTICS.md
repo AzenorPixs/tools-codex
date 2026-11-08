@@ -199,7 +199,7 @@ pour le repli modes 1/2 », alors que 1/2 sont payants et les gratuits autonomes
 sont en 3/4. Ce libellé reste intact et ne change pas le calcul ni l'ordre
 effectivement exécuté. La cohérence affirmée porte sur le périmètre corrigé.
 
-ORCHESTRATED_CODING.md est non applicable à cette SCM directe.
+ancien protocole local est non applicable à cette SCM directe.
 Les seuils numériques sont préservés, mais classement et éligibilité peuvent
 changer. Les anciens débits ne sont pas directement comparables. Les preuves
 locales qualifient le code ; installation, activation et mesures fournisseur

@@ -183,7 +183,7 @@ prix de référence inférieur. Les seuils d'admissibilité ne sont pas assoupli
 | CHANGELOG.md | Mis à jour dans Unreleased ; comportement, limites d'installation et incrément demandés. |
 | openspec/specs | pllm-evaluation synchronisée ; validation globale standard/stricte 8/8 après archive. |
 
-ORCHESTRATED_CODING.md et CAB sont non applicables à cette session SCM directe.
+ancien protocole local et CAB sont non applicables à cette session SCM directe.
 La qualification de vitesse ne mesure pas la qualité fonctionnelle du code.
 Le classement utilise les prix du catalogue TFL daté ; les mesures réelles
 restent un instantané, sans garantie de disponibilité future.

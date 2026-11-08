@@ -162,7 +162,7 @@ remplacé atomiquement individuellement, sans promesse de transaction commune.
 | openspec/specs | Deux modifications et un ajout synchronisés par l'archive ; trois blocs identiques au delta et validation stricte 8/8. |
 
 Le moteur Go conserve sa collecte et sa sélection dynamique ; aucun protocole
-de génération Go n'est ajouté. ORCHESTRATED_CODING.md est non applicable à
+de génération Go n'est ajouté. ancien protocole local est non applicable à
 cette session directe sans pilotage. Les profils installés et la précédente
 archive restent inchangés.
 État : TERMINÉ pour la livraison locale SCM 0.5.3. Aucun réarchivage ni échec

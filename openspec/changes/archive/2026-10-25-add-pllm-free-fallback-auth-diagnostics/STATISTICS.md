@@ -179,7 +179,7 @@ La qualification hors ligne ne garantit pas l'accès réel des fournisseurs.
 | CHANGELOG.md | Mis à jour ; quatre entrées Unreleased pour comportement, diagnostics et version. |
 | openspec/specs | Six modifications et quatre ajouts synchronisés ; dix blocs identiques au delta archivé, standard et strict 8/8. |
 
-ORCHESTRATED_CODING.md est non applicable à cette session SCM directe.
+ancien protocole local est non applicable à cette session SCM directe.
 État : TERMINÉ pour la livraison locale et son archivage unique. Aucun blocage
 final ; installation, publication et qualification fournisseur réelle restent
 distinctes et n'ont pas été effectuées.

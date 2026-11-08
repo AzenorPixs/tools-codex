@@ -33,7 +33,7 @@ publication externe n'a été réalisée.
 Les 97 fichiers sont un ensemble ciblé de cadrages, commandes, spécifications,
 archives, manifestes, skills, scripts et tests. Il ne s'agit pas d'un inventaire
 récursif de toutes les sources du dépôt. Les empreintes préservent notamment
-AGENTS.md, DEVOPS.md, .gitignore, ORCHESTRATED_CODING.md, la marketplace, les
+AGENTS.md, DEVOPS.md, .gitignore, ancien protocole local, la marketplace, les
 sources PLLM/TFL et les deux modules de tests observés.
 
 Modèle exact, fournisseur détaillé, raisonnement, TTMT, débit de génération,

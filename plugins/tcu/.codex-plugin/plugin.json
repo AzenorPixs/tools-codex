@@ -1,6 +1,6 @@
 {
   "name": "tcu",
-  "version": "0.7.27",
+  "version": "0.7.28",
   "description": "Met à jour ou installe les briques Tools Codex depuis la marketplace et GitHub.",
   "author": {
     "name": "AzenorPixs"

@@ -220,7 +220,7 @@ l'implémentation, sans annoncer une disponibilité fournisseur réelle.
 | CHANGELOG.md | Mis à jour dans Unreleased ; quatre entrées, sans publication distante annoncée. |
 | openspec/specs | Cinq exigences PLLM et quatre TFL synchronisées ; global standard/strict 8/8 après archive. |
 
-ORCHESTRATED_CODING.md est non applicable à cette SCM directe.
+ancien protocole local est non applicable à cette SCM directe.
 La compatibilité HIGH/XHIGH réelle dépend du modèle et du fournisseur.
 Une qualification TFL dépend du compte ; un autre compte peut avoir des accès
 différents. Les échecs sont conservés comme preuves datées. Installation,

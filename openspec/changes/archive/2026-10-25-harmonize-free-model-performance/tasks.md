@@ -65,7 +65,7 @@ et vérification de STATISTIQUES.md, sans réarchivage.
 | CHANGELOG.md | Mis à jour dans Unreleased ; comportement, exclusions, raisonnement et release locale. |
 | openspec/specs | Neuf exigences synchronisées et identiques aux deltas ; standard et strict 9/9. |
 
-ORCHESTRATED_CODING.md est non applicable : SCM directe, sans pilotage.
+ancien protocole local est non applicable : SCM directe, sans pilotage.
 L'archive unique et le rapport post-archive restent obligatoires pour clore.
 
 ## Clôture observée

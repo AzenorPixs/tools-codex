@@ -164,7 +164,7 @@ champs consommés par PLLM sont conservés. Le classement OpenRouter reste
 fondé sur les prix API de base ; les paliers de contexte sont tracés sans
 modifier cette politique. Les routes Go inconnues restent non qualifiées.
 Les estimations Go non collectées sont N/A. Aucun quota n'est consulté.
-ORCHESTRATED_CODING.md est non applicable à cette session directe, aucun
+ancien protocole local est non applicable à cette session directe, aucun
 pilotage n'étant lancé. Les copies de profil restent à leur version installée.
 
 Les quatre exigences archivées sont présentes à l'identique dans la

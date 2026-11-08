@@ -77,7 +77,7 @@ Totaux : 22 fichiers initiaux modifiés, 8 nouveaux chemins finaux, aucun
 fichier initial supprimé ; 30 chemins livrés. Les six artefacts créés puis
 déplacés dans l'archive sont comptés une seule fois. Les temporaires sont
 nettoyés. Les 94 fichiers d'archives antérieures, AGENTS.md, DEVOPS.md,
-ORCHESTRATED_CODING.md et le catalogue marketplace gardent leur empreinte.
+ancien protocole local et le catalogue marketplace gardent leur empreinte.
 Les liens existants et le référentiel externe des prompts sont préservés.
 
 ## 4. Commandes et validations
@@ -150,7 +150,7 @@ sûres. Aucune atomicité globale de la marketplace n'est promise.
 Les deux catalogues CM contiennent une seule entrée prompt. /cm délègue au
 skill ; les wrappers ne créent pas automatiquement une slash native. Le
 référentiel métier reste exclusivement celui de DEVOPS.md. Le protocole
-ORCHESTRATED_CODING.md est inchangé car cette SCM est directe.
+ancien protocole local est inchangé car cette SCM est directe.
 
 Aucun change actif ne reste. Contrôle final du rapport : six sections,
 30 chemins, totaux 22/8, dix tâches terminées et UTF-8/LF, sans réarchivage.
