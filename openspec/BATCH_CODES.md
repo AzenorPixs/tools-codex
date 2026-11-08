@@ -107,3 +107,7 @@ Cette section ne constitue ni une série ni une réservation.
 
 Ces constats ne rouvrent aucune archive et ne requalifient ni livraison, installation,
 activation ou disponibilité actuelle. Voir la [cartographie](../DEVELOPMENT_MAP.md).
+
+## Change sans code attribué — 8 novembre 2026
+
+- `support-numbered-cism` : [archive](changes/archive/2026-11-08-support-numbered-cism/proposal.md), code non attribué ; attribution ultérieure par ACL.

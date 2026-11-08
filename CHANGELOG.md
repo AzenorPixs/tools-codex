@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+
+- Prendre en charge CISMx et 1CISMx en mode direct, avec conservation du numéro et limite à un change pour 1CISMx.
+
+## Unreleased - date à définir
 
 - Reconnaître ACL dans PROMPT, via CLI et API des distributions autonome et
   embarquée, depuis le seul référentiel DEVOPS/index. Préserver la lecture seule,
@@ -177,7 +180,7 @@
 - Exclure les prix OpenRouter non finis et les débordements ; empêcher la publication d'un catalogue TFL non conforme au JSON strict.
 - Qualifier ces comportements hors ligne dans les deux distributions ; l'installation réelle et les accès fournisseurs restent non vérifiés.
 
-## 0.2.1 — 2026-10-10
+## 0.2.1 - 2026-10-10
 
 - Porter le seuil strict de TTFT PLLM de 60 à 90 secondes, avec couleur et critères publiés cohérents.
 - Aligner la release du projet et les manifestes PLLM/TFL sur 0.2.1.

@@ -244,10 +244,12 @@ sans enregistrement automatique d'une slash native.
 | GCM, GCMP | Alias validés de GSCM.md et GSCMP.md, avec leurs entrées dans l'index. |
 | PPSC, PPSCP, RCAM, RCAMP | Charge le fichier du même nom et exécute son processus. |
 | SPCM, SPCMP, RSM, RSMP, SCM, SCMP | Charge le fichier du même nom et exécute son processus. |
+| CISMx | Charge CISM.md en direct avec le RUN CISMn. |
+| 1CISMx | Même RUN direct, limité à un change et sa clôture. |
 | CISMPx | Charge CISMP.md avec le RUN CISMPn et son cycle normal. |
 | 1CISMPx | Même RUN, un change complet, archivage, statistiques puis arrêt de la session de codage. |
 
-Les codes directs, CISMPx, 1CISMPx et LIST sont résolus à chaque appel.
+Les codes directs, CISMx, 1CISMx, CISMPx, 1CISMPx et LIST sont résolus à chaque appel.
 Le suffixe x est un entier décimal ASCII strictement positif sans zéro initial,
 sans borne supérieure applicative. Un nom
 inconnu ou en minuscules, un suffixe de RUN invalide, une déclaration absente/ambiguë,

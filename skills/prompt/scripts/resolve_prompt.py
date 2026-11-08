@@ -12,7 +12,7 @@ DIRECT = {name: name for name in (
     'ACL', 'ACSP', 'ACSM', 'ACSMP', 'CGP', 'CISM', 'DOP', 'DOPP', 'EDP', 'ISM', 'ISMP',
     'PPSC', 'PPSCP', 'RCAM', 'RCAMP', 'SPCM', 'SPCMP', 'RSM', 'RSMP', 'SCM', 'SCMP')}
 DIRECT.update(GCM='GSCM', GCMP='GSCMP')
-RUN_ACTION = re.compile(r'(1)?CISMP([1-9][0-9]*)')
+RUN_ACTION = re.compile(r'(1)?(CISMP|CISM)([1-9][0-9]*)')
 
 
 class PromptError(Exception):
@@ -151,7 +151,7 @@ def valid_action(action: str) -> bool:
 
 def cli_action(action: str) -> str:
     if not valid_action(action):
-        raise argparse.ArgumentTypeError('Code attendu en MAJUSCULE : LIST, code direct, CISMPx ou 1CISMPx (x entier positif sans zéro initial)')
+        raise argparse.ArgumentTypeError('Code attendu en MAJUSCULE : LIST, code direct, CISMx, 1CISMx, CISMPx ou 1CISMPx (x entier positif sans zéro initial)')
     return action
 
 
@@ -165,9 +165,9 @@ def dispatch(project_root: Path, action: str) -> dict:
     if action == 'LIST':
         return {**result, 'mode': 'list', 'status': 'listed', 'entries': entries}
     match = RUN_ACTION.fullmatch(action)
-    run = 'CISMP' + match[2] if match else None
+    run = match[2] + match[3] if match else None
     single = bool(match and match[1])
-    canonical = 'CISMP' if match else DIRECT[action]
+    canonical = match[2] if match else DIRECT[action]
     entry = next((e for e in entries if e['code'] == canonical), None)
     if entry is None:
         raise PromptError(f'Entrée {canonical} absente de l’index déclaré')
@@ -194,7 +194,7 @@ def dispatch(project_root: Path, action: str) -> dict:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', type=cli_action, help='LIST, code direct, CISMPx ou 1CISMPx ; x entier positif sans borne supérieure')
+    parser.add_argument('action', type=cli_action, help='LIST, code direct, CISMx, 1CISMx, CISMPx ou 1CISMPx ; x entier positif sans borne supérieure')
     parser.add_argument('--project-root', type=Path, default=Path.cwd(), help='Racine réelle du projet courant')
     args = parser.parse_args(argv)
     try:

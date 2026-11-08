@@ -23,11 +23,10 @@ Demande l'argument s'il manque. Il est obligatoire et en MAJUSCULE :
 - `ACL`, `ACSP`, `ACSM`, `ACSMP`, `CGP`, `CISM`, `DOP`, `DOPP`, `EDP` ;
 - `GCM`, `GCMP`, `ISM`, `ISMP`, `PPSC`, `PPSCP`, `RCAM`, `RCAMP` ;
 - `SPCM`, `SPCMP`, `RSM`, `RSMP`, `SCM`, `SCMP` ;
-- `CISMPx` et `1CISMPx`, où `x` est un entier décimal ASCII strictement
+- `CISMx`, `1CISMx`, `CISMPx` et `1CISMPx`, où `x` est un entier décimal ASCII strictement
   positif sans zéro initial, sans borne supérieure.
 
-Les alias validés sont `GCM → GSCM.md` et `GCMP → GSCMP.md`. Toutes les
-variantes CISMP sélectionnent toutes `CISMP.md`, avec le RUN exact `CISMPn`.
+Les alias validés sont `GCM → GSCM.md` et `GCMP → GSCMP.md`. Les variantes CISM sélectionnent `CISM.md` avec le RUN exact `CISMn` ; les variantes CISMP sélectionnent `CISMP.md` avec le RUN exact `CISMPn`.
 Ne transforme pas silencieusement un argument invalide ou en minuscules.
 
 Appelle réellement le script situé dans ce skill, en passant explicitement
@@ -62,6 +61,7 @@ les validations requises, les préconditions et les informations manquantes ;
 n'invente ni accord, ni RUN, ni résultat. Le statut `ready` du résolveur est
 une préparation du lancement, pas une preuve d'exécution.
 
+Pour `CISMn`, conserve le RUN `CISMn` et le cycle direct normal. Pour `1CISMn`, conserve ce RUN et applique la limite à un change et les mêmes étapes de clôture que ci-dessous, sans pilotage CAB.
 Pour `CISMPn`, conserve le RUN `CISMPn` et le cycle normal du prompt.
 Pour `1CISMPn`, conserve ce même RUN et borne le périmètre à **un seul change** :
 réaliser et valider le change complet, archiver, générer et vérifier les

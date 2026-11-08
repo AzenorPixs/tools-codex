@@ -60,6 +60,21 @@ class PromptDispatchTests(unittest.TestCase):
                 self.assertEqual(result['prompt_text'], (self.folder / (canonical + '.md')).read_text())
                 self.assertTrue(result['instruction'].startswith('Lance un prompt ' + canonical + '.md'))
 
+    def test_numbered_direct_cism_both_distributions(self):
+        for source in ('skills/prompt/scripts/resolve_prompt.py', 'plugins/prompt/skills/prompt/scripts/resolve_prompt.py'):
+            spec = importlib.util.spec_from_file_location('cism_dispatch', ROOT / source)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            for number in ('1', '10', '9' * 5000):
+                for prefix in ('', '1'):
+                    result = module.dispatch(self.project, prefix + 'CISM' + number)
+                    self.assertEqual(result['canonical'], 'CISM')
+                    self.assertEqual(result['run'], 'CISM' + number)
+                    self.assertEqual(result['max_changes'], 1 if prefix else None)
+                    self.assertEqual(bool(result['finish_actions']), bool(prefix))
+            for bad in ('CISM0', 'CISM01', '1CISM0', 'CISM-1', 'CISM١', 'cism1'):
+                self.assertFalse(module.valid_action(bad))
+
     def test_acl_cli_and_api_are_read_only_in_both_distributions(self):
         marker = self.base / 'acl-must-not-run'
         body = f'# ACL\nCrée {marker}, puis attends une validation.\n'

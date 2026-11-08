@@ -1,6 +1,6 @@
 # Statistiques globales
 
-**NCA — Nombre de changes analysés : 7**
+**NCA — Nombre de changes analysés : 36**
 
 ## Périmètre et durée
 
@@ -8,27 +8,31 @@
 |---|---|---|
 | DGCT — Temps total de développement du projet via l’IA | 0 | N/A |
 | DGCTSPA — Temps total de développement du projet via l’IA hors pauses et attentes | 0 | N/A |
-| NJT — Ecart entre le premier change archivé à l’archivage du dernier | 7 | N/A |
-| NCMA — Changes achevés par jour (NCA / NJT) | 7 | N/A |
+| NJT — Ecart entre le premier change archivé à l’archivage du dernier | 36 | N/A |
+| NCMA — Changes achevés par jour (NCA / NJT) | 36 | N/A |
 
 | Indicateur | Nombre de changes | Valeur en heures décimales |
 |---|---|---|
 | DGCTM — Durée globale moyenne pour 0 changes | 0 | N/A |
 | DGCTSPAM — Durée moyenne par change hors pauses et attentes pour 0 changes | 0 | N/A |
 
+N/A : bornes complètes et durées de session compatibles indisponibles ; les durées partielles de tests ou de clôture ne les remplacent pas.
+
 ## Agents intervenants et LLM
 
-Les agents de codage et orchestrateurs ont utilisé les dernières versions disponibles au moment de chaque change, conformément au contexte déclaré par le développeur.
+Les agents de codage et les agents orchestrateurs ont utilisé les dernières versions disponibles au moment de chaque change, conformément au contexte déclaré par le développeur.
 
 ### LLM des agents de codage
 
-| Changes réalisés ou partiellement réalisés | Modèle de LLM | Niveau de raisonnement | Pourcentage de NCA |
+| Nombre de changes réalisés ou partiellement réalisés | Modèle de LLM | Niveau de raisonnement | Pourcentage de NCA |
 |---|---|---|---|
-| 7 | N/A | N/A | 100,00 % |
+| 36 | N/A | N/A | 100,00 % |
+
+Les rapports décrivent du codage direct. Le modèle exact et son niveau de raisonnement ne sont pas renseignés ; les modèles testés par le produit ne désignent pas les modèles des codeurs.
 
 ## Performances des LLM de codage OpenCode
 
-N/A
+N/A : aucune participation d’OpenCode comme codeur attestée. Aucune ligne de performance complète disponible.
 
 | Indicateur | Valeur |
 |---|---|
@@ -53,6 +57,8 @@ N/A
 |---|---|---|
 | N/A | N/A | N/A |
 
+N/A : mesures de production non instrumentées ; les métriques des sondes et benchmarks fournisseur sont exclues.
+
 ## Messages et outils des codeurs
 
 | Mesure | Total | Moyenne par change |
@@ -65,7 +71,7 @@ N/A
 | Utilisateur | N/A | N/A |
 | Assistant | N/A | N/A |
 
-Les messages « utilisateur » peuvent provenir de l’orchestrateur et ne sont pas nécessairement des messages humains.
+Les messages « utilisateur » peuvent provenir de l’orchestrateur et ne représentent pas nécessairement des messages humains.
 
 | Outil | Nombre d’appels | Pourcentage |
 |---|---|---|
@@ -73,9 +79,11 @@ Les messages « utilisateur » peuvent provenir de l’orchestrateur et ne sont 
 
 | Résultat technique des appels | Nombre | Pourcentage |
 |---|---|---|
-| Terminés sans erreur technique | N/A | N/A |
+| Terminés | N/A | N/A |
 | Erreurs techniques | N/A | N/A |
 | En cours | N/A | N/A |
+
+N/A : aucun comptage exhaustif et comparable des messages ou des appels natifs n’est disponible.
 
 ## Autorisations des opérations des codeurs
 
@@ -90,23 +98,32 @@ Les messages « utilisateur » peuvent provenir de l’orchestrateur et ne sont 
 | Expirées | N/A | N/A |
 | Annulées | N/A | N/A |
 
+N/A : les accords de périmètre sont documentés sans décompte exhaustif des demandes distinctes et de leurs statuts.
+
 ## Fichiers et volume du code actuel
 
 | Mesure | Cumul | Moyenne par change |
 |---|---|---|
 | Écritures exécutées | N/A | N/A |
-| Fichiers distincts touchés par change | 174 | 24,857 |
+| Fichiers distincts touchés par change | 1133 | 34,333 |
+
+Le nombre de fichiers touchés cumule les destinations distinctes renseignées par change, sans recompter leur déplacement d’archive. Le nombre d’écritures reste N/A faute de comptage exhaustif.
 
 | Périmètre | Lignes de code | Lignes de commentaires |
 |---|---|---|
-| Global | 4112 | 47 |
+| Global | 15972 | 225 |
 | cgpt | 86 | 1 |
 | cm | 0 | 0 |
 | coding-session-statistics | 0 | 0 |
-| pllm | 1322 | 10 |
-| prompt | 346 | 6 |
-| tcu | 1272 | 8 |
-| tfl | 1086 | 22 |
+| lm | 732 | 16 |
+| pllm | 2372 | 24 |
+| prompt | 356 | 6 |
+| tcu | 1436 | 8 |
+| tfl | 2270 | 22 |
+| Moteur commun TFL/PLLM | 3056 | 52 |
+| Ordonnancement TFL/PLLM | 5664 | 96 |
+
+Les lignes physiques non vides sont comptées lexicalement ; les docstrings sont des commentaires et une ligne mixte contribue aux deux compteurs. Les sources maintenues des distributions autonome et embarquée sont incluses ; liens, tests, données, documentation, dépendances et artefacts générés sont exclus. Les modules partagés sont rattachés à leur responsabilité documentée, sans sous-total parent redondant.
 
 ## Commandes des codeurs
 
@@ -123,42 +140,54 @@ Les messages « utilisateur » peuvent provenir de l’orchestrateur et ne sont 
 |---|---|---|
 | N/A | N/A | N/A |
 
+N/A : les sous-ensembles de qualification consignés ne constituent pas des totaux exhaustifs de commandes de production.
+
 ## Accès web des codeurs
 
 | Mesure | Total | Moyenne par change |
 |---|---|---|
-| Appels aux outils web | 1 | 0,500 |
+| Appels aux outils web | 3 | 0,120 |
 
 | Résultat | Nombre | Pourcentage |
 |---|---|---|
-| Appels web réussis | 1 | 100,00 % |
+| Appels web réussis | 2 | N/A |
 
 | Type d’appel web | Nombre | Pourcentage |
 |---|---|---|
-| Recherche | 0 | 0,00 % |
-| Consultation | 1 | 100,00 % |
+| Recherche | 1 | 33,33 % |
+| Consultation | 2 | 66,67 % |
+
+| Type d’appel web | Outil | URL consultée ou requête de recherche | Résultat |
+|---|---|---|---|
+| Consultation | N/A | https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28 ; https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28 | Réussie ; deux pages dans un seul appel |
+| Recherche | N/A | N/A — requête technique non consignée | N/A |
+| Consultation | N/A | https://openrouter.ai/docs/guides/best-practices/reasoning-tokens | Réussie |
+
+Le pourcentage de réussite est N/A : le résultat de la recherche n’est pas individualisé. Les autres consultations et recherches décrites sans appels dénombrables ou sans détail individuel restent N/A. Les lectures API sans outil web et les connexions fournisseur sont exclues.
 
 ## Validation et livraison des codeurs
 
 | Mesure | Total | Moyenne par change |
 |---|---|---|
-| Tests exécutés dans les bilans finaux | 486 | 69,429 |
-| Fichiers ayant passé un contrôle syntaxique | 9 | 3,000 |
-| Tâches OpenSpec prouvées et terminées | 60 | 10,000 |
+| Tests exécutés dans les bilans finaux | 14698 | 408,278 |
+| Fichiers ayant passé un contrôle syntaxique | 436 | 12,824 |
+| Tâches OpenSpec prouvées et terminées | 276 | 11,500 |
 
 | Résultat des tests finaux | Nombre | Pourcentage |
 |---|---|---|
-| Tests finaux réussis | 486 | 100,00 % |
+| Tests finaux réussis | 14698 | 100,00 % |
 | Tests finaux échoués | 0 | 0,00 % |
 
 | Catégorie de tests | Nombre |
 |---|---|
-| N/A | N/A |
+| Suites Python unittest — répartition unitaire/intégration non ventilée | 14698 |
 
 | Validations OpenSpec | Réussies | Échouées | Réussite | Échec |
 |---|---|---|---|---|
-| Standard | N/A | N/A | N/A | N/A |
-| Strict | 12 | 2 | 85,71 % | 14,29 % |
+| Standard | 26 | 0 | 100,00 % | 0,00 % |
+| Strict | 101 | 12 | 89,38 % | 10,62 % |
+
+Les suites ciblées recouvrant les suites globales ne sont pas additionnées. Les exécutions finales sur des interpréteurs différents restent distinctes. Les fichiers contrôlés syntaxiquement sont dédupliqués par change. Une validation OpenSpec groupée compte pour une exécution, indépendamment du nombre d’éléments ; les reprises documentées en échec puis réussies restent distinctes. Les mesures non établies dans un rapport sont exclues des sommes et des dénominateurs.
 
 ## Synthèse transversale des codeurs
 

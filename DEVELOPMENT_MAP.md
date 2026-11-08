@@ -305,3 +305,7 @@ Les résultats d’exécution et les limites du contrôle Mermaid sont restitué
 - Une dépendance précise sa nature, sa phase, sa condition et sa source.
   **A → B signifie que A dépend de B** ; la flèche va du dépendant vers son prérequis.
   L’absence de flèche ne signifie pas absence de dépendance.
+
+## Change archivé sans code attribué — 8 novembre 2026
+
+- [support-numbered-cism](openspec/changes/archive/2026-11-08-support-numbered-cism/proposal.md) : CISMx et 1CISMx, 4/4 tâches, archivage et synchronisation OpenSpec réussis ; 369 tests réussis. Livraison CI/CD à vérifier séparément. Code non attribué : exécuter ultérieurement ACL pour son attribution.

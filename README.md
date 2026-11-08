@@ -1,6 +1,6 @@
 # Tools Codex
 
-Version de release : `0.7.26`.
+Version de release : `0.7.27`.
 
 La source de vérité de cette version est le fichier [`VERSION`](VERSION).
 La métadonnée Python du dépôt reprend cette release. Les branches Python
@@ -134,14 +134,16 @@ référentiel indiqué dans le `DEVOPS.md` du projet courant :
 ```text
 /PROMPT LIST
 /PROMPT ACL
+/PROMPT CISM10
+/PROMPT 1CISM10
 /PROMPT CISMP3
 /PROMPT 1CISMP3
 ```
 
-`CISMPx` et `1CISMPx` acceptent tout entier décimal ASCII positif sans zéro
+`CISMx`, `1CISMx`, `CISMPx` et `1CISMPx` acceptent tout entier décimal ASCII positif sans zéro
 initial, sans borne supérieure (par exemple `1CISMP9` ou `CISMP12345`).
 `ACL` charge ACL.md depuis l’index déclaré ; ses validations avant écriture restent requises.
-`LIST` affiche l'index. `CISMP3` lance le cycle du RUN CISMP3. `1CISMP3` borne
+`CISM10` lance le cycle direct CISM10 ; `1CISM10` le limite à un change complet et à sa clôture. `LIST` affiche l'index. `CISMP3` lance le cycle du RUN CISMP3. `1CISMP3` borne
 ce RUN à un change complet, archivage, statistiques puis arrêt de la session
 de codage. Les codes sont en MAJUSCULE et les alias GCM/GCMP sélectionnent
 GSCM.md/GSCMP.md. Le skill est directement invocable avec `$prompt CODE`.

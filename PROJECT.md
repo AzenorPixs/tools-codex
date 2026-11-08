@@ -80,7 +80,7 @@ Un plugin peut également embarquer ses propres skills dans son répertoire
 | Skill | `pllm` | Expose la politique PLLM également en dehors du plugin. |
 | Skill | `tfl` | Expose le rapport TFL également en dehors du plugin. |
 | Skill | `cm` (`$cm`) | Affiche le catalogue des invocations `$cm`, `$pllm`, `$tfl`, `$tcu`, `$lm` et `$prompt`. |
-| Skill | **PROMPT** (`$prompt`) | LIST, codes directs et variantes CISMPx/1CISMPx sans borne supérieure. |
+| Skill | **PROMPT** (`$prompt`) | LIST, codes directs et variantes CISMx/1CISMx et CISMPx/1CISMPx sans borne supérieure. |
 | Skill | `lm` (`$lm`) | LIST, ADD et REMOVE ; mimo-v2.5 exclu par défaut. |
 | Commande source | `/LM` | Délègue au skill LM sans enregistrer automatiquement une slash native. |
 | Commande source | `/CM` | Délègue au catalogue CM, avec une seule entrée prompt et sans exécution. |
@@ -159,3 +159,5 @@ Un quota Codex épuisé ou inconnu empêche TFL et PLLM ; le quota est relu avan
 PLLM. Les passages manqués ne sont pas rattrapés. L'installation n'exécute
 aucun LLM ; un échec TFL empêche PLLM et la réutilisation d'un ancien catalogue.
 La qualification des sources reste distincte de l'activation du timer réel.
+
+Les variantes CISMx et 1CISMx lancent CISM en direct avec le numéro exact ; le préfixe 1 limite le cycle à un change et sa clôture.
