@@ -409,7 +409,17 @@ def go_model_metadata(model: dict, metadata: dict) -> dict:
     return record
 
 
-def declared_modalities(record: dict, direction: str) -> list[str] | None:
+def canonical_modality(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized == "application/pdf":
+        return "pdf"
+    media_type, separator, _ = normalized.partition("/")
+    if separator and media_type in {"audio", "image", "text", "video"}:
+        return media_type
+    return normalized
+
+
+def declared_modality_details(record: dict, direction: str) -> dict:
     declarations = [record.get(direction + "_modalities"), record.get(direction + "Modalities")]
     for container, key in (("architecture", direction + "_modalities"), ("modalities", direction)):
         value = record.get(container)
@@ -424,10 +434,19 @@ def declared_modalities(record: dict, direction: str) -> list[str] | None:
         if not isinstance(values, list) or any(not isinstance(v, str) or not v.strip() for v in values):
             raise RuntimeError("liste de modalités OpenCode invalide")
         if values:
-            known.append(sorted({value.strip().lower() for value in values}))
-    if known and any(value != known[0] for value in known[1:]):
+            reported = sorted({value.strip().lower() for value in values})
+            canonical = sorted({canonical_modality(value) for value in reported})
+            known.append((canonical, reported))
+    if known and any(canonical != known[0][0] for canonical, _ in known[1:]):
         raise RuntimeError("modalités OpenCode contradictoires")
-    return known[0] if known else None
+    return {
+        "modalities": known[0][0] if known else None,
+        "reported_values": sorted({value for _, values in known for value in values}) if known else None,
+    }
+
+
+def declared_modalities(record: dict, direction: str) -> list[str] | None:
+    return declared_modality_details(record, direction)["modalities"]
 
 
 def go_modalities(model: dict, metadata: dict, api_retrieved_at: str | None) -> dict:
@@ -435,8 +454,10 @@ def go_modalities(model: dict, metadata: dict, api_retrieved_at: str | None) -> 
     result = {"modalities_metadata": {}}
     api_source = "opencode-api" if metadata.get("provider_id") == "opencode" else "opencode-go-api"
     for direction in ("input", "output"):
-        api_values = declared_modalities(model, direction)
-        metadata_values = declared_modalities(reference, direction)
+        api_details = declared_modality_details(model, direction)
+        metadata_details = declared_modality_details(reference, direction)
+        api_values = api_details["modalities"]
+        metadata_values = metadata_details["modalities"]
         if api_values is not None and metadata_values is not None and api_values != metadata_values:
             raise RuntimeError("modalités OpenCode contradictoires entre API et models.dev")
         values = api_values if api_values is not None else metadata_values
@@ -445,6 +466,8 @@ def go_modalities(model: dict, metadata: dict, api_retrieved_at: str | None) -> 
             "source": api_source if api_values is not None else "models.dev" if values is not None else None,
             "source_api": metadata.get("models_api", API_URL) if api_values is not None else CONTEXT_METADATA_URL if values is not None else None,
             "retrieved_at": api_retrieved_at if api_values is not None else metadata.get("retrieved_at") if values is not None else None,
+            "api_values": api_details["reported_values"],
+            "models_dev_values": metadata_details["reported_values"],
         }
     return result
 

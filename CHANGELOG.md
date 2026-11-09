@@ -9,6 +9,10 @@
 
 ## Unreleased - date à définir
 
+- Normaliser les modalités MIME des fournisseurs TFL avant comparaison et
+  filtrage ; conserver les déclarations source dans l’audit et continuer à
+  bloquer les contradictions réelles.
+
 - Reconnaître ACL dans PROMPT, via CLI et API des distributions autonome et
   embarquée, depuis le seul référentiel DEVOPS/index. Préserver la lecture seule,
   les erreurs sans repli et les validations d’ACL. Aligner la release et les six

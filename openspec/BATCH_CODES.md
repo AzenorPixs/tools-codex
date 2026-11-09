@@ -9,6 +9,12 @@ Aucun code antérieur attesté lors du relevé initial, aucune consolidation, au
 Amendement **ACL-PRM03-R1**, validé par le développeur : attribution rétrospective de PRM03
 à support-acl-prompt le **28 octobre 2026**, sans modification des 44 codes précédents.
 
+Mise à jour ciblée du **9 novembre 2026** : attribution validée de TFL07 à
+`normalize-tfl-provider-modalities`, archivé le 9 novembre 2026. Le registre
+couvre désormais 46 archives codées, soit 46 correspondances. L’archive
+`support-numbered-cism` reste provisoire sans code. Les 45 attributions
+historiques restent inchangées.
+
 Chaque attribution ci-dessous est une annotation rétrospective du 28 octobre 2026,
 pas le code d’origine de l’archive. La preuve est le titre principal du proposal.md lié.
 Les dates de création, identifiants, dossiers, tâches et preuves historiques restent inchangés.
@@ -32,16 +38,16 @@ utilisé ou réservé ; aucune renumérotation pour combler les trous.
 | EXT | Contrats transverses, versionnement, présentation et distribution | 5 |
 | PRM | Résolution et lancement des prompts depuis DEVOPS | 3 |
 | UPD | Mise à jour et installation des briques par TCU | 4 |
-| TFL | Collecte, sélection et publication des catalogues | 6 |
+| TFL | Collecte, sélection et publication des catalogues | 7 |
 | PLL | Politiques, sélection, diagnostics et mémoire propres à PLLM | 10 |
 | LLM | Mesures, efforts et preuves partagés TFL/PLLM | 7 |
 | LM | Gestion et normalisation de la liste noire partagée | 2 |
 | SCH | Ordonnancement conditionnel de TFL puis PLLM | 1 |
-| **Total** | | **45** |
+| **Total** | | **46** |
 
 ## Correspondances vérifiées
 
-Chemins relatifs à openspec/. État constaté le 28 octobre 2026.
+Chemins relatifs à openspec/. États historiques constatés le 28 octobre 2026 ; TFL07 a été ajouté et archivé le 9 novembre 2026.
 
 | Code | Identifiant technique | Titre | État | Dossier | Preuve d’attribution |
 |---|---|---|---|---|---|
@@ -86,6 +92,7 @@ Chemins relatifs à openspec/. État constaté le 28 octobre 2026.
 | TFL04 | select-openrouter-models-by-live-filters | Sélection dynamique OpenRouter | Archivé | [2026-10-25-select-openrouter-models-by-live-filters](changes/archive/2026-10-25-select-openrouter-models-by-live-filters/) | [Titre principal](changes/archive/2026-10-25-select-openrouter-models-by-live-filters/proposal.md) |
 | TFL05 | allow-empty-tfl-provider-selections | Publier les sélections TFL vides sans bloquer les autres catalogues | Archivé | [2026-10-26-allow-empty-tfl-provider-selections](changes/archive/2026-10-26-allow-empty-tfl-provider-selections/) | [Titre principal](changes/archive/2026-10-26-allow-empty-tfl-provider-selections/proposal.md) |
 | TFL06 | remove-general-opencode-tfl | Retrait du catalogue général OpenCode de TFL | Archivé | [2026-10-26-remove-general-opencode-tfl](changes/archive/2026-10-26-remove-general-opencode-tfl/) | [Titre principal](changes/archive/2026-10-26-remove-general-opencode-tfl/proposal.md) |
+| TFL07 | normalize-tfl-provider-modalities | Modalités fournisseurs résilientes dans TFL | Archivé | [2026-11-09-normalize-tfl-provider-modalities](changes/archive/2026-11-09-normalize-tfl-provider-modalities/) | [Titre principal](changes/archive/2026-11-09-normalize-tfl-provider-modalities/proposal.md) |
 | UPD01 | add-tcu-updater | Ajouter la mise à jour contrôlée des briques Tools Codex | Archivé | [2026-10-19-add-tcu-updater](changes/archive/2026-10-19-add-tcu-updater/) | [Titre principal](changes/archive/2026-10-19-add-tcu-updater/proposal.md) |
 | UPD02 | manage-prompt-component | Gérer le composant PROMPT et les canaux indépendants dans TCU | Archivé | [2026-10-19-manage-prompt-component](changes/archive/2026-10-19-manage-prompt-component/) | [Titre principal](changes/archive/2026-10-19-manage-prompt-component/proposal.md) |
 | UPD03 | tcu-plain-check | Accepter check comme argument de contrôle TCU | Archivé | [2026-10-19-tcu-plain-check](changes/archive/2026-10-19-tcu-plain-check/) | [Titre principal](changes/archive/2026-10-19-tcu-plain-check/proposal.md) |
@@ -93,8 +100,7 @@ Chemins relatifs à openspec/. État constaté le 28 octobre 2026.
 
 ## Entrées provisoires sans code
 
-Aucune : les 45 attributions validées sont présentes dans leurs supports.
-L’entrée provisoire SCM-ACL-R1 a été remplacée par PRM03 après validation d’ACL-PRM03-R1.
+`support-numbered-cism` est une archive sans code attribué, constatée le 8 novembre 2026 ; voir sa proposition et ses tâches. L’entrée provisoire SCM-ACL-R1 a été remplacée par PRM03 après validation d’ACL-PRM03-R1.
 Cette section ne constitue ni une série ni une réservation.
 
 ## Limites et anomalies historiques

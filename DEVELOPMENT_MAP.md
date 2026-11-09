@@ -13,6 +13,11 @@ Couverture vérifiée : **45 archives codées**, référencées dans
 [BATCH_CODES.md](openspec/BATCH_CODES.md). Les attributions sont des annotations
 rétrospectives du 28 octobre 2026, pas les codes historiques d’origine.
 
+Mise à jour ciblée du **9 novembre 2026** : TFL07 est attribué et archivé sous
+`normalize-tfl-provider-modalities`. Les 45 archives codées historiques et leurs
+preuves restent inchangées ; le registre contient désormais 46 archives codées.
+`support-numbered-cism` reste une archive sans code attribué.
+
 Sources : [PROJECT.md](PROJECT.md), [TECHNICAL.md](TECHNICAL.md), [BUILD.md](BUILD.md),
 [DEVOPS.md](DEVOPS.md), [configuration OpenSpec](openspec/config.yaml),
 [spécifications courantes](openspec/specs/) et artefacts liés de chaque archive.
@@ -32,8 +37,9 @@ Les tâches, exigences, scénarios et états des 44 archives historiques restent
 
 **A → B signifie : A dépend de B.** Un regroupement exprime une appartenance,
 pas une dépendance. Aucune flèche n’est déduite d’un préfixe, numéro, thème ou date.
-La vue générale présente les ensembles ; la vue détaillée et le registre couvrent les
-45 lots. Les effectifs ne constituent pas de nouveaux codes.
+La vue générale présente les ensembles codés ; la vue détaillée et le registre couvrent les
+46 lots archivés codés. `support-numbered-cism` reste répertorié séparément comme archive
+sans code. Les effectifs ne constituent pas de nouveaux codes.
 
 ```mermaid
 flowchart TB
@@ -41,7 +47,7 @@ flowchart TB
   GEXT["Contrats et distribution des extensions (5)"]
   GPRM["Lancement des prompts (3)"]
   GUPD["Mise à jour et installation TCU (4)"]
-  GTFL["Catalogues fournisseurs (6)"]
+  GTFL["Catalogues fournisseurs (7)"]
   GPLL["Évaluation et politiques PLLM (10)"]
   GLLM["Contrats partagés TFL et PLLM (7)"]
   GLM["Liste noire commune (2)"]
@@ -54,12 +60,12 @@ flowchart TB
 | EXT | Contrats transverses, versionnement, présentation et distribution | 5 |
 | PRM | Résolution et lancement des prompts depuis DEVOPS | 3 |
 | UPD | Mise à jour et installation des briques par TCU | 4 |
-| TFL | Collecte, sélection et publication des catalogues | 6 |
+| TFL | Collecte, sélection et publication des catalogues | 7 |
 | PLL | Politiques, sélection, diagnostics et mémoire propres à PLLM | 10 |
 | LLM | Mesures, efforts et preuves partagés TFL/PLLM | 7 |
 | LM | Gestion et normalisation de la liste noire partagée | 2 |
 | SCH | Ordonnancement conditionnel de TFL puis PLLM | 1 |
-| **Total** | | **45** |
+| **Total** | | **46** |
 
 Les sections Organisation, Catalogue actuel, Lancement de prompts, Liste noire des modèles
 et Rafraîchissement utilisateur planifié de PROJECT.md justifient les responsabilités.
@@ -68,7 +74,7 @@ Les propositions liées précisent chaque rattachement. CAB reste un historique 
 
 ## 3. Vue détaillée des lots
 
-Tous les nœuds sont **archivés**, y compris CAB03 dont une tâche reste non cochée.
+Les 46 nœuds codés sont **archivés**, y compris CAB03 dont une tâche reste non cochée. `support-numbered-cism` est une archive sans code traitée en section 7.
 Les regroupements ne certifient aucune dépendance ; les prérequis opérationnels
 et leur effet sur les phases concernées figurent en section 5.
 
@@ -108,6 +114,7 @@ flowchart TB
     TFL04["TFL04 · Sélection OpenRouter"]
     TFL05["TFL05 · Sélections vides"]
     TFL06["TFL06 · Retrait du général"]
+    TFL07["TFL07 · Modalités fournisseurs résilientes"]
   end
   subgraph PLL["Évaluation et politiques PLLM"]
     PLL01["PLL01 · Repli et performances"]
@@ -141,8 +148,9 @@ flowchart TB
 
 ## 4. Registre des lots et changes
 
-État commun constaté le 28 octobre 2026 : **ARCHIVÉ**.
-La classification de réalisabilité des changes actifs est sans objet pour ces archives.
+État historique constaté le 28 octobre 2026 : **ARCHIVÉ** pour les changes présents à cette date.
+TFL07 a été créé puis archivé le 9 novembre 2026 ; aucun change actif n’est recensé à cette date.
+La classification de réalisabilité des changes archivés est sans objet.
 Les ratios indiquent des cases cochées, pas des tâches revalidées par ACL.
 
 Pour chaque entrée, réalisations et validations historiques restent dans les propositions,
@@ -193,6 +201,7 @@ ne sont pas requalifiées par ACL. CAB03 conserve la validation E2E restante.
 | TFL04 | [select-openrouter-models-by-live-filters](openspec/changes/archive/2026-10-25-select-openrouter-models-by-live-filters/) | TFL — Sélection OpenRouter | 11/11 | [Proposition et titre](openspec/changes/archive/2026-10-25-select-openrouter-models-by-live-filters/proposal.md) | [Tâches](openspec/changes/archive/2026-10-25-select-openrouter-models-by-live-filters/tasks.md) |
 | TFL05 | [allow-empty-tfl-provider-selections](openspec/changes/archive/2026-10-26-allow-empty-tfl-provider-selections/) | TFL — Sélections vides | 6/6 | [Proposition et titre](openspec/changes/archive/2026-10-26-allow-empty-tfl-provider-selections/proposal.md) | [Tâches](openspec/changes/archive/2026-10-26-allow-empty-tfl-provider-selections/tasks.md) |
 | TFL06 | [remove-general-opencode-tfl](openspec/changes/archive/2026-10-26-remove-general-opencode-tfl/) | TFL — Retrait du général | 11/11 | [Proposition et titre](openspec/changes/archive/2026-10-26-remove-general-opencode-tfl/proposal.md) | [Tâches](openspec/changes/archive/2026-10-26-remove-general-opencode-tfl/tasks.md) |
+| TFL07 | [normalize-tfl-provider-modalities](openspec/changes/archive/2026-11-09-normalize-tfl-provider-modalities/) | TFL — Modalités fournisseurs résilientes | 10/11 | [Proposition et titre](openspec/changes/archive/2026-11-09-normalize-tfl-provider-modalities/proposal.md) | [Tâches](openspec/changes/archive/2026-11-09-normalize-tfl-provider-modalities/tasks.md) |
 | UPD01 | [add-tcu-updater](openspec/changes/archive/2026-10-19-add-tcu-updater/) | UPD — Mise à jour contrôlée | 11/11 | [Proposition et titre](openspec/changes/archive/2026-10-19-add-tcu-updater/proposal.md) | [Tâches](openspec/changes/archive/2026-10-19-add-tcu-updater/tasks.md) |
 | UPD02 | [manage-prompt-component](openspec/changes/archive/2026-10-19-manage-prompt-component/) | UPD — Composant PROMPT | 10/10 | [Proposition et titre](openspec/changes/archive/2026-10-19-manage-prompt-component/proposal.md) | [Tâches](openspec/changes/archive/2026-10-19-manage-prompt-component/tasks.md) |
 | UPD03 | [tcu-plain-check](openspec/changes/archive/2026-10-19-tcu-plain-check/) | UPD — Argument check | 6/6 | [Proposition et titre](openspec/changes/archive/2026-10-19-tcu-plain-check/proposal.md) | [Tâches](openspec/changes/archive/2026-10-19-tcu-plain-check/tasks.md) |

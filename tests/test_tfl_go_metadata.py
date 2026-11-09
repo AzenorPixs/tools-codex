@@ -186,6 +186,33 @@ class GoMetadataTests(unittest.TestCase):
                 self.assertEqual(resolved['modalities_metadata']['output']['source'], 'opencode-go-api')
                 self.assertEqual(resolved['modalities_metadata']['output']['retrieved_at'], API_DATE)
 
+    def test_mime_modalities_match_categories_and_preserve_source_values(self):
+        for path, module in self.modules():
+            with self.subTest(path=path):
+                payload, metadata, _ = self.fixture(module)
+                model = payload['data'][0]
+                model.update(input_modalities=['image/jpeg', 'application/pdf', 'text/plain'],
+                             output_modalities=['text'])
+                metadata['models']['new-model']['modalities']['input'] = ['image', 'pdf', 'text']
+                resolved = module.go_modalities(model, metadata, API_DATE)
+                self.assertEqual(resolved['input_modalities'], ['image', 'pdf', 'text'])
+                self.assertEqual(resolved['modalities_metadata']['input']['api_values'],
+                                 ['application/pdf', 'image/jpeg', 'text/plain'])
+                self.assertEqual(resolved['modalities_metadata']['input']['models_dev_values'],
+                                 ['image', 'pdf', 'text'])
+
+    def test_mime_output_modalities_still_apply_nontext_filter(self):
+        for path, module in self.modules():
+            for mime_type, category in (('audio/mpeg', 'audio'), ('video/mp4', 'video')):
+                with self.subTest(path=path, mime_type=mime_type):
+                    payload, metadata, pricing = self.fixture(module)
+                    payload['data'][0]['output_modalities'] = ['text', mime_type]
+                    metadata['models']['new-model']['modalities']['output'] = ['text', category]
+                    rows, excluded = module.build_rows(payload, metadata, pricing)
+                    self.assertEqual(rows, [])
+                    self.assertEqual(excluded[0]['output_modalities'], ['audio', 'text']
+                                     if category == 'audio' else ['text', 'video'])
+
     def test_contradictory_modalities_fail_between_and_inside_sources(self):
         for path, module in self.modules():
             for changes in ({'output_modalities': ['audio']}, {'input_modalities': ['text']},
